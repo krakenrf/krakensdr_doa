@@ -16,6 +16,7 @@ from dash.dash import no_update
 from dash.dependencies import Input, Output, State
 import numpy as np
 import plotly.graph_objects as go
+import plotly.express as px
 
 
 # Import Kraken SDR modules
@@ -126,6 +127,9 @@ class webInterface():
 #############################################
 #       Prepare component dependencies      #
 #############################################
+
+trace_colors = px.colors.qualitative.Plotly
+trace_colors[3] = 'rgb(255,255,51)'
 
 y=np.random.normal(0,1,2**10)
 x=np.arange(2**10)
@@ -522,7 +526,11 @@ def plot_spectrum(spectrum_update_flag):
         # Plot traces
         freqs = webInterface_inst.spectrum[0,:]    
         for m in range(np.size(webInterface_inst.spectrum, 0)-1):   
-            fig.add_trace(go.Scatter(x=freqs, y=webInterface_inst.spectrum[m+1, :], name="Channel {:d}".format(m)))
+            fig.add_trace(go.Scatter(x=freqs, y=webInterface_inst.spectrum[m+1, :], 
+                                     name="Channel {:d}".format(m),
+                                     line = dict(color = trace_colors[m],
+                                                 width = 3)
+                                    ))
         
         fig.update_xaxes(title_text="Frequency [MHz]", 
                         color='rgba(255,255,255,1)', 
@@ -554,7 +562,11 @@ def plot_doa(doa_update_flag):
         for i, doa_result in enumerate(webInterface_inst.doa_results): 
             fig.add_trace(go.Scatter(x=webInterface_inst.doa_thetas, 
                                      y=DOA_plot_util(doa_result, log_scale_min= -50),
-                                     name=webInterface_inst.doa_labels[i]))
+                                     name=webInterface_inst.doa_labels[i],
+                                     line = dict(
+                                                color = trace_colors[i],
+                                                width = 3)
+                           ))
         
         fig.update_xaxes(title_text="Incident angle [deg]", 
                         color='rgba(255,255,255,1)', 
