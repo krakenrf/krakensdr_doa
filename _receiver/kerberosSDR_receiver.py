@@ -167,7 +167,11 @@ class ReceiverRTLSDR():
                 return -1       
             buffer = self.in_shmem_iface.buffers[active_buff_index]
             iq_header_bytes = buffer[0:1024].tobytes()
-            self.iq_header.decode_header(iq_header_bytes)            
+            self.iq_header.decode_header(iq_header_bytes)
+
+            # Inititalization from header - Set channel numbers    
+            if self.M == 0:
+                self.M = self.iq_header.active_ant_chs
             
             incoming_payload_size = self.iq_header.cpi_length*self.iq_header.active_ant_chs*2*int(self.iq_header.sample_bit_depth/8)
             if incoming_payload_size > 0:
@@ -270,7 +274,7 @@ class ReceiverRTLSDR():
                 :type:  msg: Byte array                
         """ 
         self.ctr_iface_thread_lock.acquire()
-        self.logger.debug("Sending control message")
+        self.logger.debug("Sending control message")        
         self.ctr_iface_socket.send(msg_bytes)
         
         # Waiting for the command to take effect
@@ -324,7 +328,7 @@ class ReceiverRTLSDR():
             cmd="GAIN"
             gain_list=[gain]*self.M
             gain_bytes=pack("I"*self.M, *gain_list)
-            msg_bytes=(cmd.encode()+gain_bytes+bytearray(128-(self.M+1)*4))           
+            msg_bytes=(cmd.encode()+gain_bytes+bytearray(128-(self.M+1)*4))
             try:                
                 _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))            
             except:                
