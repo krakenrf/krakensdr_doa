@@ -138,7 +138,6 @@ doa_trace_colors =	{
   "doa_music"   : "rgb(257,233,111)"
 }
 
-
 y=np.random.normal(0,1,2**10)
 x=np.arange(2**10)
 
@@ -175,14 +174,16 @@ app.layout = html.Div([
         interval=500, # in milliseconds
         n_intervals=0
     ),
-    html.Div(id="placeholder_start"     , style={"display":"none"}),
-    html.Div(id="placeholder_stop"      , style={"display":"none"}),
-    html.Div(id="placeholder_update_rx" , style={"display":"none"}),
-    html.Div(id="placeholder_update_dsp", style={"display":"none"}),
-    
+    html.Div(id="placeholder_start"        , style={"display":"none"}),
+    html.Div(id="placeholder_stop"         , style={"display":"none"}),
+    html.Div(id="placeholder_update_rx"    , style={"display":"none"}),
+    html.Div(id="placeholder_update_freq"  , style={"display":"none"}),
+    html.Div(id="placeholder_update_dsp"   , style={"display":"none"}),    
+
     html.Div(id="placeholder_config_page_upd"  , style={"display":"none"}),
     html.Div(id="placeholder_spectrum_page_upd", style={"display":"none"}),
     html.Div(id="placeholder_doa_page_upd"     , style={"display":"none"}),
+    
     
     html.Div(id='page-content')
 ])
@@ -276,7 +277,7 @@ def generate_config_page_layout(webInterface_inst):
                 options=[
                     {'label': "ULA", 'value': "ULA"},
                     {'label': "UCA", 'value': "UCA"},                
-                ], value=webInterface_inst.module_signal_processor.DOA_ant_alignment, className="field-body", labelStyle={'display': 'inline-block'})
+                ], value=webInterface_inst.module_signal_processor.DOA_ant_alignment, className="field-body", labelStyle={'display': 'inline-block'}, id="radio_ant_arrangement")
             ], className="field"),        
             html.Div("Spacing:"              , id="label_ant_spacing"   , className="field-label"),
             html.Div([html.Div("[wavelength]:"        , id="label_ant_spacing_wavelength"  , className="field-label"), 
@@ -336,14 +337,16 @@ doa_page_layout = html.Div([
     Output(component_id="interval-component"           , component_property='interval'),    
     Output(component_id="placeholder_config_page_upd"  , component_property='children'),
     Output(component_id="placeholder_spectrum_page_upd", component_property='children'),
-    Output(component_id="placeholder_doa_page_upd"     , component_property='children'),    
+    Output(component_id="placeholder_doa_page_upd"     , component_property='children'),
+    Output(component_id="placeholder_update_freq"      , component_property='children'),  
     Input(component_id ="interval-component"           , component_property='n_intervals'),
     State(component_id ="url"                          , component_property='pathname')
 )
 def fetch_dsp_data(input_value, pathname):    
-    daq_status_update_flag = 0
+    daq_status_update_flag = 0    
     spectrum_update_flag   = 0
-    doa_update_flag = 0
+    doa_update_flag        = 0
+    freq_update            = no_update
     #############################################
     #      Fetch new data from back-end ques    #
     #############################################        
@@ -376,6 +379,10 @@ def fetch_dsp_data(input_value, pathname):
                 webInterface_inst.daq_sample_delay_sync = iq_header.delay_sync_flag
                 webInterface_inst.daq_iq_sync           = iq_header.iq_sync_flag
                 webInterface_inst.daq_noise_source_state= iq_header.noise_source_state
+                
+                if webInterface_inst.daq_center_freq != iq_header.rf_center_freq/10**6: 
+                    freq_update = 1
+
                 webInterface_inst.daq_center_freq       = iq_header.rf_center_freq/10**6
                 webInterface_inst.daq_adc_fs            = iq_header.adc_sampling_freq/10**6
                 webInterface_inst.daq_fs                = iq_header.sampling_freq/10**6
@@ -431,13 +438,13 @@ def fetch_dsp_data(input_value, pathname):
         pass
         # Handle task here and call q.task_done()
     if (pathname == "/config" or pathname=="/") and daq_status_update_flag:        
-        return webInterface_inst.page_update_rate*1000, 1, no_update, no_update
+        return webInterface_inst.page_update_rate*1000, 1, no_update, no_update, freq_update
     elif pathname == "/spectrum" and spectrum_update_flag:
-        return webInterface_inst.page_update_rate*1000, no_update, 1, no_update
+        return webInterface_inst.page_update_rate*1000, no_update, 1, no_update, no_update
     elif pathname == "/doa" and doa_update_flag:
-        return webInterface_inst.page_update_rate*1000, no_update, no_update, 1
+        return webInterface_inst.page_update_rate*1000, no_update, no_update, 1, no_update
     else:
-        return  webInterface_inst.page_update_rate*1000, no_update, no_update, no_update
+        return  webInterface_inst.page_update_rate*1000, no_update, no_update, no_update, no_update
 
 @app.callback(
     Output(component_id="body_daq_update_rate"        , component_property='children'),
@@ -614,7 +621,7 @@ def stop_proc_btn(input_value):
     return ""
 
 @app.callback(
-    Output(component_id="placeholder_update_rx" , component_property="children"),
+    Output(component_id="placeholder_update_rx" , component_property="children"),    
     Input(component_id="btn-update_rx_param"    , component_property="n_clicks"),
     State(component_id ="daq_center_freq"       , component_property='value'),    
     State(component_id ="daq_rx_gain"           , component_property='value'), 
@@ -624,12 +631,17 @@ def update_daq_params(input_value, f0, gain):
     if input_value is None:
         raise PreventUpdate
 
+
+    # Change antenna spacing config for DoA estimation
+    webInterface_inst.module_signal_processor.DOA_inter_elem_space *=f0/webInterface_inst.daq_center_freq    
+
     webInterface_inst.center_freq = f0
     webInterface_inst.daq_rx_gain = gain
     webInterface_inst.module_receiver.set_center_freq(int(f0*10**6))
     webInterface_inst.module_receiver.set_if_gain(int(10*gain))
     logging.info("Updating receiver parameters: {0}".format(input_value))
-    logging.info("inst0 center freq: {:f}".format(webInterface_inst.center_freq))
+    logging.info("Center frequency: {:f}".format(webInterface_inst.center_freq))
+        
     return  ""
 
 
@@ -638,7 +650,8 @@ def update_daq_params(input_value, f0, gain):
     Output(component_id="ant_spacing_wavelength", component_property="value"),
     Output(component_id="ant_spacing_meter"     , component_property="value"),
     Output(component_id="ant_spacing_feet"      , component_property="value"),
-    Output(component_id="ant_spacing_inch"      , component_property="value"),
+    Output(component_id="ant_spacing_inch"      , component_property="value"),    
+    Input(component_id="placeholder_update_freq", component_property="children"),
     Input(component_id="en_spectrum_check"      , component_property="value"),
     Input(component_id="en_doa_check"           , component_property="value"),
     Input(component_id="en_bartlett_check"      , component_property="value"),
@@ -650,22 +663,24 @@ def update_daq_params(input_value, f0, gain):
     Input(component_id="ant_spacing_meter"      , component_property="value"),
     Input(component_id="ant_spacing_feet"       , component_property="value"),
     Input(component_id="ant_spacing_inch"       , component_property="value"),
+    Input(component_id="radio_ant_arrangement"  , component_property="value"),
     prevent_initial_call=True
 )
-def update_dsp_params(en_spectrum, en_doa, en_bartlett, en_capon, en_mem, en_music,
-                      en_fb_avg, spacing_wavlength, spacing_meter, spacing_feet, spacing_inch):
+def update_dsp_params(freq_update, en_spectrum, en_doa, en_bartlett, en_capon, en_mem, en_music,
+                      en_fb_avg, spacing_wavlength, spacing_meter, spacing_feet, spacing_inch,
+                      ant_arrangement):
     ctx = dash.callback_context
-    
     
     if ctx.triggered:
         component_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
         wavelength= 300 / webInterface_inst.daq_center_freq
         
-        ant_spacing_meter = wavelength * webInterface_inst.module_signal_processor.DOA_inter_elem_space
-        logging.info("{0}".format(component_id))
-
-        if component_id   == "ant_spacing_meter":        
+        if component_id   == "placeholder_update_freq": 
+            ant_spacing_meter = spacing_meter  
+        else:
+            ant_spacing_meter = wavelength * webInterface_inst.module_signal_processor.DOA_inter_elem_space
+        
+        if component_id   == "ant_spacing_meter":
             ant_spacing_meter = spacing_meter
         elif component_id == "ant_spacing_wavelength":
             ant_spacing_meter = wavelength*spacing_wavlength
@@ -717,6 +732,9 @@ def update_dsp_params(en_spectrum, en_doa, en_bartlett, en_capon, en_mem, en_mus
         webInterface_inst.module_signal_processor.en_DOA_FB_avg   = True
     else:
         webInterface_inst.module_signal_processor.en_DOA_FB_avg   = False
+    
+    #webInterface_inst.module_signal_processor.DOA_ant_alignment=ant_arrangement
+
     return "", ant_spacing_wavlength, ant_spacing_meter, ant_spacing_feet, ant_spacing_inch
 
 
