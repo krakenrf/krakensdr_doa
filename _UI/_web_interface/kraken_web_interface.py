@@ -131,6 +131,14 @@ class webInterface():
 trace_colors = px.colors.qualitative.Plotly
 trace_colors[3] = 'rgb(255,255,51)'
 
+doa_trace_colors =	{
+  "doa_bartlett": "#00B5F7",
+  "doa_capon"   : "rgb(226,26,28)",
+  "doa_mem"     : "#1CA71C",
+  "doa_music"   : "rgb(257,233,111)"
+}
+
+
 y=np.random.normal(0,1,2**10)
 x=np.arange(2**10)
 
@@ -564,7 +572,7 @@ def plot_doa(doa_update_flag):
                                      y=DOA_plot_util(doa_result, log_scale_min= -50),
                                      name=webInterface_inst.doa_labels[i],
                                      line = dict(
-                                                color = trace_colors[i],
+                                                color = doa_trace_colors[webInterface_inst.doa_labels[i]],
                                                 width = 3)
                            ))
         
