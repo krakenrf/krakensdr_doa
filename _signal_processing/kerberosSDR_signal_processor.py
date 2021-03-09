@@ -185,13 +185,13 @@ class SignalProcessor(threading.Thread):
                         self.estimate_DOA()
                         que_data_packet.append(['doa_thetas', self.DOA_theta])
                         if self.en_DOA_Bartlett:
-                            que_data_packet.append(['doa_bartlett', self.DOA_Bartlett_res])                            
+                            que_data_packet.append(['DoA Bartlett', self.DOA_Bartlett_res])                            
                         if self.en_DOA_Capon:
-                            que_data_packet.append(['doa_capon', self.DOA_Capon_res])
+                            que_data_packet.append(['DoA Capon', self.DOA_Capon_res])
                         if self.en_DOA_MEM:
-                            que_data_packet.append(['doa_mem', self.DOA_MEM_res])
+                            que_data_packet.append(['DoA MEM', self.DOA_MEM_res])
                         if self.en_DOA_MUSIC:
-                            que_data_packet.append(['doa_music', self.DOA_MUSIC_res])
+                            que_data_packet.append(['DoA MUSIC', self.DOA_MUSIC_res])
                         
                     
                     # Record IQ samples
