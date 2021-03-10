@@ -54,6 +54,7 @@ class webInterface():
         self.page_update_rate = 1     
         self._avg_win_size = 10
         self._update_rate_arr = None
+        self._doa_fig_type = 0
 
         self.sp_data_que = queue.Queue(1) # Que to communicate with the signal processing module
         self.rx_data_que = queue.Queue(1) # Que to communicate with the receiver modules
@@ -137,6 +138,7 @@ doa_trace_colors =	{
   "DoA MEM"     : "#1CA71C",
   "DoA MUSIC"   : "rgb(257,233,111)"
 }
+figure_font_size = 15
 
 y=np.random.normal(0,1,2**10)
 x=np.arange(2**10)
@@ -326,23 +328,25 @@ spectrum_page_layout = html.Div([
     )], className="monitor_card"),
 ])
 
-doa_page_layout = html.Div([
-    html.Div([
-    html.Div("DoA estimation graph type:", className="field-label"), 
-    dcc.Dropdown(id='doa_fig_type',
-            options=[
-                {'label': 'Linear plot', 'value': 0},
-                {'label': 'Polar plot',  'value': 1}                
-                ],
-        value=0, style={"display":"inline-block"},className="field-body")
-    ], style={"float":"left"}),
-    html.Div([    
-    dcc.Graph(
-        style={"height": "inherit"},
-        id="doa-graph",
-        figure=fig_dummy
-    )], className="monitor_card"),
-])
+def generate_doa_page_layout(webInterface_inst):
+    doa_page_layout = html.Div([
+        html.Div([
+        html.Div("DoA estimation graph type:", className="field-label"), 
+        dcc.Dropdown(id='doa_fig_type',
+                options=[
+                    {'label': 'Linear plot', 'value': 0},
+                    {'label': 'Polar plot',  'value': 1}                
+                    ],
+            value=webInterface_inst._doa_fig_type, style={"display":"inline-block"},className="field-body")
+        ], style={"float":"left"}),
+        html.Div([    
+        dcc.Graph(
+            style={"height": "inherit"},
+            id="doa-graph",
+            figure=fig_dummy
+        )], className="monitor_card"),
+    ])
+    return doa_page_layout
 
 @app.callback(   
     Output(component_id="interval-component"           , component_property='interval'),    
@@ -561,14 +565,14 @@ def plot_spectrum(spectrum_update_flag):
         fig.update_xaxes(title_text="Frequency [MHz]", 
                         color='rgba(255,255,255,1)', 
                         title_font_size=20, 
-                        tickfont_size=15,
+                        tickfont_size=figure_font_size,
                         mirror=True,
                         ticks='outside',
                         showline=True)
         fig.update_yaxes(title_text="Amplitude [dB]",
                         color='rgba(255,255,255,1)', 
                         title_font_size=20, 
-                        tickfont_size=15, 
+                        tickfont_size=figure_font_size, 
                         #range=[-5, 5],
                         mirror=True,
                         ticks='outside',
@@ -582,10 +586,11 @@ def plot_spectrum(spectrum_update_flag):
     prevent_initial_call=True
 )
 def plot_doa(doa_update_flag, doa_fig_type):
-    fig = go.Figure(layout=fig_layout)   
+    fig = go.Figure(layout=fig_layout)
     
+    webInterface_inst._doa_fig_type = doa_fig_type
     if webInterface_inst.doa_thetas is not None:
-        if doa_fig_type == 0 : # Linear plot
+        if webInterface_inst._doa_fig_type == 0 : # Linear plot
             # Plot traces 
             for i, doa_result in enumerate(webInterface_inst.doa_results): 
                 doa_result_log = DOA_plot_util(doa_result, log_scale_min= -50)            
@@ -601,31 +606,54 @@ def plot_doa(doa_update_flag, doa_fig_type):
             fig.update_xaxes(title_text="Incident angle [deg]", 
                             color='rgba(255,255,255,1)', 
                             title_font_size=20, 
-                            tickfont_size=15,
+                            tickfont_size=figure_font_size,
                             mirror=True,
                             ticks='outside',
                             showline=True)
             fig.update_yaxes(title_text="Amplitude [dB]",
                             color='rgba(255,255,255,1)', 
                             title_font_size=20, 
-                            tickfont_size=15, 
+                            tickfont_size=figure_font_size, 
                             #range=[-5, 5],
                             mirror=True,
                             ticks='outside',
                             showline=True)
-        elif doa_fig_type == 1:
+        elif webInterface_inst._doa_fig_type == 1:
             if max(webInterface_inst.doa_thetas) != 360: # ULA                
-                fig.update_layout(polar = dict(sector = [0, 180], angularaxis = dict(rotation=90)))                
+                fig.update_layout(polar = dict(sector = [0, 180], 
+                                               radialaxis_tickfont_size = figure_font_size,
+                                               angularaxis = dict(rotation=90,
+                                                                  tickfont_size = figure_font_size
+                                                                  )
+                                                )
+                                 )                
+            else: #UCA
+                fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
+                                               angularaxis = dict(rotation=90, 
+                                                                  tickfont_size = figure_font_size)                                               
+                                               )
+                                 )           
 
             for i, doa_result in enumerate(webInterface_inst.doa_results): 
-                doa_result_log = DOA_plot_util(doa_result, log_scale_min= -50)            
-                label = webInterface_inst.doa_labels[i]+": "+str(webInterface_inst.doa_thetas[np.argmax(doa_result_log)])+"°"
+                doa_result_log = DOA_plot_util(doa_result, log_scale_min= -50)    
+                theta_0 = webInterface_inst.doa_thetas[np.argmax(doa_result_log)]        
+                label = webInterface_inst.doa_labels[i]+": "+str(theta_0)+"°"
                 fig.add_trace(go.Scatterpolar(theta=webInterface_inst.doa_thetas, 
                                             r=doa_result_log,
                                             name=label,
                                             line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
                                             fill= 'toself'
                                             ))
+                fig.add_trace(go.Scatterpolar(
+                                                r = [0,-50],
+                                                theta = [theta_0,theta_0],
+                                                mode = 'lines',
+                                                showlegend=False,                                                      
+                                                line = dict(
+                                                    color = doa_trace_colors[webInterface_inst.doa_labels[i]],
+                                                    dash='dash'
+                                                )))
+
         return fig
 
     
@@ -780,7 +808,7 @@ def display_page(pathname):
     elif pathname == "/spectrum":
         return spectrum_page_layout, "header_inactive", "header_active", "header_inactive"
     elif pathname == "/doa":
-        return doa_page_layout, "header_inactive", "header_inactive", "header_active"
+        return generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"
     
 if __name__ == "__main__":        
     webInterface_inst = webInterface()
