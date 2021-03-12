@@ -50,9 +50,9 @@ class SignalProcessor(threading.Thread):
 
         self.module_receiver = module_receiver
         self.data_que = data_que
-        self.en_spectrum = True
+        self.en_spectrum = False
         self.en_record = False
-        self.en_DOA_estimation = False
+        self.en_DOA_estimation = True
         self.first_frame = 1 # Used to configure local variables from the header fields
         self.processed_signal = np.empty(0)        
 
@@ -258,7 +258,7 @@ class SignalProcessor(threading.Thread):
                 DOA_MUSIC_res = de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
                 self.DOA_MUSIC_res = DOA_MUSIC_res        
 
-def DOA_plot_util(DOA_data, log_scale_min):
+def DOA_plot_util(DOA_data, log_scale_min=-100):
     """
         This function prepares the calulcated DoA estimation results for plotting. 
         
@@ -267,8 +267,10 @@ def DOA_plot_util(DOA_data, log_scale_min):
     """
 
     DOA_data = np.divide(np.abs(DOA_data), np.max(np.abs(DOA_data))) # Normalization    
-    DOA_data = 10*np.log10(DOA_data) # Change to logscale    
+    DOA_data = 10*np.log10(DOA_data) # Change to logscale
+    
     for i in range(len(DOA_data)): # Remove extremely low values
         if DOA_data[i] < log_scale_min:
             DOA_data[i] = log_scale_min
+    
     return DOA_data

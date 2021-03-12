@@ -43,8 +43,8 @@ class webInterface():
         
         logging.basicConfig(level=settings.logging_level*10)
         self.logger = logging.getLogger(__name__)        
-
-        self.logger.info("Inititalizing web interface")
+        self.logger.setLevel(settings.logging_level*10)
+        self.logger.info("Inititalizing web interface ")
 
         #############################################
         #  Initialize and Configure Kraken modules  #
@@ -54,7 +54,9 @@ class webInterface():
         self.page_update_rate = 1     
         self._avg_win_size = 10
         self._update_rate_arr = None
+        self._doa_method   = 3
         self._doa_fig_type = 0
+        
 
         self.sp_data_que = queue.Queue(1) # Que to communicate with the signal processing module
         self.rx_data_que = queue.Queue(1) # Que to communicate with the receiver modules
@@ -138,7 +140,7 @@ doa_trace_colors =	{
   "DoA MEM"     : "#1CA71C",
   "DoA MUSIC"   : "rgb(257,233,111)"
 }
-figure_font_size = 15
+figure_font_size = 20
 
 y=np.random.normal(0,1,2**10)
 x=np.arange(2**10)
@@ -161,6 +163,9 @@ option = [{"label":"", "value": 1}]
 ############################################
 
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app_log = logging.getLogger('werkzeug')
+app_log.setLevel(settings.logging_level*10)
+
 app.layout = html.Div([
     dcc.Location(id='url', children='/config',refresh=False),
 
@@ -294,26 +299,24 @@ def generate_config_page_layout(webInterface_inst):
                       dcc.Input(id="ant_spacing_inch", value=ant_spacing_inch, type='number'  , debounce=False, className="field-body")]),
             
             # --> DoA estimation configuration checkboxes <--  
+   
             # Note: Individual checkboxes are created due to layout considerations, correct if extist a better solution       
             html.Div([html.Div("Enable DoA estimation", id="label_en_doa"     , className="field-label"),
                     dcc.Checklist(options=option     , id="en_doa_check"     , className="field-body", value=en_doa_values),
             ], className="field"),
-            html.Div([html.Div("Bartlett"             , id="label_en_bartlett", className="field-label"),
-                    dcc.Checklist(options=option     , id="en_bartlett_check", className="field-body", value=en_bartlett_values),
-            ], className="field"),
-            html.Div([html.Div("Capon"                , id="label_en_capon"   , className="field-label"),
-                    dcc.Checklist(options=option     , id="en_capon_check"   , className="field-body", value=en_capon_values),
-            ], className="field"),
-            html.Div([html.Div("MEM"                  , id="label_en_mem"     , className="field-label"),
-                    dcc.Checklist(options=option     , id="en_mem_check"     , className="field-body", value=en_mem_values),
-            ], className="field"),
-            html.Div([html.Div("MUSIC"                , id="label_en_music"   , className="field-label"),
-                    dcc.Checklist(options=option     , id="en_music_check"   , className="field-body", value=en_music_values),
+            html.Div([html.Div("DoA method", id="label_doa_method"     , className="field-label"),
+            dcc.Dropdown(id='doa_method',
+                options=[
+                    {'label': 'Bartlett', 'value': 0},
+                    {'label': 'Capon'   , 'value': 1},
+                    {'label': 'MEM'   , 'value': 2},
+                    {'label': 'MUSIC'   , 'value': 3}
+                    ],
+            value=webInterface_inst._doa_method, style={"display":"inline-block"},className="field-body")
             ], className="field"),
             html.Div([html.Div("Enable F-B averaging", id="label_en_fb_avg"   , className="field-label"),
                     dcc.Checklist(options=option     , id="en_fb_avg_check"   , className="field-body", value=en_fb_avg_values),
             ], className="field")
-
         ], className="card"),
     ])
     return config_page_layout
@@ -593,10 +596,10 @@ def plot_doa(doa_update_flag, doa_fig_type):
         if webInterface_inst._doa_fig_type == 0 : # Linear plot
             # Plot traces 
             for i, doa_result in enumerate(webInterface_inst.doa_results): 
-                doa_result_log = DOA_plot_util(doa_result, log_scale_min= -50)            
+                doa_result_log = DOA_plot_util(doa_result)            
                 label = webInterface_inst.doa_labels[i]+": "+str(webInterface_inst.doa_thetas[np.argmax(doa_result_log)])+"°"
                 fig.add_trace(go.Scatter(x=webInterface_inst.doa_thetas, 
-                                        y=DOA_plot_util(doa_result, log_scale_min= -50),
+                                        y=doa_result_log,
                                         name=label,
                                         line = dict(
                                                     color = doa_trace_colors[webInterface_inst.doa_labels[i]],
@@ -635,7 +638,7 @@ def plot_doa(doa_update_flag, doa_fig_type):
                                  )           
 
             for i, doa_result in enumerate(webInterface_inst.doa_results): 
-                doa_result_log = DOA_plot_util(doa_result, log_scale_min= -50)    
+                doa_result_log = DOA_plot_util(doa_result)    
                 theta_0 = webInterface_inst.doa_thetas[np.argmax(doa_result_log)]        
                 label = webInterface_inst.doa_labels[i]+": "+str(theta_0)+"°"
                 fig.add_trace(go.Scatterpolar(theta=webInterface_inst.doa_thetas, 
@@ -645,7 +648,7 @@ def plot_doa(doa_update_flag, doa_fig_type):
                                             fill= 'toself'
                                             ))
                 fig.add_trace(go.Scatterpolar(
-                                                r = [0,-50],
+                                                r = [0,min(doa_result_log)],
                                                 theta = [theta_0,theta_0],
                                                 mode = 'lines',
                                                 showlegend=False,                                                      
@@ -711,10 +714,7 @@ def update_daq_params(input_value, f0, gain):
     Input(component_id="placeholder_update_freq", component_property="children"),
     Input(component_id="en_spectrum_check"      , component_property="value"),
     Input(component_id="en_doa_check"           , component_property="value"),
-    Input(component_id="en_bartlett_check"      , component_property="value"),
-    Input(component_id="en_capon_check"         , component_property="value"),
-    Input(component_id="en_mem_check"           , component_property="value"),
-    Input(component_id="en_music_check"         , component_property="value"),
+    Input(component_id="doa_method"             , component_property="value"),    
     Input(component_id="en_fb_avg_check"        , component_property="value"),
     Input(component_id="ant_spacing_wavelength" , component_property="value"),
     Input(component_id="ant_spacing_meter"      , component_property="value"),
@@ -723,7 +723,7 @@ def update_daq_params(input_value, f0, gain):
     Input(component_id="radio_ant_arrangement"  , component_property="value"),
     prevent_initial_call=True
 )
-def update_dsp_params(freq_update, en_spectrum, en_doa, en_bartlett, en_capon, en_mem, en_music,
+def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
                       en_fb_avg, spacing_wavlength, spacing_meter, spacing_feet, spacing_inch,
                       ant_arrangement):
     ctx = dash.callback_context
@@ -762,28 +762,28 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, en_bartlett, en_capon, e
     else:
         webInterface_inst.module_signal_processor.en_DOA_estimation = False       
     
-    if en_bartlett is not None and len(en_bartlett):
-        logging.debug("Bartlett estimation enabled")
+    webInterface_inst._doa_method=doa_method
+    if doa_method == 0:
         webInterface_inst.module_signal_processor.en_DOA_Bartlett = True
-    else:
-        webInterface_inst.module_signal_processor.en_DOA_Bartlett = False
-    if en_capon is not None and len(en_capon):        
-        logging.debug("Capon estimation enabled")
-        webInterface_inst.module_signal_processor.en_DOA_Capon    = True
-    else:
         webInterface_inst.module_signal_processor.en_DOA_Capon    = False
-    
-    if en_mem is not None and len(en_mem):
-        logging.debug("MEM estimation enabled")
-        webInterface_inst.module_signal_processor.en_DOA_MEM      = True
-    else:
         webInterface_inst.module_signal_processor.en_DOA_MEM      = False
-    
-    if en_music is not None and len(en_music):
-        logging.debug("MUSIC estimation enabled")
-        webInterface_inst.module_signal_processor.en_DOA_MUSIC    = True
-    else:
         webInterface_inst.module_signal_processor.en_DOA_MUSIC    = False
+    elif doa_method == 1:
+        webInterface_inst.module_signal_processor.en_DOA_Bartlett = False
+        webInterface_inst.module_signal_processor.en_DOA_Capon    = True
+        webInterface_inst.module_signal_processor.en_DOA_MEM      = False
+        webInterface_inst.module_signal_processor.en_DOA_MUSIC    = False
+    elif doa_method == 2:
+        webInterface_inst.module_signal_processor.en_DOA_Bartlett = False
+        webInterface_inst.module_signal_processor.en_DOA_Capon    = False
+        webInterface_inst.module_signal_processor.en_DOA_MEM      = True
+        webInterface_inst.module_signal_processor.en_DOA_MUSIC    = False
+    elif doa_method == 3:
+        webInterface_inst.module_signal_processor.en_DOA_Bartlett = False
+        webInterface_inst.module_signal_processor.en_DOA_Capon    = False
+        webInterface_inst.module_signal_processor.en_DOA_MEM      = False
+        webInterface_inst.module_signal_processor.en_DOA_MUSIC    = True
+
     if en_fb_avg is not None and len(en_fb_avg):
         logging.debug("FB averaging enabled")
         webInterface_inst.module_signal_processor.en_DOA_FB_avg   = True
