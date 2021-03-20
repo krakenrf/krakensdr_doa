@@ -34,8 +34,8 @@
     "guard_win": "4",
     "thresh_det": "13.0",
     "en_peakhold": null,
-    "data_interface":"shmem",
-    "logging_level": 3,
+    "data_interface":"eth",
+    "logging_level": 2,
     "default_ip": "0.0.0.0",
     "user_interface": "web"
   }

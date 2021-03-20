@@ -57,7 +57,6 @@ class webInterface():
         self._doa_method   = 3
         self._doa_fig_type = 0
         
-
         self.sp_data_que = queue.Queue(1) # Que to communicate with the signal processing module
         self.rx_data_que = queue.Queue(1) # Que to communicate with the receiver modules
 
@@ -66,7 +65,7 @@ class webInterface():
         self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver)
         self.module_signal_processor.start()
         #############################################
-        #     UI Status and Config variables        #
+        #       UI Status and Config variables      #
         #############################################
 
         # DAQ Configuration parameters
@@ -95,6 +94,9 @@ class webInterface():
         self.doa_thetas            = None
         self.doa_results           = []
         self.doa_labels            = []
+        self.doas                  = [] # Final measured DoAs [deg]
+        self.compass_ofset         = 0
+        self.DOA_res_fd            = open("_android_web/DOA_value.html","w+") #open("/ram/DOA_value.html","w+") # DOA estimation result file descriptor
         self.logger.info("Web interface object initialized")
         
     def start_processing(self, ip_addr="127.0.0.1"):
@@ -114,18 +116,9 @@ class webInterface():
     
     def stop_processing(self):
         self.module_signal_processor.run_processing=False      
-
-    def export_spectrum(self):
-        """
-        Exports the calculated spectrum image into a html file
-        
-        Parameters:
-        ----------
-        :param: : 
-        :type :
-        
-        """
-        pass
+    
+    def close(self):
+        self.DOA_res_fd.close()
 
 #############################################
 #       Prepare component dependencies      #
@@ -318,6 +311,19 @@ def generate_config_page_layout(webInterface_inst):
                     dcc.Checklist(options=option     , id="en_fb_avg_check"   , className="field-body", value=en_fb_avg_values),
             ], className="field")
         ], className="card"),
+        html.Div([
+            html.H2("Display Options", id="init_title_c"),
+            html.Div("DoA estimation graph type:", className="field-label"), 
+            dcc.Dropdown(id='doa_fig_type',
+                    options=[
+                        {'label': 'Linear plot', 'value': 0},
+                        {'label': 'Polar plot',  'value': 1}                
+                        ],
+                value=webInterface_inst._doa_fig_type, style={"display":"inline-block"},className="field-body"),
+            html.Div("Compass ofset [deg]:", className="field-label"), 
+            dcc.Input(id="compass_ofset", value=webInterface_inst.compass_ofset, type='number', debounce=False, className="field-body"),
+
+        ], className="card", style={"float":"left"}),
     ])
     return config_page_layout
 
@@ -330,18 +336,8 @@ spectrum_page_layout = html.Div([
         figure=fig_dummy
     )], className="monitor_card"),
 ])
-
 def generate_doa_page_layout(webInterface_inst):
-    doa_page_layout = html.Div([
-        html.Div([
-        html.Div("DoA estimation graph type:", className="field-label"), 
-        dcc.Dropdown(id='doa_fig_type',
-                options=[
-                    {'label': 'Linear plot', 'value': 0},
-                    {'label': 'Polar plot',  'value': 1}                
-                    ],
-            value=webInterface_inst._doa_fig_type, style={"display":"inline-block"},className="field-body")
-        ], style={"float":"left"}),
+    doa_page_layout = html.Div([        
         html.Div([    
         dcc.Graph(
             style={"height": "inherit"},
@@ -432,20 +428,28 @@ def fetch_dsp_data(input_value, pathname):
                 doa_update_flag               = 1
                 webInterface_inst.doa_results = []
                 webInterface_inst.doa_labels  = []
+                webInterface_inst.doas        = [] 
                 logging.debug("DoA estimation data fetched from signal processing que")                
             elif data_entry[0] == "DoA Bartlett":
                 webInterface_inst.doa_results.append(data_entry[1])
                 webInterface_inst.doa_labels.append(data_entry[0])
+            elif data_entry[0] == "DoA Bartlett Max":
+                webInterface_inst.doas.append(data_entry[1])
             elif data_entry[0] == "DoA Capon":
                 webInterface_inst.doa_results.append(data_entry[1])
                 webInterface_inst.doa_labels.append(data_entry[0])
+            elif data_entry[0] == "DoA Capon Max":
+                webInterface_inst.doas.append(data_entry[1])
             elif data_entry[0] == "DoA MEM":
                 webInterface_inst.doa_results.append(data_entry[1])
                 webInterface_inst.doa_labels.append(data_entry[0])
+            elif data_entry[0] == "DoA MEM Max":
+                webInterface_inst.doas.append(data_entry[1])
             elif data_entry[0] == "DoA MUSIC":
                 webInterface_inst.doa_results.append(data_entry[1])
                 webInterface_inst.doa_labels.append(data_entry[0])
-
+            elif data_entry[0] == "DoA MUSIC Max":
+                webInterface_inst.doas.append(data_entry[1])
             else:                
                 logging.warning("Unknown data entry: {:s}".format(data_entry[0]))
         
@@ -455,6 +459,17 @@ def fetch_dsp_data(input_value, pathname):
     else:
         pass
         # Handle task here and call q.task_done()
+    # External interface
+    if doa_update_flag:
+        DOA_str = str(int(webInterface_inst.doas[0]))
+        confidence_sum  = 0
+        max_power_level = 0
+        html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+str(int(confidence_sum))+"</CONF>\n<PWR>"+str(np.maximum(0, max_power_level))+"</PWR>\n</DATA>"
+        webInterface_inst.DOA_res_fd.seek(0)
+        webInterface_inst.DOA_res_fd.write(html_str)
+        webInterface_inst.DOA_res_fd.truncate()
+        logging.debug("DoA results writen: {:s}".format(html_str))    
+
     if (pathname == "/config" or pathname=="/") and daq_status_update_flag:        
         return webInterface_inst.page_update_rate*1000, 1, no_update, no_update, freq_update
     elif pathname == "/spectrum" and spectrum_update_flag:
@@ -584,22 +599,19 @@ def plot_spectrum(spectrum_update_flag):
 
 @app.callback(
     Output(component_id='doa-graph'              , component_property='figure'),
-    Input(component_id='placeholder_doa_page_upd', component_property='children'),
-    State(component_id='doa_fig_type'            , component_property='value'),
+    Input(component_id='placeholder_doa_page_upd', component_property='children'),    
     prevent_initial_call=True
 )
-def plot_doa(doa_update_flag, doa_fig_type):
+def plot_doa(doa_update_flag):
     fig = go.Figure(layout=fig_layout)
     
-    webInterface_inst._doa_fig_type = doa_fig_type
     if webInterface_inst.doa_thetas is not None:
         if webInterface_inst._doa_fig_type == 0 : # Linear plot
             # Plot traces 
-            for i, doa_result in enumerate(webInterface_inst.doa_results): 
-                doa_result_log = DOA_plot_util(doa_result)            
-                label = webInterface_inst.doa_labels[i]+": "+str(webInterface_inst.doa_thetas[np.argmax(doa_result_log)])+"°"
+            for i, doa_result in enumerate(webInterface_inst.doa_results):                 
+                label = webInterface_inst.doa_labels[i]+": "+str(webInterface_inst.doas[i])+"°"
                 fig.add_trace(go.Scatter(x=webInterface_inst.doa_thetas, 
-                                        y=doa_result_log,
+                                        y=doa_result,
                                         name=label,
                                         line = dict(
                                                     color = doa_trace_colors[webInterface_inst.doa_labels[i]],
@@ -630,33 +642,31 @@ def plot_doa(doa_update_flag, doa_fig_type):
                                                                   )
                                                 )
                                  )                
-            else: #UCA
+            else: #UCA                
                 fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
-                                               angularaxis = dict(rotation=90, 
+                                               angularaxis = dict(rotation=90+webInterface_inst.compass_ofset, 
+                                                                  direction="clockwise",
                                                                   tickfont_size = figure_font_size)                                               
                                                )
                                  )           
 
-            for i, doa_result in enumerate(webInterface_inst.doa_results): 
-                doa_result_log = DOA_plot_util(doa_result)    
-                theta_0 = webInterface_inst.doa_thetas[np.argmax(doa_result_log)]        
-                label = webInterface_inst.doa_labels[i]+": "+str(theta_0)+"°"
+            for i, doa_result in enumerate(webInterface_inst.doa_results):
+                label = webInterface_inst.doa_labels[i]+": "+str(webInterface_inst.doas[i])+"°"
                 fig.add_trace(go.Scatterpolar(theta=webInterface_inst.doa_thetas, 
-                                            r=doa_result_log,
+                                            r=doa_result,
                                             name=label,
                                             line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
                                             fill= 'toself'
                                             ))
                 fig.add_trace(go.Scatterpolar(
-                                                r = [0,min(doa_result_log)],
-                                                theta = [theta_0,theta_0],
+                                                r = [0,min(doa_result)],
+                                                theta = [webInterface_inst.doas[i],webInterface_inst.doas[i]],
                                                 mode = 'lines',
                                                 showlegend=False,                                                      
                                                 line = dict(
                                                     color = doa_trace_colors[webInterface_inst.doa_labels[i]],
                                                     dash='dash'
                                                 )))
-
         return fig
 
     
@@ -721,11 +731,14 @@ def update_daq_params(input_value, f0, gain):
     Input(component_id="ant_spacing_feet"       , component_property="value"),
     Input(component_id="ant_spacing_inch"       , component_property="value"),
     Input(component_id="radio_ant_arrangement"  , component_property="value"),
+    Input(component_id='doa_fig_type'           , component_property='value'),
+    Input(component_id='compass_ofset'          , component_property='value'),    
+
     prevent_initial_call=True
 )
 def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
                       en_fb_avg, spacing_wavlength, spacing_meter, spacing_feet, spacing_inch,
-                      ant_arrangement):
+                      ant_arrangement, doa_fig_type, compass_ofset):
     ctx = dash.callback_context
     
     if ctx.triggered:
@@ -791,6 +804,8 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
         webInterface_inst.module_signal_processor.en_DOA_FB_avg   = False
     
     webInterface_inst.module_signal_processor.DOA_ant_alignment=ant_arrangement
+    webInterface_inst._doa_fig_type = doa_fig_type
+    webInterface_inst.compass_ofset = compass_ofset
 
     return "", ant_spacing_wavlength, ant_spacing_meter, ant_spacing_feet, ant_spacing_inch
 
@@ -809,11 +824,12 @@ def display_page(pathname):
         return spectrum_page_layout, "header_inactive", "header_active", "header_inactive"
     elif pathname == "/doa":
         return generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"
-    
+
 if __name__ == "__main__":        
     webInterface_inst = webInterface()
     app.run_server(debug=False, host="0.0.0.0")
 
+# Debug mode does not work when the data interface is set to shared-memory "shmem"! 
 
 """
 html.Div([

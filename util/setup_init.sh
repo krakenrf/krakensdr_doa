@@ -1,5 +1,8 @@
 #/bin/bash!
 
+# PhP for android device support
+sudo apt install php7.4-cli
+
 echo "Set execution rights"
 sudo chmod +x gui_run.sh
 sudo chmod +x kill.sh

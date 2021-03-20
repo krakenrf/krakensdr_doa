@@ -71,6 +71,7 @@ class SignalProcessor(threading.Thread):
         self.en_DOA_MEM      = False
         self.en_DOA_MUSIC    = False
         self.en_DOA_FB_avg   = False
+        self.DOA_offset      = 0
         self.DOA_inter_elem_space = 0.5
         self.DOA_ant_alignment    = "ULA"
             
@@ -185,13 +186,25 @@ class SignalProcessor(threading.Thread):
                         self.estimate_DOA()
                         que_data_packet.append(['doa_thetas', self.DOA_theta])
                         if self.en_DOA_Bartlett:
-                            que_data_packet.append(['DoA Bartlett', self.DOA_Bartlett_res])                            
+                            doa_result_log = DOA_plot_util(self.DOA_Bartlett_res)
+                            theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            que_data_packet.append(['DoA Bartlett', doa_result_log])
+                            que_data_packet.append(['DoA Bartlett Max', theta_0])
                         if self.en_DOA_Capon:
-                            que_data_packet.append(['DoA Capon', self.DOA_Capon_res])
+                            doa_result_log = DOA_plot_util(self.DOA_Capon_res)
+                            theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            que_data_packet.append(['DoA Capon', doa_result_log])
+                            que_data_packet.append(['DoA Capon Max', theta_0])
                         if self.en_DOA_MEM:
-                            que_data_packet.append(['DoA MEM', self.DOA_MEM_res])
+                            doa_result_log = DOA_plot_util(self.DOA_MEM_res)
+                            theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            que_data_packet.append(['DoA MEM', doa_result_log])
+                            que_data_packet.append(['DoA MEM Max', theta_0])
                         if self.en_DOA_MUSIC:
-                            que_data_packet.append(['DoA MUSIC', self.DOA_MUSIC_res])
+                            doa_result_log = DOA_plot_util(self.DOA_MUSIC_res)
+                            theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            que_data_packet.append(['DoA MUSIC', doa_result_log])
+                            que_data_packet.append(['DoA MUSIC Max', theta_0])
                         
                     
                     # Record IQ samples
