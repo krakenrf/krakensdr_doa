@@ -110,10 +110,15 @@ class SignalProcessor(threading.Thread):
                 """
                 max_amplitude = 0
                 if en_proc:            
-                    max_amplitude = 10*np.log10(np.max(np.abs(self.module_receiver.iq_samples[0, :])))
+                    max_amplitude = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[0, :])))
+
+                    avg_powers = []
+                    for m in range(self.module_receiver.iq_header.active_ant_chs):
+                        avg_powers.append(10*np.log10(np.average(np.abs(self.module_receiver.iq_samples[m, :])**2)))
                 
                 que_data_packet.append(['iq_header',self.module_receiver.iq_header])
                 que_data_packet.append(['max_amplitude',max_amplitude])
+                que_data_packet.append(['avg_powers',avg_powers])
                 self.logger.debug("IQ header has been put into the data que entity")
                             
                 # Configure processing parameteres based on the settings of the DAQ chain
