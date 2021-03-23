@@ -7,6 +7,8 @@ import sys
 import copy
 import queue 
 import time
+import subprocess
+
 # Import third-party modules
 import dash
 import dash_core_components as dcc
@@ -30,12 +32,15 @@ sys.path.insert(0, receiver_path)
 sys.path.insert(0, signal_processor_path)
 sys.path.insert(0, ui_path)
 
-daq_config_filename   = os.path.join(
-                            os.path.join(
-                                os.path.join(os.path.dirname(root_path), 
-                                "heimdall_daq_fw"), 
-                            "Firmware"),
-                        "daq_chain_config.ini")
+daq_subsystem_path    = os.path.join(
+                            os.path.join(os.path.dirname(root_path), 
+                            "heimdall_daq_fw"), 
+                        "Firmware")
+daq_config_filename   = os.path.join(daq_subsystem_path, "daq_chain_config.ini")
+daq_stop_filename     = "daq_stop.sh"
+#daq_start_filename   = "daq_start_sm.sh"
+daq_start_filename    = "daq_synthetic_start.sh"
+
 
 import save_settings as settings
 from kerberosSDR_receiver import ReceiverRTLSDR
@@ -127,6 +132,9 @@ class webInterface():
     def stop_processing(self):
         self.module_signal_processor.run_processing=False      
     
+    def close_data_interfaces(self):
+        self.module_receiver.eth_close()
+
     def close(self):
         self.DOA_res_fd.close()
     
@@ -892,7 +900,7 @@ def start_proc_btn(input_value):
 )
 def stop_proc_btn(input_value):    
     logging.info("Stop pocessing btn pushed")    
-    webInterface_inst.stop_processing()    
+    webInterface_inst.stop_processing()
     return ""
 
 @app.callback(
@@ -905,7 +913,6 @@ def stop_proc_btn(input_value):
 def update_daq_params(input_value, f0, gain):
     if input_value is None:
         raise PreventUpdate
-
 
     # Change antenna spacing config for DoA estimation
     webInterface_inst.module_signal_processor.DOA_inter_elem_space *=f0/webInterface_inst.daq_center_freq    
@@ -943,7 +950,7 @@ def update_daq_params(input_value, f0, gain):
     State(component_id='cfg_cal_frame_interval'   , component_property="value"),
     State(component_id='cfg_cal_frame_burst_size' , component_property="value"),
     State(component_id='cfg_amplitude_tolerance'  , component_property="value"),
-    State(component_id='cfg_phase_tolerance'   , component_property="value"),
+    State(component_id='cfg_phase_tolerance'      , component_property="value"),
     State(component_id='cfg_max_sync_fails'       , component_property="value"),
     prevent_initial_call=True
 )
@@ -955,11 +962,18 @@ def reconfig_daq_chain(input_value,
                     cfg_cal_track_mode,cfg_cal_frame_interval,cfg_cal_frame_burst_size,
                     cfg_amplitude_tolerance,cfg_phase_tolerance,cfg_max_sync_fails):
     
-    param_list = []
+    if input_value is None:
+        raise PreventUpdate
 
+    # TODO: Check data interface mode here !
+    """
+        Update DAQ Subsystem config file
+    """
+
+    param_list = []
     param_list.append(cfg_rx_channels)
     param_list.append(cfg_daq_buffer_size)
-    param_list.append(cfg_sample_rate)
+    param_list.append(int(cfg_sample_rate*10**6))
     param_list.append(en_noise_source_ctr[0])
     param_list.append(en_squelch_mode[0])
     param_list.append(cfg_squelch_init_th)
@@ -983,7 +997,31 @@ def reconfig_daq_chain(input_value,
 
     webInterface_inst.write_config_file(param_list)
     logging.info("DAQ Subsystem configuration file edited")
+    
+    """
+        Restart DAQ Subsystem
+    """
+    # Stop signal processing
+    webInterface_inst.stop_processing()   
+    
+    # Close control and IQ data interfaces
+    webInterface_inst.close_data_interfaces()
 
+    os.chdir(daq_subsystem_path)
+
+    # Kill DAQ subsystem
+    daq_stop_script = subprocess.Popen(['bash', daq_stop_filename])#, stdout=subprocess.DEVNULL)
+    daq_stop_script.wait()
+
+    # Start DAQ subsystem
+    daq_stop_script = subprocess.Popen(['bash', daq_start_filename])#, stdout=subprocess.DEVNULL)
+    daq_stop_script.wait()
+
+    os.chdir(current_path)
+
+    # Restart signal processing
+    webInterface_inst.start_processing()
+    
     return 0
 
 @app.callback(
