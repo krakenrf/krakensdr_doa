@@ -91,6 +91,7 @@ class webInterface():
         self.daq_update_rate       = 0
         self.daq_frame_sync        = 1 # Active low
         self.daq_frame_index       = 0
+        self.daq_frame_type        = "-"
         self.daq_power_level       = 0
         self.daq_sample_delay_sync = 0
         self.daq_iq_sync           = 0
@@ -259,7 +260,8 @@ option = [{"label":"", "value": 1}]
 
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 app_log = logging.getLogger('werkzeug')
-app_log.setLevel(settings.logging_level*10)
+#app_log.setLevel(settings.logging_level*10)
+app_log.setLevel(30) # TODO: Only during dev time
 
 app.layout = html.Div([
     dcc.Location(id='url', children='/config',refresh=False),
@@ -296,14 +298,21 @@ def generate_config_page_layout(webInterface_inst):
     # Read DAQ config file
     daq_cfg_params = webInterface_inst.read_config_file()   
 
+    en_noise_src_values       =[1] if daq_cfg_params[3]  else []
+    en_squelch_values         =[1] if daq_cfg_params[4]  else []
+    en_filter_rst_values      =[1] if daq_cfg_params[11] else []
+    en_iq_cal_values          =[1] if daq_cfg_params[14] else []
+    en_req_track_lock_values  =[1] if daq_cfg_params[16] else []
+
+
     en_spectrum_values=[1] if webInterface_inst.module_signal_processor.en_spectrum       else []
-    en_doa_values=[1]      if webInterface_inst.module_signal_processor.en_DOA_estimation else []
+    en_doa_values     =[1] if webInterface_inst.module_signal_processor.en_DOA_estimation else []
     en_bartlett_values=[1] if webInterface_inst.module_signal_processor.en_DOA_Bartlett   else []
-    en_capon_values=[1]    if webInterface_inst.module_signal_processor.en_DOA_Capon      else []    
-    en_mem_values=[1]      if webInterface_inst.module_signal_processor.en_DOA_MEM        else []
-    en_music_values=[1]    if webInterface_inst.module_signal_processor.en_DOA_MUSIC      else []
-    en_fb_avg_values=[1]   if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []
-    
+    en_capon_values   =[1] if webInterface_inst.module_signal_processor.en_DOA_Capon      else []    
+    en_mem_values     =[1] if webInterface_inst.module_signal_processor.en_DOA_MEM        else []
+    en_music_values   =[1] if webInterface_inst.module_signal_processor.en_DOA_MUSIC      else []
+    en_fb_avg_values  =[1] if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []
+
     # Calulcate spacings
     wavelength= 300 / webInterface_inst.daq_center_freq
     
@@ -375,12 +384,12 @@ def generate_config_page_layout(webInterface_inst):
                 ], className="field"),
                 html.Div([
                         html.Div("Enable noise source control:", className="field-label"),                                         
-                        dcc.Checklist(options=option     , id="en_noise_source_ctr"   , className="field-body", value=[daq_cfg_params[3]]),
+                        dcc.Checklist(options=option     , id="en_noise_source_ctr"   , className="field-body", value=en_noise_src_values),
                 ], className="field"),
                 html.H3("Squelch"),
                 html.Div([
                         html.Div("Enable Squelch mode:", className="field-label"),                                                                 
-                        dcc.Checklist(options=option     , id="en_squelch_mode"   , className="field-body", value=[daq_cfg_params[4]]),
+                        dcc.Checklist(options=option     , id="en_squelch_mode"   , className="field-body", value=en_squelch_values),
                 ], className="field"),
                 html.Div([
                         html.Div("Initial threshold:", className="field-label"),                                         
@@ -409,7 +418,7 @@ def generate_config_page_layout(webInterface_inst):
                 ], className="field"),
                 html.Div([
                         html.Div("Enable filter reset:", className="field-label"),                                         
-                        dcc.Checklist(options=option     , id="en_filter_reset"   , className="field-body", value=[daq_cfg_params[11]]),
+                        dcc.Checklist(options=option     , id="en_filter_reset"   , className="field-body", value=en_filter_rst_values),
                 ], className="field"),
                 html.H3("Calibration"),
                 html.Div([
@@ -422,7 +431,7 @@ def generate_config_page_layout(webInterface_inst):
                 ], className="field"),
                 html.Div([
                         html.Div("Enable IQ calibration:", className="field-label"),                                         
-                        dcc.Checklist(options=option     , id="en_iq_cal"   , className="field-body", value=[daq_cfg_params[14]]),
+                        dcc.Checklist(options=option     , id="en_iq_cal"   , className="field-body", value=en_iq_cal_values),
                 ], className="field"),
                 html.Div([
                         html.Div("Gain lock interval [frame]:", className="field-label"),                                         
@@ -430,7 +439,7 @@ def generate_config_page_layout(webInterface_inst):
                 ], className="field"),
                 html.Div([
                         html.Div("Require track lock intervention:", className="field-label"),                                         
-                        dcc.Checklist(options=option     , id="en_req_track_lock_intervention"   , className="field-body", value=[daq_cfg_params[16]]),
+                        dcc.Checklist(options=option     , id="en_req_track_lock_intervention"   , className="field-body", value=en_req_track_lock_values),
                 ], className="field"),
                 html.Div([
                         html.Div("Calibration track mode:", className="field-label"),                                         
@@ -466,7 +475,8 @@ def generate_config_page_layout(webInterface_inst):
                 html.H2("DAQ Subsystem Status", id="init_title_s"),
                 html.Div([html.Div("Update rate:"              , id="label_daq_update_rate"   , className="field-label"), html.Div("- ms"        , id="body_daq_update_rate"   , className="field-body")], className="field"),
                 html.Div([html.Div("Frame index:"              , id="label_daq_frame_index"   , className="field-label"), html.Div("-"           , id="body_daq_frame_index"   , className="field-body")], className="field"),
-                html.Div([html.Div("Frame sync:"               , id="label_daq_frame_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_frame_sync"    , className="field-body", style={"color": "red"})], className="field"),
+                html.Div([html.Div("Frame type:"               , id="label_daq_frame_type"    , className="field-label"), html.Div("-"           , id="body_daq_frame_type"    , className="field-body")], className="field"),
+                html.Div([html.Div("Frame sync:"               , id="label_daq_frame_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_frame_sync"    , className="field-body", style={"color": "red"})], className="field"),                
                 html.Div([html.Div("Power level:"              , id="label_daq_power_level"   , className="field-label"), html.Div("-"           , id="body_daq_power_level"   , className="field-body")], className="field"),
                 html.Div([html.Div("Connection status:"        , id="label_daq_conn_status"   , className="field-label"), html.Div("Disconnected", id="body_daq_conn_status"   , className="field-body", style={"color": "red"})], className="field"),
                 html.Div([html.Div("Sample delay snyc:"        , id="label_daq_delay_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_delay_sync"    , className="field-body", style={"color": "red"})], className="field"),
@@ -476,6 +486,8 @@ def generate_config_page_layout(webInterface_inst):
                 html.Div([html.Div("Sampling frequency [MHz]:" , id="label_daq_sampling_freq" , className="field-label"), html.Div("- MHz"       , id="body_daq_sampling_freq" , className="field-body")], className="field"),
                 html.Div([html.Div("Data block length [ms]:"   , id="label_daq_cpi"           , className="field-label"), html.Div("- ms"        , id="body_daq_cpi"           , className="field-body")], className="field"),
                 html.Div([html.Div("IF gains [dB]:"            , id="label_daq_if_gain"       , className="field-label"), html.Div("[,] dB"      , id="body_daq_if_gain"       , className="field-body")], className="field"),
+                html.Div([html.Div("Max amplitude-CH0 [dB]:"   , id="label_max_amp"           , className="field-label"), html.Div("-"           , id="body_max_amp"           , className="field-body")], className="field"),
+                html.Div([html.Div("Avg. powers [dB]:"         , id="label_avg_powers"        , className="field-label"), html.Div("[,] dB"      , id="body_avg_powers"        , className="field-body")], className="field"),
         ], className="card"),
         html.Div([
             html.H2("DSP Configuration", id="init_title_d"),
@@ -578,7 +590,9 @@ def fetch_dsp_data(input_value, pathname):
         que_data_packet = webInterface_inst.rx_data_que.get(False)
         for data_entry in que_data_packet:
             if data_entry[0] == "conn-ok":
-                webInterface_inst.daq_conn_status = 1        
+                webInterface_inst.daq_conn_status = 1
+            if data_entry[0] == "disconn-ok":     
+                webInterface_inst.daq_conn_status = 0
         
     except queue.Empty:
         # Handle empty queue here
@@ -596,7 +610,18 @@ def fetch_dsp_data(input_value, pathname):
                 iq_header = data_entry[1]
                 # Unpack header
                 webInterface_inst.daq_frame_index = iq_header.cpi_index
-            
+                
+                if iq_header.frame_type == iq_header.FRAME_TYPE_DATA:
+                    webInterface_inst.daq_frame_type  = "Data"
+                elif iq_header.frame_type == iq_header.FRAME_TYPE_DUMMY:
+                    webInterface_inst.daq_frame_type  = "Dummy"
+                elif iq_header.frame_type == iq_header.FRAME_TYPE_CAL:
+                    webInterface_inst.daq_frame_type  = "Calibration"
+                elif iq_header.frame_type == iq_header.FRAME_TYPE_TRIGW:
+                    webInterface_inst.daq_frame_type  = "Trigger wait"
+                else:
+                    webInterface_inst.daq_frame_type  = "Unknown"
+
                 webInterface_inst.daq_frame_sync        = iq_header.check_sync_word()            
                 webInterface_inst.daq_power_level       = iq_header.adc_overdrive_flags
                 webInterface_inst.daq_sample_delay_sync = iq_header.delay_sync_flag
@@ -627,11 +652,13 @@ def fetch_dsp_data(input_value, pathname):
                 webInterface_inst._update_rate_arr[webInterface_inst._avg_win_size-1] = webInterface_inst.daq_update_rate
                 webInterface_inst.page_update_rate = np.average(webInterface_inst._update_rate_arr)*0.8                
             elif data_entry[0] == "max_amplitude":
-                webInterface_inst.max_amplitude = data_entry[1]
-                logging.info("Max Amplitude: {0} dB".format(webInterface_inst.max_amplitude))
-            elif data_entry[0] == "avg_powers":
-                webInterface_inst.avg_powers = data_entry[1]
-                logging.info("Average powers: {0} dB".format(webInterface_inst.avg_powers))
+                webInterface_inst.max_amplitude = data_entry[1]                
+            elif data_entry[0] == "avg_powers":                
+                avg_powers_str = ""
+                for avg_power in data_entry[1]:
+                    avg_powers_str+="{:.1f}".format(avg_power)
+                    avg_powers_str+=", "
+                webInterface_inst.avg_powers = avg_powers_str[:-2]                
             elif data_entry[0] == "spectrum":
                 logging.debug("Spectrum data fetched from signal processing que")
                 spectrum_update_flag = 1
@@ -697,6 +724,8 @@ def fetch_dsp_data(input_value, pathname):
     Output(component_id="body_daq_frame_index"        , component_property='children'),
     Output(component_id="body_daq_frame_sync"         , component_property='children'),
     Output(component_id="body_daq_frame_sync"         , component_property='style'),
+    Output(component_id="body_daq_frame_type"         , component_property='children'),
+    Output(component_id="body_daq_frame_type"         , component_property='style'),    
     Output(component_id="body_daq_power_level"        , component_property='children'),
     Output(component_id="body_daq_conn_status"        , component_property='children'),
     Output(component_id="body_daq_conn_status"        , component_property='style'),    
@@ -709,12 +738,14 @@ def fetch_dsp_data(input_value, pathname):
     Output(component_id="body_daq_rf_center_freq"     , component_property='children'),
     Output(component_id="body_daq_sampling_freq"      , component_property='children'),
     Output(component_id="body_daq_cpi"                , component_property='children'),   
-    Output(component_id="body_daq_if_gain"            , component_property='children'),     
-    Input(component_id ="placeholder_config_page_upd" , component_property='children'),
+    Output(component_id="body_daq_if_gain"            , component_property='children'),
+    Output(component_id="body_max_amp"                , component_property='children'),
+    Output(component_id="body_avg_powers"             , component_property='children'),    
+    Input(component_id ="placeholder_config_page_upd" , component_property='children'),    
     prevent_initial_call=True
 )
 def update_daq_status(input_value):         
-    
+     
     
     #############################################
     #      Prepare UI component properties      #
@@ -733,6 +764,19 @@ def update_daq_status(input_value):
         daq_update_rate_str    = "{:.2f} s".format(webInterface_inst.daq_update_rate)
 
     daq_frame_index_str    = str(webInterface_inst.daq_frame_index)
+    
+    daq_frame_type_str =  webInterface_inst.daq_frame_type
+    if webInterface_inst.daq_frame_type == "Data":
+        frame_type_style   = frame_type_style={"color": "green"} 
+    elif webInterface_inst.daq_frame_type == "Dummy":
+        frame_type_style   = frame_type_style={"color": "white"} 
+    elif webInterface_inst.daq_frame_type == "Calibration":
+        frame_type_style   = frame_type_style={"color": "orange"} 
+    elif webInterface_inst.daq_frame_type == "Trigger wait":
+        frame_type_style   = frame_type_style={"color": "yellow"}
+    else:
+        frame_type_style   = frame_type_style={"color": "red"}    
+
     if webInterface_inst.daq_frame_sync:
         daq_frame_sync_str = "LOSS"    
         frame_sync_style={"color": "red"}
@@ -760,19 +804,22 @@ def update_daq_status(input_value):
     else:
         daq_noise_source_str   = "Disabled"
         noise_source_style={"color": "green"}
-        
-    
+            
     daq_power_level_str    = str(webInterface_inst.daq_power_level)    
     daq_rf_center_freq_str = str(webInterface_inst.daq_center_freq)
     daq_sampling_freq_str  = str(webInterface_inst.daq_fs)
     daq_cpi_str            = str(webInterface_inst.daq_cpi)
+    daq_max_amp_str        = "{:.1f}".format(webInterface_inst.max_amplitude)
+    daq_avg_powers_str     = webInterface_inst.avg_powers
     
     return daq_update_rate_str, daq_frame_index_str, daq_frame_sync_str, \
-            frame_sync_style, daq_power_level_str, daq_conn_status_str, \
+            frame_sync_style, daq_frame_type_str, frame_type_style, \
+            daq_power_level_str, daq_conn_status_str, \
             conn_status_style, daq_delay_sync_str, delay_sync_style, \
             daq_iq_sync_str, iq_sync_style, daq_noise_source_str, \
             noise_source_style, daq_rf_center_freq_str, daq_sampling_freq_str, \
-            daq_cpi_str, webInterface_inst.daq_if_gains
+            daq_cpi_str, webInterface_inst.daq_if_gains, daq_max_amp_str, \
+            daq_avg_powers_str
             
 
 
@@ -969,25 +1016,39 @@ def reconfig_daq_chain(input_value,
     """
         Update DAQ Subsystem config file
     """
-
     param_list = []
     param_list.append(cfg_rx_channels)
     param_list.append(cfg_daq_buffer_size)
     param_list.append(int(cfg_sample_rate*10**6))
-    param_list.append(en_noise_source_ctr[0])
-    param_list.append(en_squelch_mode[0])
+    if en_noise_source_ctr is not None and len(en_noise_source_ctr):
+        param_list.append(1)
+    else:
+        param_list.append(0)
+    if en_squelch_mode is not None and len(en_squelch_mode):
+        param_list.append(1)
+    else:
+        param_list.append(0)        
     param_list.append(cfg_squelch_init_th)
     param_list.append(cfg_cpi_size)
     param_list.append(cfg_decimation_ratio)
     param_list.append(cfg_fir_bw)
     param_list.append(cfg_fir_tap_size)
     param_list.append(cfg_fir_window)
-    param_list.append(en_filter_reset[0])
+    if en_filter_reset is not None and len(en_filter_reset):
+        param_list.append(1)
+    else:
+        param_list.append(0)     
     param_list.append(cfg_corr_size)
     param_list.append(cfg_std_ch_ind)
-    param_list.append(en_iq_cal[0])
+    if en_iq_cal is not None and len(en_iq_cal):
+        param_list.append(1)
+    else:
+        param_list.append(0) 
     param_list.append(cfg_gain_lock)
-    param_list.append(en_req_track_lock_intervention[0])
+    if en_req_track_lock_intervention is not None and len(en_req_track_lock_intervention):
+        param_list.append(1)
+    else:
+        param_list.append(0) 
     param_list.append(cfg_cal_track_mode)
     param_list.append(cfg_cal_frame_interval)
     param_list.append(cfg_cal_frame_burst_size)
@@ -1003,24 +1064,31 @@ def reconfig_daq_chain(input_value,
     """
     # Stop signal processing
     webInterface_inst.stop_processing()   
-    
+    time.sleep(2)
+    logging.debug("Signal processing stopped")
+
     # Close control and IQ data interfaces
     webInterface_inst.close_data_interfaces()
+    logging.debug("Data interfaces are closed")
 
     os.chdir(daq_subsystem_path)
 
     # Kill DAQ subsystem
     daq_stop_script = subprocess.Popen(['bash', daq_stop_filename])#, stdout=subprocess.DEVNULL)
     daq_stop_script.wait()
-
+    logging.debug("DAQ Subsystem halted")
+    
     # Start DAQ subsystem
     daq_stop_script = subprocess.Popen(['bash', daq_start_filename])#, stdout=subprocess.DEVNULL)
     daq_stop_script.wait()
+    logging.debug("DAQ Subsystem restarted")
+      
 
     os.chdir(current_path)
 
     # Restart signal processing
     webInterface_inst.start_processing()
+    logging.debug("Signal processing started")
     
     return 0
 

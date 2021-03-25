@@ -291,7 +291,7 @@ class ReceiverRTLSDR():
             self.data_que.put(que_data_packet)
             
         else:
-            self.logger.error("Failed to set the requested parameter")
+            self.logger.error("Failed to set the requested parameter, reply: {0}".format(status))
         
     def set_center_freq(self, center_freq):
         """

@@ -109,6 +109,7 @@ class SignalProcessor(threading.Thread):
                     You can enable here to process other frame types (such as call type frames)
                 """
                 max_amplitude = 0
+                avg_powers    = [0]
                 if en_proc:            
                     max_amplitude = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[0, :])))
 
