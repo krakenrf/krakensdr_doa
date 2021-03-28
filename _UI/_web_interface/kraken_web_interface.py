@@ -88,6 +88,7 @@ class webInterface():
 
         # DAQ Subsystem status parameters
         self.daq_conn_status       = 0
+        self.daq_cgf_iface_status  = 0 # 0- ready, 1-busy
         self.daq_update_rate       = 0
         self.daq_frame_sync        = 1 # Active low
         self.daq_frame_index       = 0
@@ -101,6 +102,8 @@ class webInterface():
         self.daq_fs                = "-"
         self.daq_cpi               = "-"
         self.daq_if_gains          ="[,,,,]"
+
+        self.squelch_th            = None
 
         # DSP Processing Parameters and Results  
         self.spectrum              = None
@@ -177,8 +180,10 @@ class webInterface():
         param_list.append(parser.getint('calibration','maximum_sync_fails'))
 
         param_list.append(parser.get('data_interface','out_data_iface_type'))
-
         
+        if self.squelch_th is None:
+            self.squelch_th = round(20*np.log10(param_list[5]),1)
+
         return param_list
     
     def write_config_file(self, param_list):
@@ -280,12 +285,15 @@ app.layout = html.Div([
         interval=500, # in milliseconds
         n_intervals=0
     ),
-    html.Div(id="placeholder_start"        , style={"display":"none"}),
-    html.Div(id="placeholder_stop"         , style={"display":"none"}),
-    html.Div(id="placeholder_update_rx"    , style={"display":"none"}),
-    html.Div(id="placeholder_recofnig_daq"    , style={"display":"none"}),    
-    html.Div(id="placeholder_update_freq"  , style={"display":"none"}),
-    html.Div(id="placeholder_update_dsp"   , style={"display":"none"}),    
+    html.Div(id="placeholder_start"          , style={"display":"none"}),
+    html.Div(id="placeholder_stop"           , style={"display":"none"}),
+    html.Div(id="placeholder_update_rx"      , style={"display":"none"}),
+    html.Div(id="placeholder_recofnig_daq"   , style={"display":"none"}),    
+    html.Div(id="placeholder_update_freq"    , style={"display":"none"}),
+    html.Div(id="placeholder_update_dsp"     , style={"display":"none"}),
+    html.Div(id="placeholder_update_squelch" , style={"display":"none"}),
+
+    
 
     html.Div(id="placeholder_config_page_upd"  , style={"display":"none"}),
     html.Div(id="placeholder_spectrum_page_upd", style={"display":"none"}),
@@ -544,7 +552,18 @@ def generate_config_page_layout(webInterface_inst):
             html.Div("Compass ofset [deg]:", className="field-label"), 
             dcc.Input(id="compass_ofset", value=webInterface_inst.compass_ofset, type='number', debounce=False, className="field-body"),
 
-        ], className="card", style={"float":"left"}),    
+        ], className="card", style={"float":"left"}),
+        html.Div([
+            html.H2("Squelch configuration", id="init_title_sq"),
+            html.Div([html.Div("Enable squelch (DOA-DSP Subsystem)", id="label_en_dsp_squelch" , className="field-label"),
+                    dcc.Checklist(options=option , id="en_dsp_squelch_check" , className="field-body", value=[]),
+                ], className="field"),
+            html.Div([
+                    html.Div("Squelch threshold [dB] (<0):", className="field-label"),                                         
+                    dcc.Input(id='squelch_th', value=webInterface_inst.squelch_th, type='number', debounce=False, className="field-body")
+                ], className="field"),
+            html.Div("", id="squelch_reconfig_note", className="field"),
+        ], className="card"),
     ])
     return config_page_layout
 
@@ -591,8 +610,11 @@ def fetch_dsp_data(input_value, pathname):
         for data_entry in que_data_packet:
             if data_entry[0] == "conn-ok":
                 webInterface_inst.daq_conn_status = 1
-            if data_entry[0] == "disconn-ok":     
+            elif data_entry[0] == "disconn-ok":     
                 webInterface_inst.daq_conn_status = 0
+            elif data_entry[0] == "config-ok":                      
+                webInterface_inst.daq_cgf_iface_status = 0
+
         
     except queue.Empty:
         # Handle empty queue here
@@ -752,8 +774,12 @@ def update_daq_status(input_value):
     #############################################
     
     if webInterface_inst.daq_conn_status:
-        daq_conn_status_str = "Connected"
-        conn_status_style={"color": "green"}
+        if not webInterface_inst.daq_cgf_iface_status:
+            daq_conn_status_str = "Connected"
+            conn_status_style={"color": "green"}
+        else: # Config interface is busy
+            daq_conn_status_str = "Reconfiguration.."
+            conn_status_style={"color": "orange"}
     else:
         daq_conn_status_str = "Disconnected"
         conn_status_style={"color": "red"}
@@ -952,26 +978,51 @@ def stop_proc_btn(input_value):
 
 @app.callback(
     Output(component_id="placeholder_update_rx" , component_property="children"),    
-    Input(component_id="btn-update_rx_param"    , component_property="n_clicks"),
+    Input(component_id ="btn-update_rx_param"   , component_property="n_clicks"),
     State(component_id ="daq_center_freq"       , component_property='value'),    
-    State(component_id ="daq_rx_gain"           , component_property='value'), 
+    State(component_id ="daq_rx_gain"           , component_property='value'),     
     prevent_initial_call=True
 )
 def update_daq_params(input_value, f0, gain):
     if input_value is None:
         raise PreventUpdate
-
+    
     # Change antenna spacing config for DoA estimation
     webInterface_inst.module_signal_processor.DOA_inter_elem_space *=f0/webInterface_inst.daq_center_freq    
-
+    
     webInterface_inst.center_freq = f0
     webInterface_inst.daq_rx_gain = gain
+    webInterface_inst.daq_cgf_iface_status = 1
     webInterface_inst.module_receiver.set_center_freq(int(f0*10**6))
     webInterface_inst.module_receiver.set_if_gain(int(10*gain))
+    
     logging.info("Updating receiver parameters: {0}".format(input_value))
     logging.info("Center frequency: {:f}".format(webInterface_inst.center_freq))
         
     return  ""
+    
+@app.callback(
+    Output(component_id="placeholder_update_squelch", component_property="children"),    
+    Input(component_id ="en_dsp_squelch_check"  , component_property="value"),
+    Input(component_id ="squelch_th"            , component_property="value"),
+    prevent_initial_call=True
+)
+def update_squelch_params(en_dsp_squelch, squelch_threshold):
+    """
+    squelch_threshold = 0
+    """
+
+    if en_dsp_squelch is not None and len(en_dsp_squelch):
+        webInterface_inst.module_signal_processor.en_squelch = True
+    else:
+        webInterface_inst.module_signal_processor.en_squelch = False
+
+    webInterface_inst.daq_cgf_iface_status = 0
+    webInterface_inst.module_signal_processor.squelch_threshold = 10**(squelch_threshold/20)
+    webInterface_inst.module_receiver.set_squelch_threshold(squelch_threshold)
+    webInterface_inst.squelch_th = squelch_threshold
+    return 0
+    
 
 @app.callback(
     Output(component_id="placeholder_recofnig_daq" , component_property="children"),    
@@ -1125,7 +1176,7 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
         if component_id   == "placeholder_update_freq": 
             ant_spacing_meter = spacing_meter  
         else:
-            ant_spacing_meter = wavelength * webInterface_inst.module_signal_processor.DOA_inter_elem_space
+            ant_spacing_meter = round(wavelength * webInterface_inst.module_signal_processor.DOA_inter_elem_space,3)
         
         if component_id   == "ant_spacing_meter":
             ant_spacing_meter = spacing_meter
@@ -1137,9 +1188,9 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
             ant_spacing_meter = spacing_inch/39.3700787
         
         webInterface_inst.module_signal_processor.DOA_inter_elem_space = ant_spacing_meter / wavelength
-        ant_spacing_feet = ant_spacing_meter * 3.2808399
-        ant_spacing_inch = ant_spacing_meter * 39.3700787
-        ant_spacing_wavlength = ant_spacing_meter / wavelength
+        ant_spacing_feet = round(ant_spacing_meter * 3.2808399,3)
+        ant_spacing_inch = round(ant_spacing_meter * 39.3700787,3)
+        ant_spacing_wavlength = round(ant_spacing_meter / wavelength,3)
 
     if en_spectrum is not None and len(en_spectrum):
         logging.debug("Spectrum estimation enabled")

@@ -236,7 +236,7 @@ class ReceiverRTLSDR():
         """
         if self.receiver_connection_status: # Check connection            
             if threshold_dB == -80: threshold = 0
-            else: threshold = 10**(threshold_dB/10)
+            else: threshold = 10**(threshold_dB/20)
             # Assembling message            
             cmd="STHU"
             th_bytes=pack("f",threshold)
