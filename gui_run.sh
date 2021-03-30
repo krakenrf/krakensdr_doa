@@ -1,7 +1,7 @@
 #!/bin/bash
 
 IPADDR="0.0.0.0"
-IPPORT="8001"
+IPPORT="8081"
 
 echo "Starting KrakenSDR Direction Finder"
 

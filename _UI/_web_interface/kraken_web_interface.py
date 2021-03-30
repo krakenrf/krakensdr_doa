@@ -938,7 +938,8 @@ def plot_doa(doa_update_flag):
     fig = go.Figure(layout=fig_layout)
     
     if webInterface_inst.doa_thetas is not None:
-        if webInterface_inst._doa_fig_type == 0 : # Linear plot
+        # --- Linear plot ---
+        if webInterface_inst._doa_fig_type == 0 : 
             # Plot traces 
             for i, doa_result in enumerate(webInterface_inst.doa_results):                 
                 label = webInterface_inst.doa_labels[i]+": "+str(webInterface_inst.doas[i])+"°"
@@ -965,11 +966,16 @@ def plot_doa(doa_update_flag):
                             mirror=True,
                             ticks='outside',
                             showline=True)
+        # --- Polar plot ---
         elif webInterface_inst._doa_fig_type == 1:
+            thetas_compass = webInterface_inst.doa_thetas
+            #thetas_compass*=-1
+            thetas_compass += webInterface_inst.compass_ofset
             if max(webInterface_inst.doa_thetas) != 360: # ULA                
                 fig.update_layout(polar = dict(sector = [0, 180], 
                                                radialaxis_tickfont_size = figure_font_size,
-                                               angularaxis = dict(rotation=90,
+                                               angularaxis = dict(rotation=90+webInterface_inst.compass_ofset,
+                                                                  direction="clockwise",
                                                                   tickfont_size = figure_font_size
                                                                   )
                                                 )
@@ -983,8 +989,8 @@ def plot_doa(doa_update_flag):
                                  )           
 
             for i, doa_result in enumerate(webInterface_inst.doa_results):
-                label = webInterface_inst.doa_labels[i]+": "+str(webInterface_inst.doas[i])+"°"
-                fig.add_trace(go.Scatterpolar(theta=webInterface_inst.doa_thetas, 
+                label = webInterface_inst.doa_labels[i]+": "+str(webInterface_inst.doas[i]*1+webInterface_inst.compass_ofset)+"°"
+                fig.add_trace(go.Scatterpolar(theta=thetas_compass, 
                                             r=doa_result,
                                             name=label,
                                             line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
@@ -992,7 +998,8 @@ def plot_doa(doa_update_flag):
                                             ))
                 fig.add_trace(go.Scatterpolar(
                                                 r = [0,min(doa_result)],
-                                                theta = [webInterface_inst.doas[i],webInterface_inst.doas[i]],
+                                                theta = [webInterface_inst.doas[i]*1+webInterface_inst.compass_ofset,
+                                                         webInterface_inst.doas[i]*1+webInterface_inst.compass_ofset],
                                                 mode = 'lines',
                                                 showlegend=False,                                                      
                                                 line = dict(
