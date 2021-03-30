@@ -315,14 +315,14 @@ def generate_config_page_layout(webInterface_inst):
 
         daq_data_iface_type       = daq_cfg_params[23]
 
-    en_spectrum_values=[1] if webInterface_inst.module_signal_processor.en_spectrum       else []
-    en_doa_values     =[1] if webInterface_inst.module_signal_processor.en_DOA_estimation else []
-    en_bartlett_values=[1] if webInterface_inst.module_signal_processor.en_DOA_Bartlett   else []
-    en_capon_values   =[1] if webInterface_inst.module_signal_processor.en_DOA_Capon      else []    
-    en_mem_values     =[1] if webInterface_inst.module_signal_processor.en_DOA_MEM        else []
-    en_music_values   =[1] if webInterface_inst.module_signal_processor.en_DOA_MUSIC      else []
-    en_fb_avg_values  =[1] if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []
-
+    en_spectrum_values    =[1] if webInterface_inst.module_signal_processor.en_spectrum       else []
+    en_doa_values         =[1] if webInterface_inst.module_signal_processor.en_DOA_estimation else []
+    en_bartlett_values    =[1] if webInterface_inst.module_signal_processor.en_DOA_Bartlett   else []
+    en_capon_values       =[1] if webInterface_inst.module_signal_processor.en_DOA_Capon      else []    
+    en_mem_values         =[1] if webInterface_inst.module_signal_processor.en_DOA_MEM        else []
+    en_music_values       =[1] if webInterface_inst.module_signal_processor.en_DOA_MUSIC      else []
+    en_fb_avg_values      =[1] if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []    
+    en_dsp_squelch_values =[1] if webInterface_inst.module_signal_processor.en_squelch        else []
     # Calulcate spacings
     wavelength= 300 / webInterface_inst.daq_center_freq
     
@@ -601,7 +601,7 @@ def generate_config_page_layout(webInterface_inst):
     html.Div([
         html.H2("Squelch configuration", id="init_title_sq"),
         html.Div([html.Div("Enable squelch (DOA-DSP Subsystem)", id="label_en_dsp_squelch" , className="field-label"),
-                dcc.Checklist(options=option , id="en_dsp_squelch_check" , className="field-body", value=[]),
+                dcc.Checklist(options=option , id="en_dsp_squelch_check" , className="field-body", value=en_dsp_squelch_values),
             ], className="field"),
         html.Div([
                 html.Div("Squelch threshold [dB] (<0):", className="field-label"),                                         

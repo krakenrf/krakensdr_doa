@@ -181,7 +181,11 @@ class SignalProcessor(threading.Thread):
                         #-> Spectral estimation with the Welch method
                         spectrum = np.ones((self.channel_number+1,N), dtype=np.float32)
                         for m in range(self.channel_number):
-                            f, Pxx_den = signal.welch(self.processed_signal[m, :], self.fs, nperseg=N, return_onesided=False, window=self.spectrum_window)
+                            f, Pxx_den = signal.welch(self.processed_signal[m, :], self.fs, 
+                                                    nperseg=N, 
+                                                    return_onesided=False, 
+                                                    window=self.spectrum_window,
+                                                    scaling="spectrum")
                             spectrum[1+m,:] = np.fft.fftshift(10*np.log10(Pxx_den))
                         spectrum[0,:] = np.fft.fftshift(f)
 
