@@ -1,4 +1,4 @@
-# KerberosSDR Signal Processor
+# KrakenSDR Signal Processor
 #
 # Copyright (C) 2018-2020  Carl Laufer, Tamás Pető
 #

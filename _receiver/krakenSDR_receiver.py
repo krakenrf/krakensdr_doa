@@ -1,4 +1,4 @@
-# KerberosSDR Receiver
+# KrakenSDR Receiver
 
 # Copyright (C) 2018-2020  Carl Laufer, Tamás Pető
 #

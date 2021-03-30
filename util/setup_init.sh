@@ -14,6 +14,3 @@ python3 -m pip install matplotlib
 
 # For web interface
 python3 -m pip install dash
-
-# For Qt GUI
-python3 -m pip install pyqtgraph
