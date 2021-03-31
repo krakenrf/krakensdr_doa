@@ -103,7 +103,7 @@ class ReceiverRTLSDR():
             errorMsg = sys.exc_info()[0]
             self.logger.error("Error message: "+str(errorMsg))            
             self.receiver_connection_status = False
-            self.logger.error("Unexpected error: {:s}".format(sys.exc_info()[0]))
+            self.logger.error("Unexpected error: {0}".format(sys.exc_info()[0]))
             
             # Re-instantiating sockets
             self.socket_inst = socket.socket()
@@ -138,7 +138,7 @@ class ReceiverRTLSDR():
             self.data_que.put(que_data_packet)
         except:
             errorMsg = sys.exc_info()[0]
-            self.logger.error("Error message: {:s}".format(errorMsg))
+            self.logger.error("Error message: {0}".format(errorMsg))
             return -1
         
         if self.data_interface == "shmem":

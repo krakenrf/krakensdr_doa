@@ -38,8 +38,8 @@ daq_subsystem_path    = os.path.join(
                         "Firmware")
 daq_config_filename   = os.path.join(daq_subsystem_path, "daq_chain_config.ini")
 daq_stop_filename     = "daq_stop.sh"
-#daq_start_filename   = "daq_start_sm.sh"
-daq_start_filename    = "daq_synthetic_start.sh"
+daq_start_filename   = "daq_start_sm.sh"
+#daq_start_filename    = "daq_synthetic_start.sh"
 
 
 import save_settings as settings
