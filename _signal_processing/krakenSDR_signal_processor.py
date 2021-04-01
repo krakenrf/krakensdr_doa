@@ -243,7 +243,7 @@ class SignalProcessor(threading.Thread):
             self.DOA_theta =  np.linspace(0,360,361)
 
             x = self.DOA_inter_elem_space * np.cos(2*np.pi/M * np.arange(M))
-            y = self.DOA_inter_elem_space * np.sin(-2*np.pi/M * np.arange(M)) # For this specific array only
+            y = -self.DOA_inter_elem_space * np.sin(2*np.pi/M * np.arange(M)) # For this specific array only
             scanning_vectors = de.gen_scanning_vectors(M, x, y, self.DOA_theta)
 
              # DOA estimation
