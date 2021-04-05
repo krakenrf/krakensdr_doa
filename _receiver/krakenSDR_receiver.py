@@ -63,12 +63,7 @@ class ReceiverRTLSDR():
         self.receiverBufferSize = 2 ** 18  # Size of the Ethernet receiver buffer measured in bytes     
             
         # -> Shared memory
-        if self.data_interface == "shmem":
-            # Open shared memory interface to capture the DAQ firmware output
-            self.in_shmem_iface = inShmemIface("delay_sync_iq", "../heimdall_daq_fw/Firmware/_data_control/")
-            if not self.in_shmem_iface.init_ok:
-                self.logger.critical("Shared memory initialization failed")
-                self.in_shmem_iface.destory_sm_buffer()        
+        self.init_data_iface()
 
         # Control interface
         self.ctr_iface_socket = socket.socket()
@@ -79,6 +74,17 @@ class ReceiverRTLSDR():
         self.iq_samples = None
         self.iq_header = IQHeader()
         self.M = 0 # Number of receiver channels, updated after establishing connection
+    
+    def init_data_iface(self):
+        if self.data_interface == "shmem":
+            # Open shared memory interface to capture the DAQ firmware output
+            self.in_shmem_iface = inShmemIface("delay_sync_iq", "../heimdall_daq_fw/Firmware/_data_control/")
+            if not self.in_shmem_iface.init_ok:
+                self.logger.critical("Shared memory initialization failed")
+                self.in_shmem_iface.destory_sm_buffer()
+                return -1
+        return 0
+
             
     def eth_connect(self):        
         """

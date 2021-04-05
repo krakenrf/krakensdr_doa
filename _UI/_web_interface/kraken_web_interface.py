@@ -1186,14 +1186,18 @@ def reconfig_daq_chain(input_value,
     daq_stop_script = subprocess.Popen(['bash', daq_start_filename])#, stdout=subprocess.DEVNULL)
     daq_stop_script.wait()
     logging.debug("DAQ Subsystem restarted")
-      
+    
+    os.chdir(root_path)
 
-    os.chdir(current_path)
-
+    # Reinitialize receiver data interface
+    if webInterface_inst.module_receiver.init_data_iface() == -1:
+        logging.critical("Failed to restart the DAQ data interface")
+        return -1
+    
     # Restart signal processing
     webInterface_inst.start_processing()
     logging.debug("Signal processing started")
-    
+        
     return 0
 
 @app.callback(
