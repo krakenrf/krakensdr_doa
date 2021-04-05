@@ -772,7 +772,7 @@ def fetch_dsp_data(input_value, pathname):
     if doa_update_flag:
         DOA_str = str(int(webInterface_inst.doas[0]))
         confidence_sum  = 0
-        max_power_level = 0
+        max_power_level = webInterface_inst.max_amplitude
         html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+str(int(confidence_sum))+"</CONF>\n<PWR>"+str(np.maximum(0, max_power_level))+"</PWR>\n</DATA>"
         webInterface_inst.DOA_res_fd.seek(0)
         webInterface_inst.DOA_res_fd.write(html_str)
@@ -1025,10 +1025,10 @@ def plot_doa(doa_update_flag):
 
             for i, doa_result in enumerate(webInterface_inst.doa_results):                 
                 if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":
-                    doa_compass = webInterface_inst.doas[i]*-1+webInterface_inst.compass_ofset
+                    doa_compass = 0-webInterface_inst.doas[i]+webInterface_inst.compass_ofset
                     
                 else:
-                    doa_compass = 360-webInterface_inst.doas[i]+webInterface_inst.compass_ofset
+                    doa_compass = (360-webInterface_inst.doas[i]+webInterface_inst.compass_ofset)%360
                 label = webInterface_inst.doa_labels[i]+": "+str(doa_compass)+"°"           
                 """
                 fig.add_trace(go.Scatterpolar(theta=thetas_compass, 
