@@ -193,28 +193,33 @@ class SignalProcessor(threading.Thread):
 
                     #-----> DoA ESIMATION <----- 
                     if self.en_DOA_estimation and self.data_ready:
-                        self.estimate_DOA()
+                        self.estimate_DOA()                        
                         que_data_packet.append(['doa_thetas', self.DOA_theta])
                         if self.en_DOA_Bartlett:
                             doa_result_log = DOA_plot_util(self.DOA_Bartlett_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
                             que_data_packet.append(['DoA Bartlett', doa_result_log])
                             que_data_packet.append(['DoA Bartlett Max', theta_0])
+                            que_data_packet.append(['DoA Bartlett confidence', calculate_doa_papr(self.DOA_Bartlett_res)])
                         if self.en_DOA_Capon:
                             doa_result_log = DOA_plot_util(self.DOA_Capon_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
                             que_data_packet.append(['DoA Capon', doa_result_log])
                             que_data_packet.append(['DoA Capon Max', theta_0])
+                            que_data_packet.append(['DoA Capon confidence', calculate_doa_papr(self.DOA_Capon_res)])
                         if self.en_DOA_MEM:
                             doa_result_log = DOA_plot_util(self.DOA_MEM_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
                             que_data_packet.append(['DoA MEM', doa_result_log])
                             que_data_packet.append(['DoA MEM Max', theta_0])
+                            que_data_packet.append(['DoA MEM confidence', calculate_doa_papr(self.DOA_MEM_res)])
                         if self.en_DOA_MUSIC:
                             doa_result_log = DOA_plot_util(self.DOA_MUSIC_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
                             que_data_packet.append(['DoA MUSIC', doa_result_log])
                             que_data_packet.append(['DoA MUSIC Max', theta_0])
+                            que_data_packet.append(['DoA MUSIC confidence', calculate_doa_papr(self.DOA_MUSIC_res)])
+                        
                         
                     
                     # Record IQ samples
@@ -297,3 +302,6 @@ def DOA_plot_util(DOA_data, log_scale_min=-100):
             DOA_data[i] = log_scale_min
     
     return DOA_data
+
+def calculate_doa_papr(DOA_data):
+    return 10*np.log10(np.max(np.abs(DOA_data))/np.average(np.abs(DOA_data)))

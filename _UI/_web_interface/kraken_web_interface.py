@@ -111,6 +111,7 @@ class webInterface():
         self.doa_results           = []
         self.doa_labels            = []
         self.doas                  = [] # Final measured DoAs [deg]
+        self.doa_confidences       = []
         self.compass_ofset         = 0
         self.DOA_res_fd            = open("_android_web/DOA_value.html","w+") #open("/ram/DOA_value.html","w+") # DOA estimation result file descriptor
 
@@ -734,31 +735,40 @@ def fetch_dsp_data(input_value, pathname):
                 webInterface_inst.spectrum = data_entry[1]
             elif data_entry[0] == "doa_thetas":
                 webInterface_inst.doa_thetas= data_entry[1]
-                doa_update_flag               = 1
-                webInterface_inst.doa_results = []
-                webInterface_inst.doa_labels  = []
-                webInterface_inst.doas        = [] 
+                doa_update_flag                   = 1
+                webInterface_inst.doa_results     = []
+                webInterface_inst.doa_labels      = []
+                webInterface_inst.doas            = []
+                webInterface_inst.doa_confidences = []
                 logging.debug("DoA estimation data fetched from signal processing que")                
             elif data_entry[0] == "DoA Bartlett":
                 webInterface_inst.doa_results.append(data_entry[1])
                 webInterface_inst.doa_labels.append(data_entry[0])
             elif data_entry[0] == "DoA Bartlett Max":
                 webInterface_inst.doas.append(data_entry[1])
+            elif data_entry[0] == "DoA Barlett confidence":
+                webInterface_inst.doa_confidences.append(data_entry[1])
             elif data_entry[0] == "DoA Capon":
                 webInterface_inst.doa_results.append(data_entry[1])
                 webInterface_inst.doa_labels.append(data_entry[0])
             elif data_entry[0] == "DoA Capon Max":
                 webInterface_inst.doas.append(data_entry[1])
+            elif data_entry[0] == "DoA Capon confidence":
+                webInterface_inst.doa_confidences.append(data_entry[1])
             elif data_entry[0] == "DoA MEM":
                 webInterface_inst.doa_results.append(data_entry[1])
                 webInterface_inst.doa_labels.append(data_entry[0])
             elif data_entry[0] == "DoA MEM Max":
                 webInterface_inst.doas.append(data_entry[1])
+            elif data_entry[0] == "DoA MEM confidence":
+                webInterface_inst.doa_confidences.append(data_entry[1])
             elif data_entry[0] == "DoA MUSIC":
                 webInterface_inst.doa_results.append(data_entry[1])
                 webInterface_inst.doa_labels.append(data_entry[0])
             elif data_entry[0] == "DoA MUSIC Max":
                 webInterface_inst.doas.append(data_entry[1])
+            elif data_entry[0] == "DoA MUSIC confidence":
+                webInterface_inst.doa_confidences.append(data_entry[1])
             else:                
                 logging.warning("Unknown data entry: {:s}".format(data_entry[0]))
         
@@ -771,9 +781,9 @@ def fetch_dsp_data(input_value, pathname):
     # External interface
     if doa_update_flag:
         DOA_str = str(int(webInterface_inst.doas[0]))
-        confidence_sum  = 0
+        confidence  = np.max(webInterface_inst.doa_confidences)
         max_power_level = webInterface_inst.max_amplitude
-        html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+str(int(confidence_sum))+"</CONF>\n<PWR>"+str(np.maximum(0, max_power_level))+"</PWR>\n</DATA>"
+        html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+str(int(confidence))+"</CONF>\n<PWR>"+str(np.maximum(0, max_power_level))+"</PWR>\n</DATA>"
         webInterface_inst.DOA_res_fd.seek(0)
         webInterface_inst.DOA_res_fd.write(html_str)
         webInterface_inst.DOA_res_fd.truncate()
