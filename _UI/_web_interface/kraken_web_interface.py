@@ -38,8 +38,8 @@ daq_subsystem_path    = os.path.join(
                         "Firmware")
 daq_config_filename   = os.path.join(daq_subsystem_path, "daq_chain_config.ini")
 daq_stop_filename     = "daq_stop.sh"
-#daq_start_filename   = "daq_start_sm.sh"
-daq_start_filename    = "daq_synthetic_start.sh"
+daq_start_filename   = "daq_start_sm.sh"
+#daq_start_filename    = "daq_synthetic_start.sh"
 
 
 import save_settings as settings
@@ -781,9 +781,9 @@ def fetch_dsp_data(input_value, pathname):
     # External interface
     if doa_update_flag:
         DOA_str = str(int(webInterface_inst.doas[0]))
-        confidence  = np.max(webInterface_inst.doa_confidences)
-        max_power_level = webInterface_inst.max_amplitude
-        html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+str(int(confidence))+"</CONF>\n<PWR>"+str(np.maximum(0, max_power_level))+"</PWR>\n</DATA>"
+        confidence_str  = "{:.2f}".format(np.max(webInterface_inst.doa_confidences))
+        max_power_level_str = "{:.1f}".format((np.maximum(-100, webInterface_inst.max_amplitude)))
+        html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+confidence_str+"</CONF>\n<PWR>"+max_power_level_str+"</PWR>\n</DATA>"
         webInterface_inst.DOA_res_fd.seek(0)
         webInterface_inst.DOA_res_fd.write(html_str)
         webInterface_inst.DOA_res_fd.truncate()

@@ -4,8 +4,8 @@
 sudo apt install php7.4-cli
 
 echo "Set execution rights"
-sudo chmod +x gui_run.sh
-sudo chmod +x kill.sh
+sudo chmod +x ../gui_run.sh
+sudo chmod +x ../kill.sh
 echo "Install dependencies"
 python3 -m pip install numpy
 python3 -m pip install scipy
