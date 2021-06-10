@@ -89,6 +89,7 @@ class webInterface():
         # DAQ Subsystem status parameters
         self.daq_conn_status       = 0
         self.daq_cgf_iface_status  = 0 # 0- ready, 1-busy        
+        self.daq_restart           = 0 # 1-restarting
         self.daq_update_rate       = 0
         self.daq_frame_sync        = 1 # Active low
         self.daq_frame_index       = 0
@@ -658,19 +659,21 @@ def fetch_dsp_data(input_value, pathname):
         for data_entry in que_data_packet:
             if data_entry[0] == "conn-ok":
                 webInterface_inst.daq_conn_status = 1
+                daq_status_update_flag = 1
             elif data_entry[0] == "disconn-ok":     
                 webInterface_inst.daq_conn_status = 0
+                daq_status_update_flag = 1
             elif data_entry[0] == "config-ok":                      
                 webInterface_inst.daq_cgf_iface_status = 0
-
-        
+                daq_status_update_flag = 1        
     except queue.Empty:
         # Handle empty queue here
         logging.debug("Receiver module que is empty")
     else:
         pass
-        # Handle task here and call q.task_done()
-
+        # Handle task here and call q.task_done()    
+    if webInterface_inst.daq_restart: # Set by the restarting script
+        daq_status_update_flag = 1          
     try:
         # Fetch new data from the signal processing module
         que_data_packet  = webInterface_inst.sp_data_que.get(False)
@@ -806,6 +809,7 @@ def fetch_dsp_data(input_value, pathname):
     Output(component_id="body_daq_frame_type"         , component_property='children'),
     Output(component_id="body_daq_frame_type"         , component_property='style'),    
     Output(component_id="body_daq_power_level"        , component_property='children'),
+    Output(component_id="body_daq_power_level"        , component_property='style'),
     Output(component_id="body_daq_conn_status"        , component_property='children'),
     Output(component_id="body_daq_conn_status"        , component_property='style'),    
     Output(component_id="body_daq_delay_sync"         , component_property='children'),
@@ -830,7 +834,7 @@ def update_daq_status(input_value):
     #      Prepare UI component properties      #
     #############################################
     
-    if webInterface_inst.daq_conn_status:
+    if webInterface_inst.daq_conn_status == 1:
         if not webInterface_inst.daq_cgf_iface_status:
             daq_conn_status_str = "Connected"
             conn_status_style={"color": "green"}
@@ -840,6 +844,10 @@ def update_daq_status(input_value):
     else:
         daq_conn_status_str = "Disconnected"
         conn_status_style={"color": "red"}
+    
+    if webInterface_inst.daq_restart:
+        daq_conn_status_str = "Restarting.."
+        conn_status_style={"color": "orange"}
 
     if webInterface_inst.daq_update_rate < 1:
         daq_update_rate_str    = "{:.2f} ms".format(webInterface_inst.daq_update_rate*1000)
@@ -887,8 +895,14 @@ def update_daq_status(input_value):
     else:
         daq_noise_source_str   = "Disabled"
         noise_source_style={"color": "green"}
-            
-    daq_power_level_str    = str(webInterface_inst.daq_power_level)    
+    
+    if webInterface_inst.daq_power_level:
+        daq_power_level_str = "Overdrive"
+        daq_power_level_style={"color": "red"}
+    else:
+        daq_power_level_str = "OK"
+        daq_power_level_style={"color": "green"}
+
     daq_rf_center_freq_str = str(webInterface_inst.daq_center_freq)
     daq_sampling_freq_str  = str(webInterface_inst.daq_fs)
     daq_cpi_str            = str(webInterface_inst.daq_cpi)
@@ -897,7 +911,7 @@ def update_daq_status(input_value):
     
     return daq_update_rate_str, daq_frame_index_str, daq_frame_sync_str, \
             frame_sync_style, daq_frame_type_str, frame_type_style, \
-            daq_power_level_str, daq_conn_status_str, \
+            daq_power_level_str, daq_power_level_style, daq_conn_status_str, \
             conn_status_style, daq_delay_sync_str, delay_sync_style, \
             daq_iq_sync_str, iq_sync_style, daq_noise_source_str, \
             noise_source_style, daq_rf_center_freq_str, daq_sampling_freq_str, \
@@ -1217,6 +1231,7 @@ def reconfig_daq_chain(input_value,
     webInterface_inst.write_config_file(param_list)
     logging.info("DAQ Subsystem configuration file edited")
     
+    webInterface_inst.daq_restart = 1
     """
         Restart DAQ Subsystem
     """
@@ -1237,8 +1252,8 @@ def reconfig_daq_chain(input_value,
     logging.debug("DAQ Subsystem halted")
     
     # Start DAQ subsystem
-    daq_stop_script = subprocess.Popen(['bash', daq_start_filename])#, stdout=subprocess.DEVNULL)
-    daq_stop_script.wait()
+    daq_start_script = subprocess.Popen(['bash', daq_start_filename])#, stdout=subprocess.DEVNULL)
+    daq_start_script.wait()
     logging.debug("DAQ Subsystem restarted")
     
     os.chdir(root_path)
@@ -1251,6 +1266,7 @@ def reconfig_daq_chain(input_value,
     # Restart signal processing
     webInterface_inst.start_processing()
     logging.debug("Signal processing started")
+    webInterface_inst.daq_restart = 0
         
     return 0
 
