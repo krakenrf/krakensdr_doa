@@ -38,9 +38,10 @@ daq_subsystem_path    = os.path.join(
                         "Firmware")
 daq_config_filename   = os.path.join(daq_subsystem_path, "daq_chain_config.ini")
 daq_stop_filename     = "daq_stop.sh"
-daq_start_filename   = "daq_start_sm.sh"
-#daq_start_filename    = "daq_synthetic_start.sh"
-
+#daq_start_filename    = "daq_start_sm.sh"
+daq_start_filename    = "daq_synthetic_start.sh"
+sys.path.insert(0, daq_subsystem_path)
+import ini_checker
 
 import save_settings as settings
 from krakenSDR_receiver import ReceiverRTLSDR
@@ -226,9 +227,16 @@ class webInterface():
         parser['calibration']['phase_tolerance']=str(param_list[21])
         parser['calibration']['maximum_sync_fails']=str(param_list[22])
 
-        with open(daq_config_filename, 'w') as configfile:
-            parser.write(configfile)
-        return 0
+        ini_parameters = parser._sections
+        error_list = ini_checker.check_ini(ini_parameters)
+        if len(error_list):
+            for e in error_list:
+                logging.error(e)
+            return -1, error_list
+        else:
+            with open(daq_config_filename, 'w') as configfile:
+                parser.write(configfile)
+            return 0,[]
 
 #############################################
 #       Prepare component dependencies      #
@@ -485,6 +493,9 @@ def generate_config_page_layout(webInterface_inst):
             html.Div([
                     html.Div("Maximum sync fails:", className="field-label"),                                         
                     dcc.Input(id='cfg_max_sync_fails', value=daq_cfg_params[22], type='number', debounce=True, className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("", id="daq_ini_check", className="field-label", style={"color":"white"}),
             ], className="field"),
             html.Div([
                 html.Button('Reconfigure & Restart DAQ chain', id='btn_reconfig_daq_chain', className="btn"),
@@ -1144,9 +1155,10 @@ def update_squelch_params(en_dsp_squelch, squelch_threshold):
     webInterface_inst.squelch_th = squelch_threshold
     return 0
     
-
 @app.callback(
-    Output(component_id="placeholder_recofnig_daq" , component_property="children"),    
+    Output(component_id="placeholder_recofnig_daq" , component_property="children"),
+    Output(component_id="daq_ini_check"            , component_property="children"),
+    Output(component_id="daq_ini_check"            , component_property="style"),
     Input(component_id="btn_reconfig_daq_chain"    , component_property="n_clicks"),
     State(component_id='cfg_rx_channels'          , component_property="value"),
     State(component_id='cfg_daq_buffer_size'      , component_property="value"),
@@ -1228,8 +1240,11 @@ def reconfig_daq_chain(input_value,
     param_list.append(cfg_phase_tolerance)
     param_list.append(cfg_max_sync_fails)
 
-    webInterface_inst.write_config_file(param_list)
-    logging.info("DAQ Subsystem configuration file edited")
+    config_res, config_err = webInterface_inst.write_config_file(param_list)
+    if config_res:
+        return -1,config_err[0],{"color":"red"}
+    else:    
+        logging.info("DAQ Subsystem configuration file edited")
     
     webInterface_inst.daq_restart = 1
     """
@@ -1261,14 +1276,14 @@ def reconfig_daq_chain(input_value,
     # Reinitialize receiver data interface
     if webInterface_inst.module_receiver.init_data_iface() == -1:
         logging.critical("Failed to restart the DAQ data interface")
-        return -1
+        return -1,"Failed to restart the DAQ data interface",{"color":"red"}
     
     # Restart signal processing
     webInterface_inst.start_processing()
     logging.debug("Signal processing started")
     webInterface_inst.daq_restart = 0
         
-    return 0
+    return 0,"",{"color":"white"}
 
 @app.callback(
     Output(component_id="placeholder_update_dsp", component_property="children"),
@@ -1364,7 +1379,6 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
 
     return "", ant_spacing_wavlength, ant_spacing_meter, ant_spacing_feet, ant_spacing_inch
 
-
 @app.callback(Output("page-content"   , "children"),
               Output("header_config"  ,"className"),  
               Output("header_spectrum","className"),
@@ -1380,7 +1394,7 @@ def display_page(pathname):
     elif pathname == "/doa":
         return generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"
 
-if __name__ == "__main__":        
+if __name__ == "__main__":
     webInterface_inst = webInterface()
     app.run_server(debug=False, host="0.0.0.0")
 
