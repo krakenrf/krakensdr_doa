@@ -137,6 +137,23 @@ iframe{
   color: rgb(0, 0, 0);
   background-color: #ff6600;
 }
+.btn_save_cfg{
+  height: 40px;
+  cursor: pointer;
+  background-color: #b5aef5;
+  border: 0.1em solid #000000;
+  border-radius:0.12em;
+  color: rgb(0, 0, 0);
+  font-size:20px;
+  text-decoration: none;
+  text-align: center;
+  width: 100%;  
+}
+.btn_save_cfg:hover{
+  color: rgb(0, 0, 0);
+  background-color: #ff6600;
+}
+
 .card{
  background-color: #000000;
  border: 0.1em solid #ffffff;

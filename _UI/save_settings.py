@@ -1,6 +1,13 @@
 import json
 import os
 
+"""
+	Handles the DoA DSP settings
+	
+	Project: Kraken DoA DSP
+	Author : Tamas Peto
+"""
+
 if os.path.exists('settings.json'):
     with open('settings.json', 'r') as myfile:
         settings=json.loads(myfile.read())
@@ -9,67 +16,70 @@ else:
     with open('settings.json', 'w') as outfile:
         json.dump(settings, outfile)
 
-# Receiver Configuration
-center_freq = settings.get("center_freq", 100.0)
-samp_index = settings.get("samp_index", 2)
-uniform_gain = settings.get("uniform_gain", 0)
-gain_index = settings.get("gain_index", 0)
-gain_index_2 = settings.get("gain_index_2", 0)
-gain_index_3 = settings.get("gain_index_3", 0)
-gain_index_4 = settings.get("gain_index_4", 0)
-dc_comp = settings.get("dc_comp", 0)
-filt_bw = settings.get("filt_bw", 150.0)
-fir_size = settings.get("fir_size", 0)
-decimation = settings.get("decimation", 1)
+# DAQ Configuration
+center_freq    = settings.get("center_freq", 100.0)
+uniform_gain   = settings.get("uniform_gain", 0)
 data_interface = settings.get("data_interface", "eth")
-logging_level = settings.get("logging_level", 0)
-default_ip = settings.get("default_ip", "0.0.0.0")
-user_interface = settings.get("user_interface", "gtgui")
-
-# Sync
-en_sync = settings.get("en_sync", 0)
-en_noise = settings.get("en_noise", 0)
+default_ip     = settings.get("default_ip", "0.0.0.0")
 
 # DOA Estimation
-ant_arrangement_index = settings.get("ant_arrangement_index", "0")
-ant_spacing = settings.get("ant_spacing", "0.5")
-en_doa = settings.get("en_doa", None)
-en_bartlett = settings.get("en_bartlett", None)
-en_capon = settings.get("en_capon", None)
-en_MEM = settings.get("en_MEM", None)
-en_MUSIC = settings.get("en_MUSIC", None)
-en_fbavg = settings.get("en_fbavg", None)
+en_doa          = settings.get("en_doa", 0)
+ant_arrangement = settings.get("ant_arrangement", "ULA")
+ant_spacing     = settings.get("ant_spacing", 0.5)
+doa_method      = settings.get("doa_method", "MUSIC")
+en_fbavg        = settings.get("en_fbavg", 0)
+compass_offset  = settings.get("compass_offset", 0)
+doa_fig_type    = settings.get("doa_fig_type", "Linear plot")
+
+# DSP misc
+en_spectrum       = settings.get("en_spectrum",0) 
+en_squelch        = settings.get("en_squelch", 0)
+squelch_threshold = settings.get("squelch_threshold", 0.0)
+
+# Web Interface
+en_hw_check   = settings.get("en_hw_check", 0)
+logging_level = settings.get("logging_level", 0)
 
 
-def write():
-    data = {}
+# Check and correct if needed
+if not ant_arrangement in ["ULA", "UCA"]:
+    ant_arrangement="ULA"
 
-    # Configuration
-    data["center_freq"] = center_freq
-    data["samp_index"] = samp_index
-    data["uniform_gain"] = uniform_gain
-    data["gain_index"] = gain_index
-    data["gain_index_2"] = gain_index_2
-    data["gain_index_3"] = gain_index_3
-    data["gain_index_4"] = gain_index_4
-    data["dc_comp"] = dc_comp
-    data["filt_bw"] = filt_bw
-    data["fir_size"] = fir_size
-    data["decimation"] = decimation
+doa_method_dict = {"Bartlett":0, "Capon":1, "MEM":2, "MUSIC":3}
+if not doa_method in doa_method_dict:
+    doa_method = "MUSIC"
 
-    # Sync
-    data["en_sync"] = en_sync
-    data["en_noise"] = en_noise
+doa_fig_type_dict = {"Linear plot":0, "Polar plot":1, "Compass":2}
+if not doa_fig_type in doa_fig_type_dict:
+    doa_gfig_type="Linear plot"
 
-    # DOA Estimation
-    data["ant_arrangement_index"] = ant_arrangement_index
-    data["ant_spacing"] = ant_spacing
-    data["en_doa"] = en_doa
-    data["en_bartlett"] = en_bartlett
-    data["en_capon"] = en_capon
-    data["en_MEM"] = en_MEM
-    data["en_MUSIC"] = en_MUSIC
-    data["en_fbavg"] = en_fbavg
+def write(data = None):
+    if data is None:
+        data = {}
+
+        # DAQ Configuration
+        data["center_freq"]    = center_freq    
+        data["uniform_gain"]   = uniform_gain
+        data["data_interface"] = data_interface
+        data["default_ip"]     = default_ip
+        
+        # DOA Estimation
+        data["en_doa"]          = en_doa
+        data["ant_arrangement"] = ant_arrangement
+        data["ant_spacing"]     = ant_spacing
+        data["doa_method"]      = doa_method
+        data["en_fbavg"]        = en_fbavg
+        data["compass_offset"]  = compass_offset
+        data["doa_fig_tpye"]    = doa_fig_type
+
+        # DSP misc
+        data["en_spectrum"]        = en_spectrum
+        data["en_squelch"]         = en_squelch
+        data["squelch_threshold"]  = squelch_threshold
+
+        # Web Interface
+        data["en_hw_check"]     = en_hw_check
+        data["logging_level"]   = logging_level
 
     with open('settings.json', 'w') as outfile:
         json.dump(data, outfile)
