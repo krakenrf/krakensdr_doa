@@ -38,16 +38,22 @@ class ReceiverRTLSDR():
     
     def __init__(self, data_que, data_interface = "eth"):     
         """
-            Parameter:
-            ----------        
-                :param: data_que: Que to communicate with the UI (web iface/Qt GUI)        
-                :param: data_interface: This field is configured by the GUI during instantiation. 
-                                        Valid values are the followings:
-                                        "eth"  : The module will receiver IQ frames through an Ethernet connection
-                                        "shmem": The module will receiver IQ frames through a shared memory interface
-                :type : data_interface: string
+        Parameter:
+        ----------        
+            :param: data_que: Que to communicate with the UI (web iface/Qt GUI)        
+            :param: data_interface: This field is configured by the GUI during instantiation. 
+                                    Valid values are the followings:
+                                    "eth"  : The module will receiver IQ frames through an Ethernet connection
+                                    "shmem": The module will receiver IQ frames through a shared memory interface
+            :type : data_interface: string
         """       
         self.logger = logging.getLogger(__name__)
+        # DAQ parameters
+        # These values are used by default to configure the DAQ through the configuration interface
+        # Values are configured externally upon configuration request
+        self.daq_center_freq   = 100 # MHz
+        self.daq_rx_gain       = 0   # [dB]
+        self.daq_squelch_th_dB = 0
 
         # UI interface
         self.data_que = data_que
@@ -105,6 +111,9 @@ class ReceiverRTLSDR():
                 self.ctr_iface_socket.connect((self.rec_ip_addr, self.ctr_iface_port))
                 self.receiver_connection_status = True
                 self.ctr_iface_init()
+                self.set_center_freq(self.daq_center_freq)
+                self.set_if_gain(self.daq_rx_gain)
+                self.set_squelch_threshold(self.daq_squelch_th_dB)
         except:
             errorMsg = sys.exc_info()[0]
             self.logger.error("Error message: "+str(errorMsg))            
@@ -240,9 +249,11 @@ class ReceiverRTLSDR():
         """
             Configures the threshold level of the squelch module in the DAQ FW through the control interface
         """
-        if self.receiver_connection_status: # Check connection            
+        if self.receiver_connection_status: # Check connection                        
+            self.daq_squelch_th_dB      = threshold_dB
             if threshold_dB == -80: threshold = 0
             else: threshold = 10**(threshold_dB/20)
+                
             # Assembling message            
             cmd="STHU"
             th_bytes=pack("f",threshold)
@@ -309,6 +320,7 @@ class ReceiverRTLSDR():
                 :type:  center_freq: int
         """
         if self.receiver_connection_status: # Check connection
+            self.daq_center_freq = center_freq
             # Set center frequency
             cmd="FREQ"
             freq_bytes=pack("Q",center_freq)
@@ -330,9 +342,11 @@ class ReceiverRTLSDR():
                 :type:  gain: int
         """
         if self.receiver_connection_status: # Check connection
+            self.daq_rx_gain     = gain
+
             # Set center frequency
             cmd="GAIN"
-            gain_list=[gain]*self.M
+            gain_list=[int(gain*10)]*self.M
             gain_bytes=pack("I"*self.M, *gain_list)
             msg_bytes=(cmd.encode()+gain_bytes+bytearray(128-(self.M+1)*4))
             try:                

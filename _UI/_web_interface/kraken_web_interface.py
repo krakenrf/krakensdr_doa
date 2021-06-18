@@ -79,6 +79,11 @@ class webInterface():
 
         # Instantiate and configure Kraken SDR modules
         self.module_receiver = ReceiverRTLSDR(data_que=self.rx_data_que, data_interface=settings.data_interface)
+        self.module_receiver.daq_center_freq   = settings.center_freq*10**6
+        self.module_receiver.daq_rx_gain       = settings.uniform_gain
+        self.module_receiver.daq_squelch_th_dB = settings.squelch_threshold_dB
+        self.module_receiver.rec_ip_addr       = settings.default_ip
+
         self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver)
         self.module_signal_processor.en_spectrum          = settings.en_spectrum
         self.module_signal_processor.DOA_ant_alignment    = settings.ant_arrangement
@@ -92,11 +97,6 @@ class webInterface():
         #############################################
         #       UI Status and Config variables      #
         #############################################
-
-        # DAQ Configuration parameters
-        self.center_freq   = settings.center_freq
-        self.daq_rx_gain   = settings.uniform_gain
-        self.ip_addr       = settings.default_ip
 
         # DAQ Subsystem status parameters
         self.daq_conn_status       = 0
@@ -116,8 +116,6 @@ class webInterface():
         self.daq_cpi               = "-"
         self.daq_if_gains          ="[,,,,]"
 
-        self.squelch_th            = 0 # Overwriten by the inital call after connection
-
         # DSP Processing Parameters and Results  
         self.spectrum              = None
         self.doa_thetas            = None
@@ -136,8 +134,8 @@ class webInterface():
         data = {}
 
         # DAQ Configuration
-        data["center_freq"]    = self.daq_center_freq    
-        data["uniform_gain"]   = self.daq_rx_gain
+        data["center_freq"]    = self.module_receiver.daq_center_freq/10**6
+        data["uniform_gain"]   = self.module_receiver.daq_rx_gain
         data["data_interface"] = settings.data_interface
         data["default_ip"]     = settings.default_ip
         
@@ -160,9 +158,9 @@ class webInterface():
         data["doa_fig_type"]    = doa_fig_type
         
         # DSP misc
-        data["en_spectrum"]        = self.module_signal_processor.en_spectrum
-        data["en_squelch"]         = self.module_signal_processor.en_squelch
-        data["squelch_threshold"]  = self.squelch_th
+        data["en_spectrum"]           = self.module_signal_processor.en_spectrum
+        data["en_squelch"]            = self.module_signal_processor.en_squelch
+        data["squelch_threshold_dB"]  = self.module_receiver.daq_squelch_th_dB
 
         # Web Interface
         data["en_hw_check"]     = settings.en_hw_check
@@ -181,7 +179,7 @@ class webInterface():
         """
         self.logger.info("Start processing request")
         self.first_frame = 1
-        self.module_receiver.rec_ip_addr = self.ip_addr        
+        #self.module_receiver.rec_ip_addr = "0.0.0.0" 
         self.module_signal_processor.run_processing=True 
     
     def stop_processing(self):
@@ -214,31 +212,28 @@ class webInterface():
             self.module_signal_processor.en_DOA_Capon    = False
             self.module_signal_processor.en_DOA_MEM      = False
             self.module_signal_processor.en_DOA_MUSIC    = True
-    def config_squelch_value(self, squelch_threshold):
+    def config_squelch_value(self, squelch_threshold_dB):
         """
             Configures the squelch thresold both on the DAQ side and 
             on the local DoA DSP side.
-        """
-        self.squelch_th = squelch_threshold
+        """        
         self.daq_cfg_iface_status = 1
-        self.module_signal_processor.squelch_threshold = 10**(squelch_threshold/20)
-        self.module_receiver.set_squelch_threshold(squelch_threshold)
+        self.module_signal_processor.squelch_threshold = 10**(squelch_threshold_dB/20)
+        self.module_receiver.set_squelch_threshold(squelch_threshold_dB)
         logging.info("Updating receiver parameters")
-        logging.info("Squelch threshold : {:f}".format(self.squelch_th))
+        logging.info("Squelch threshold : {:f} dB".format(squelch_threshold_dB))
 
     def config_daq_rf(self, f0, gain):
         """
             Configures the RF parameters in the DAQ module
         """
-        self.center_freq = f0
-        self.daq_rx_gain = gain
         self.daq_cfg_iface_status = 1
         self.module_receiver.set_center_freq(int(f0*10**6))
-        self.module_receiver.set_if_gain(int(10*gain))
+        self.module_receiver.set_if_gain(gain)
         
         logging.info("Updating receiver parameters")
-        logging.info("Center frequency: {:f}".format(webInterface_inst.center_freq))
-        logging.info("Gain: {:f}".format(webInterface_inst.daq_rx_gain))
+        logging.info("Center frequency: {:f} MHz".format(f0))
+        logging.info("Gain: {:f} dB".format(gain))
 
 def read_config_file(config_fname=daq_config_filename):
     parser = ConfigParser()
@@ -443,7 +438,7 @@ def generate_config_page_layout(webInterface_inst):
         html.H2("RF Receiver Configuration", id="init_title_c"),
         html.Div([
                 html.Div("Center Frequency [MHz]", className="field-label"),                                         
-                dcc.Input(id='daq_center_freq', value=webInterface_inst.center_freq, type='number', debounce=True, className="field-body")
+                dcc.Input(id='daq_center_freq', value=webInterface_inst.module_receiver.daq_center_freq/10**6, type='number', debounce=True, className="field-body")
                 ], className="field"),
         html.Div([
                 html.Div("Receiver gain", className="field-label"), 
@@ -479,7 +474,7 @@ def generate_config_page_layout(webInterface_inst):
                             {'label': '48.0 dB', 'value': 48.0},
                             {'label': '49.6 dB', 'value': 49.6},
                             ],
-                    value=webInterface_inst.daq_rx_gain, style={"display":"inline-block"},className="field-body")
+                    value=webInterface_inst.module_receiver.daq_rx_gain, style={"display":"inline-block"},className="field-body")
                 ], className="field"),
         html.Div([
             html.Button('Update Receiver Parameters', id='btn-update_rx_param', className="btn"),
@@ -704,14 +699,7 @@ def generate_config_page_layout(webInterface_inst):
     #-----------------------------
     #  Squelch Configuration Card
     #-----------------------------
-    
-    if webInterface_inst.squelch_th is not None:        
-        squelch_th_display_value = webInterface_inst.squelch_th
-        reconfig_note = ""
-    else:
-        squelch_th_display_value = 0
-        reconfig_note = "Unknown initial threshold value"
-
+    reconfig_note = ""
     squelch_card = \
     html.Div([
         html.H2("Squelch configuration", id="init_title_sq"),
@@ -720,7 +708,7 @@ def generate_config_page_layout(webInterface_inst):
             ], className="field"),
         html.Div([
                 html.Div("Squelch threshold [dB] (<0):", className="field-label"),                                         
-                dcc.Input(id='squelch_th', value=squelch_th_display_value, type='number', debounce=False, className="field-body")
+                dcc.Input(id='squelch_th', value=webInterface_inst.module_receiver.daq_squelch_th_dB, type='number', debounce=False, className="field-body")
             ], className="field"),
         html.Div(reconfig_note, id="squelch_reconfig_note", className="field", style={"color":"red"}),
     ], className="card")

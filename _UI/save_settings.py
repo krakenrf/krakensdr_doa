@@ -18,7 +18,7 @@ else:
 
 # DAQ Configuration
 center_freq    = settings.get("center_freq", 100.0)
-uniform_gain   = settings.get("uniform_gain", 0)
+uniform_gain   = settings.get("uniform_gain", 0.0)
 data_interface = settings.get("data_interface", "eth")
 default_ip     = settings.get("default_ip", "0.0.0.0")
 
@@ -32,9 +32,9 @@ compass_offset  = settings.get("compass_offset", 0)
 doa_fig_type    = settings.get("doa_fig_type", "Linear plot")
 
 # DSP misc
-en_spectrum       = settings.get("en_spectrum",0) 
-en_squelch        = settings.get("en_squelch", 0)
-squelch_threshold = settings.get("squelch_threshold", 0.0)
+en_spectrum          = settings.get("en_spectrum",0) 
+en_squelch           = settings.get("en_squelch", 0)
+squelch_threshold_dB = settings.get("squelch_threshold_dB", 0.0)
 
 # Web Interface
 en_hw_check   = settings.get("en_hw_check", 0)
@@ -73,9 +73,9 @@ def write(data = None):
         data["doa_fig_tpye"]    = doa_fig_type
 
         # DSP misc
-        data["en_spectrum"]        = en_spectrum
-        data["en_squelch"]         = en_squelch
-        data["squelch_threshold"]  = squelch_threshold
+        data["en_spectrum"]          = en_spectrum
+        data["en_squelch"]           = en_squelch
+        data["squelch_threshold_dB"] = squelch_threshold_dB
 
         # Web Interface
         data["en_hw_check"]     = en_hw_check
