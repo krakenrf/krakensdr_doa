@@ -654,7 +654,8 @@ def generate_config_page_layout(webInterface_inst):
                     dcc.Input(id="ant_spacing_feet", value=ant_spacing_feet, type='number'  , debounce=False, className="field-body")]),
         html.Div([html.Div("[inch]:"              , id="label_ant_spacing_inch"   , className="field-label"), 
                     dcc.Input(id="ant_spacing_inch", value=ant_spacing_inch, type='number'  , debounce=False, className="field-body")]),
-        
+        html.Div([html.Div("", id="ambiguity_warning" , className="field", style={"color":"orange"})]),                
+
         # --> DoA estimation configuration checkboxes <--  
 
         # Note: Individual checkboxes are created due to layout considerations, correct if extist a better solution       
@@ -1414,7 +1415,8 @@ def reconfig_daq_chain(input_value,
     Output(component_id="ant_spacing_wavelength", component_property="value"),
     Output(component_id="ant_spacing_meter"     , component_property="value"),
     Output(component_id="ant_spacing_feet"      , component_property="value"),
-    Output(component_id="ant_spacing_inch"      , component_property="value"),    
+    Output(component_id="ant_spacing_inch"      , component_property="value"),  
+    Output(component_id="ambiguity_warning"     , component_property="children"),  
     Input(component_id="placeholder_update_freq", component_property="children"),
     Input(component_id="en_spectrum_check"      , component_property="value"),
     Input(component_id="en_doa_check"           , component_property="value"),
@@ -1457,6 +1459,19 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
         ant_spacing_feet = round(ant_spacing_meter * 3.2808399,3)
         ant_spacing_inch = round(ant_spacing_meter * 39.3700787,3)
         ant_spacing_wavlength = round(ant_spacing_meter / wavelength,3)
+    
+
+    # Max phase diff and ambiguity warning        
+    if ant_arrangement == "ULA":
+        max_phase_diff = ant_spacing_meter / wavelength
+    elif ant_arrangement == "UCA":
+        UCA_ant_spacing = (np.sqrt(2)*ant_spacing_meter*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
+        max_phase_diff = UCA_ant_spacing/wavelength
+    logging.info("Phase diff {:.1}".format(max_phase_diff))
+    if max_phase_diff > 0.5:
+        ambiguity_warning= "Warning: DoA estimation is ambiguous, max phase difference:{:.1f}°".format(np.rad2deg(2*np.pi*max_phase_diff))
+    else:      
+        ambiguity_warning= ""
 
     if en_spectrum is not None and len(en_spectrum):
         logging.debug("Spectrum estimation enabled")
@@ -1482,7 +1497,7 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
     webInterface_inst._doa_fig_type = doa_fig_type
     webInterface_inst.compass_ofset = compass_ofset
 
-    return "", ant_spacing_wavlength, ant_spacing_meter, ant_spacing_feet, ant_spacing_inch
+    return "", ant_spacing_wavlength, ant_spacing_meter, ant_spacing_feet, ant_spacing_inch, ambiguity_warning
 
 @app.callback(Output("page-content"   , "children"),
               Output("header_config"  ,"className"),  
