@@ -37,8 +37,9 @@ en_squelch           = settings.get("en_squelch", 0)
 squelch_threshold_dB = settings.get("squelch_threshold_dB", 0.0)
 
 # Web Interface
-en_hw_check   = settings.get("en_hw_check", 0)
-logging_level = settings.get("logging_level", 0)
+en_hw_check         = settings.get("en_hw_check", 0)
+en_advanced_daq_cfg = settings.get("en_advanced_daq_cfg", 0) 
+logging_level       = settings.get("logging_level", 0)
 
 
 # Check and correct if needed
@@ -78,8 +79,9 @@ def write(data = None):
         data["squelch_threshold_dB"] = squelch_threshold_dB
 
         # Web Interface
-        data["en_hw_check"]     = en_hw_check
-        data["logging_level"]   = logging_level
+        data["en_hw_check"]         = en_hw_check
+        data["en_advanced_daq_cfg"] = en_advanced_daq_cfg
+        data["logging_level"]       = logging_level
 
     with open('settings.json', 'w') as outfile:
         json.dump(data, outfile)

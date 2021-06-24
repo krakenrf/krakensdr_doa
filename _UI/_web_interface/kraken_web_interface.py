@@ -115,6 +115,7 @@ class webInterface():
         self.daq_fs                = "-"
         self.daq_cpi               = "-"
         self.daq_if_gains          ="[,,,,]"
+        self.en_advanced_daq_cfg   = settings.en_advanced_daq_cfg 
 
         # DSP Processing Parameters and Results  
         self.spectrum              = None
@@ -163,8 +164,9 @@ class webInterface():
         data["squelch_threshold_dB"]  = self.module_receiver.daq_squelch_th_dB
 
         # Web Interface
-        data["en_hw_check"]     = settings.en_hw_check
-        data["logging_level"]   = settings.logging_level
+        data["en_hw_check"]         = settings.en_hw_check
+        data["en_advanced_daq_cfg"] = int(self.en_advanced_daq_cfg)
+        data["logging_level"]       = settings.logging_level
 
         settings.write(data)
     def start_processing(self):
@@ -421,6 +423,8 @@ def generate_config_page_layout(webInterface_inst):
     en_doa_values         =[1] if webInterface_inst.module_signal_processor.en_DOA_estimation else []
     en_fb_avg_values      =[1] if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []    
     en_dsp_squelch_values =[1] if webInterface_inst.module_signal_processor.en_squelch        else []
+    
+    en_advanced_daq_cfg   =[1] if webInterface_inst.en_advanced_daq_cfg                       else []
     # Calulcate spacings
     wavelength= 300 / webInterface_inst.daq_center_freq
     
@@ -478,130 +482,135 @@ def generate_config_page_layout(webInterface_inst):
                 ], className="field"),
         html.Div([
             html.Button('Update Receiver Parameters', id='btn-update_rx_param', className="btn"),
-        ], className="field"),        
+        ], className="field"),
+        html.Div([html.Div("Advanced DAQ Configuration", id="label_en_advanced_daq_cfg"     , className="field-label"),
+                dcc.Checklist(options=option     , id="en_advanced_daq_cfg"     , className="field-body", value=en_advanced_daq_cfg),
+        ], className="field"),
+        
     ]
     
-    # --> Optional DAQ Subsystem reconfiguration fields <--    
-    if daq_cfg_params is not None:
-        daq_subsystem_reconfiguration_options = [ \
-            html.Div([
-                html.Div("Preconfiguration:", className="field-label"), 
-                dcc.Dropdown(id='daq_cfg_files',
-                        options=[
-                            {'label': str(i[1]), 'value': i[0]} for i in preconfigs
-                        ],
-                   style={"display":"inline-block", "width": "400px"},className="field-body"),
+    # --> Optional DAQ Subsystem reconfiguration fields <--   
+    if len(en_advanced_daq_cfg):
+        if daq_cfg_params is not None:
+            daq_subsystem_reconfiguration_options = [ \
+                html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"),
+                html.Div([
+                    html.Div("Preconfiguration:", className="field-label"), 
+                    dcc.Dropdown(id='daq_cfg_files',
+                            options=[
+                                {'label': str(i[1]), 'value': i[0]} for i in preconfigs
+                            ],
+                    style={"display":"inline-block", "width": "400px"},className="field-body"),
+                    ], className="field"),
+                html.H3("HW", id="cfg_group_hw"),
+                html.Div([
+                        html.Div("Rx channels:", className="field-label"),                                         
+                        dcc.Input(id='cfg_rx_channels', value=daq_cfg_params[0], type='number', debounce=True, className="field-body")
                 ], className="field"),
-            html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"),
-            html.H3("HW", id="cfg_group_hw"),
-            html.Div([
-                    html.Div("Rx channels:", className="field-label"),                                         
-                    dcc.Input(id='cfg_rx_channels', value=daq_cfg_params[0], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.H3("DAQ", id="cfg_group_daq"),
-            html.Div([
-                    html.Div("DAQ buffer size:", className="field-label"),                                         
-                    dcc.Input(id='cfg_daq_buffer_size', value=daq_cfg_params[1], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Sample rate [MHz]:", className="field-label"),                                         
-                    dcc.Input(id='cfg_sample_rate', value=daq_cfg_params[2]/10**6, type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Enable noise source control:", className="field-label"),                                         
-                    dcc.Checklist(options=option     , id="en_noise_source_ctr"   , className="field-body", value=en_noise_src_values),
-            ], className="field"),
-            html.H3("Squelch"),
-            html.Div([
-                    html.Div("Enable Squelch mode:", className="field-label"),                                                                 
-                    dcc.Checklist(options=option     , id="en_squelch_mode"   , className="field-body", value=en_squelch_values),
-            ], className="field"),
-            html.Div([
-                    html.Div("Initial threshold:", className="field-label"),                                         
-                    dcc.Input(id='cfg_squelch_init_th', value=daq_cfg_params[5], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.H3("Pre Processing"),
-            html.Div([
-                    html.Div("CPI size [sample]:", className="field-label"),                                         
-                    dcc.Input(id='cfg_cpi_size', value=daq_cfg_params[6], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Decimation ratio:", className="field-label"),                                         
-                    dcc.Input(id='cfg_decimation_ratio', value=daq_cfg_params[7], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("FIR relative bandwidth:", className="field-label"),                                         
-                    dcc.Input(id='cfg_fir_bw', value=daq_cfg_params[8], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("FIR tap size:", className="field-label"),                                         
-                    dcc.Input(id='cfg_fir_tap_size', value=daq_cfg_params[9], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-            html.Div("FIR window:", className="field-label"),                                         
-                    dcc.Input(id='cfg_fir_window', value=daq_cfg_params[10], type='text', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Enable filter reset:", className="field-label"),                                         
-                    dcc.Checklist(options=option     , id="en_filter_reset"   , className="field-body", value=en_filter_rst_values),
-            ], className="field"),
-            html.H3("Calibration"),
-            html.Div([
-                    html.Div("Correlation size [sample]:", className="field-label"),                                         
-                    dcc.Input(id='cfg_corr_size', value=daq_cfg_params[12], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Standard channel index:", className="field-label"),                                         
-                    dcc.Input(id='cfg_std_ch_ind', value=daq_cfg_params[13], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Enable IQ calibration:", className="field-label"),                                         
-                    dcc.Checklist(options=option     , id="en_iq_cal"   , className="field-body", value=en_iq_cal_values),
-            ], className="field"),
-            html.Div([
-                    html.Div("Gain lock interval [frame]:", className="field-label"),                                         
-                    dcc.Input(id='cfg_gain_lock', value=daq_cfg_params[15], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Require track lock intervention:", className="field-label"),                                         
-                    dcc.Checklist(options=option     , id="en_req_track_lock_intervention"   , className="field-body", value=en_req_track_lock_values),
-            ], className="field"),
-            html.Div([
-                    html.Div("Calibration track mode:", className="field-label"),                                         
-                    dcc.Input(id='cfg_cal_track_mode', value=daq_cfg_params[17], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Calibration frame interval:", className="field-label"),                                         
-                    dcc.Input(id='cfg_cal_frame_interval', value=daq_cfg_params[18], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Calibration frame bursts size:", className="field-label"),                                         
-                    dcc.Input(id='cfg_cal_frame_burst_size', value=daq_cfg_params[19], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Amplitude tolerance [dB]:", className="field-label"),                                         
-                    dcc.Input(id='cfg_amplitude_tolerance', value=daq_cfg_params[20], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Phase tolerance [deg]:", className="field-label"),                                         
-                    dcc.Input(id='cfg_phase_tolerance', value=daq_cfg_params[21], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("Maximum sync fails:", className="field-label"),                                         
-                    dcc.Input(id='cfg_max_sync_fails', value=daq_cfg_params[22], type='number', debounce=True, className="field-body")
-            ], className="field"),
-            html.Div([
-                    html.Div("", id="daq_ini_check", className="field-label", style={"color":"white"}),
-            ], className="field"),
-            html.Div([
-                html.Button('Reconfigure & Restart DAQ chain', id='btn_reconfig_daq_chain', className="btn"),
-            ], className="field") 
-        ]
-        for i in range(len(daq_subsystem_reconfiguration_options)):
-            daq_config_card_list.append(daq_subsystem_reconfiguration_options[i])
-    else:
-        daq_config_card_list.append(html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"))
-        daq_config_card_list.append(html.Div("Config file not found! Reconfiguration is not possible !", id="daq_reconfig_note", className="field", style={"color":"red"}))
+                html.H3("DAQ", id="cfg_group_daq"),
+                html.Div([
+                        html.Div("DAQ buffer size:", className="field-label"),                                         
+                        dcc.Input(id='cfg_daq_buffer_size', value=daq_cfg_params[1], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Sample rate [MHz]:", className="field-label"),                                         
+                        dcc.Input(id='cfg_sample_rate', value=daq_cfg_params[2]/10**6, type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Enable noise source control:", className="field-label"),                                         
+                        dcc.Checklist(options=option     , id="en_noise_source_ctr"   , className="field-body", value=en_noise_src_values),
+                ], className="field"),
+                html.H3("Squelch"),
+                html.Div([
+                        html.Div("Enable Squelch mode:", className="field-label"),                                                                 
+                        dcc.Checklist(options=option     , id="en_squelch_mode"   , className="field-body", value=en_squelch_values),
+                ], className="field"),
+                html.Div([
+                        html.Div("Initial threshold:", className="field-label"),                                         
+                        dcc.Input(id='cfg_squelch_init_th', value=daq_cfg_params[5], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.H3("Pre Processing"),
+                html.Div([
+                        html.Div("CPI size [sample]:", className="field-label"),                                         
+                        dcc.Input(id='cfg_cpi_size', value=daq_cfg_params[6], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Decimation ratio:", className="field-label"),                                         
+                        dcc.Input(id='cfg_decimation_ratio', value=daq_cfg_params[7], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("FIR relative bandwidth:", className="field-label"),                                         
+                        dcc.Input(id='cfg_fir_bw', value=daq_cfg_params[8], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("FIR tap size:", className="field-label"),                                         
+                        dcc.Input(id='cfg_fir_tap_size', value=daq_cfg_params[9], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                html.Div("FIR window:", className="field-label"),                                         
+                        dcc.Input(id='cfg_fir_window', value=daq_cfg_params[10], type='text', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Enable filter reset:", className="field-label"),                                         
+                        dcc.Checklist(options=option     , id="en_filter_reset"   , className="field-body", value=en_filter_rst_values),
+                ], className="field"),
+                html.H3("Calibration"),
+                html.Div([
+                        html.Div("Correlation size [sample]:", className="field-label"),                                         
+                        dcc.Input(id='cfg_corr_size', value=daq_cfg_params[12], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Standard channel index:", className="field-label"),                                         
+                        dcc.Input(id='cfg_std_ch_ind', value=daq_cfg_params[13], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Enable IQ calibration:", className="field-label"),                                         
+                        dcc.Checklist(options=option     , id="en_iq_cal"   , className="field-body", value=en_iq_cal_values),
+                ], className="field"),
+                html.Div([
+                        html.Div("Gain lock interval [frame]:", className="field-label"),                                         
+                        dcc.Input(id='cfg_gain_lock', value=daq_cfg_params[15], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Require track lock intervention:", className="field-label"),                                         
+                        dcc.Checklist(options=option     , id="en_req_track_lock_intervention"   , className="field-body", value=en_req_track_lock_values),
+                ], className="field"),
+                html.Div([
+                        html.Div("Calibration track mode:", className="field-label"),                                         
+                        dcc.Input(id='cfg_cal_track_mode', value=daq_cfg_params[17], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Calibration frame interval:", className="field-label"),                                         
+                        dcc.Input(id='cfg_cal_frame_interval', value=daq_cfg_params[18], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Calibration frame bursts size:", className="field-label"),                                         
+                        dcc.Input(id='cfg_cal_frame_burst_size', value=daq_cfg_params[19], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Amplitude tolerance [dB]:", className="field-label"),                                         
+                        dcc.Input(id='cfg_amplitude_tolerance', value=daq_cfg_params[20], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Phase tolerance [deg]:", className="field-label"),                                         
+                        dcc.Input(id='cfg_phase_tolerance', value=daq_cfg_params[21], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("Maximum sync fails:", className="field-label"),                                         
+                        dcc.Input(id='cfg_max_sync_fails', value=daq_cfg_params[22], type='number', debounce=True, className="field-body")
+                ], className="field"),
+                html.Div([
+                        html.Div("", id="daq_ini_check", className="field-label", style={"color":"white"}),
+                ], className="field"),
+                html.Div([
+                    html.Button('Reconfigure & Restart DAQ chain', id='btn_reconfig_daq_chain', className="btn"),
+                ], className="field") 
+            ]
+            for i in range(len(daq_subsystem_reconfiguration_options)):
+                daq_config_card_list.append(daq_subsystem_reconfiguration_options[i])
+        else:
+            daq_config_card_list.append(html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"))
+            daq_config_card_list.append(html.Div("Config file not found! Reconfiguration is not possible !", id="daq_reconfig_note", className="field", style={"color":"red"}))
     
     daq_config_card = html.Div(daq_config_card_list, className="card")
     #-----------------------------
@@ -1430,7 +1439,6 @@ def reconfig_daq_chain(input_value,
     Input(component_id="radio_ant_arrangement"  , component_property="value"),
     Input(component_id='doa_fig_type'           , component_property='value'),
     Input(component_id='compass_ofset'          , component_property='value'),    
-
     prevent_initial_call=True
 )
 def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
@@ -1468,7 +1476,6 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
     elif ant_arrangement == "UCA":
         UCA_ant_spacing = (np.sqrt(2)*ant_spacing_meter*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
         max_phase_diff = UCA_ant_spacing/wavelength
-    logging.info("Phase diff {:.1}".format(max_phase_diff))
     if max_phase_diff > 0.5:
         ambiguity_warning= "Warning: DoA estimation is ambiguous, max phase difference:{:.1f}°".format(np.rad2deg(2*np.pi*max_phase_diff))
     else:      
@@ -1499,6 +1506,15 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
     webInterface_inst.compass_ofset = compass_ofset
 
     return "", ant_spacing_wavlength, ant_spacing_meter, ant_spacing_feet, ant_spacing_inch, ambiguity_warning
+
+@app.callback(Output("url"                   , "pathname"),
+              [Input("en_advanced_daq_cfg"   , "value")])
+def reconfig_page_content(en_advanced_daq_cfg):
+    if en_advanced_daq_cfg is not None and len(en_advanced_daq_cfg):    
+        webInterface_inst.en_advanced_daq_cfg = True
+    else:
+        webInterface_inst.en_advanced_daq_cfg = False
+    return "/config"
 
 @app.callback(Output("page-content"   , "children"),
               Output("header_config"  ,"className"),  
