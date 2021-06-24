@@ -1271,13 +1271,14 @@ def update_daq_cfg_params(config_fname):
     
     logging.info("Updating DAQ configuration from: {0}".format(config_fname))
     param_list = read_config_file(config_fname)
-    if param_list is not None:
-        param_list[3]=[1] if param_list[3] else [0] # Enable Noise source control
-        param_list[4]=[1] if param_list[4] else [0] # Enable Squelch mode
-        param_list[11]=[1] if param_list[11] else [0] # Enable filter reset
-        param_list[14]=[1] if param_list[14] else [0] # Enable IQ calibration
-        param_list[16]=[1] if param_list[16] else [0] # Enable Req track lock intervention
-        return param_list[0:23]
+    if param_list is not None:        
+        param_list[2] /= 10**6 # Convert Hz to MHz
+        param_list[3]=[1] if param_list[3] else [] # Enable Noise source control
+        param_list[4]=[1] if param_list[4] else [] # Enable Squelch mode
+        param_list[11]=[1] if param_list[11] else [] # Enable filter reset
+        param_list[14]=[1] if param_list[14] else [] # Enable IQ calibration
+        param_list[16]=[1] if param_list[16] else [] # Enable Req track lock intervention        
+        return param_list[0:23]        
     else: return (0)*23
 
 @app.callback(
@@ -1332,7 +1333,7 @@ def reconfig_daq_chain(input_value,
     if en_noise_source_ctr is not None and len(en_noise_source_ctr):
         param_list.append(1)
     else:
-        param_list.append(0)
+        param_list.append(0)    
     if en_squelch_mode is not None and len(en_squelch_mode):
         param_list.append(1)
     else:
