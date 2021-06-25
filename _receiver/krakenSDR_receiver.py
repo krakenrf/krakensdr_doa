@@ -36,7 +36,7 @@ from iq_header import IQHeader
 from shmemIface import inShmemIface
 class ReceiverRTLSDR():
     
-    def __init__(self, data_que, data_interface = "eth"):     
+    def __init__(self, data_que, data_interface = "eth", logging_level=10):     
         """
         Parameter:
         ----------        
@@ -48,6 +48,8 @@ class ReceiverRTLSDR():
             :type : data_interface: string
         """       
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging_level)
+
         # DAQ parameters
         # These values are used by default to configure the DAQ through the configuration interface
         # Values are configured externally upon configuration request
@@ -111,6 +113,7 @@ class ReceiverRTLSDR():
                 self.ctr_iface_socket.connect((self.rec_ip_addr, self.ctr_iface_port))
                 self.receiver_connection_status = True
                 self.ctr_iface_init()
+                self.logger.info("CTR INIT Center freq: {0}".format(self.daq_center_freq))
                 self.set_center_freq(self.daq_center_freq)
                 self.set_if_gain(self.daq_rx_gain)
                 self.set_squelch_threshold(self.daq_squelch_th_dB)
@@ -274,7 +277,7 @@ class ReceiverRTLSDR():
             cmd="INIT"            
             msg_bytes=(cmd.encode()+bytearray(124))           
             try:                
-                _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))            
+                _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))
             except:                
                 errorMsg = sys.exc_info()[0]        
                 self.logger.error("Unable to start communication thread")
@@ -297,7 +300,7 @@ class ReceiverRTLSDR():
         # Waiting for the command to take effect
         reply_msg_bytes = self.ctr_iface_socket.recv(128)    
 
-        self.logger.debug("Control interface communication finished")                
+        self.logger.debug("Control interface communication finished")
         self.ctr_iface_thread_lock.release()
         
         status = reply_msg_bytes[0:4].decode()
@@ -317,13 +320,13 @@ class ReceiverRTLSDR():
             Paramters:
             ----------
                 :param: center_freq: Required center frequency to set [Hz]
-                :type:  center_freq: int
+                :type:  center_freq: float
         """
         if self.receiver_connection_status: # Check connection
-            self.daq_center_freq = center_freq
+            self.daq_center_freq = int(center_freq)
             # Set center frequency
             cmd="FREQ"
-            freq_bytes=pack("Q",center_freq)
+            freq_bytes=pack("Q",int(center_freq))
             msg_bytes=(cmd.encode()+freq_bytes+bytearray(116))           
             try:                
                 _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))            

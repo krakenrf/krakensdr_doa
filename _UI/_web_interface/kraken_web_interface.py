@@ -62,7 +62,7 @@ class webInterface():
         self.logger = logging.getLogger(__name__)        
         self.logger.setLevel(settings.logging_level*10)
         self.logger.info("Inititalizing web interface ")
-
+        
         #############################################
         #  Initialize and Configure Kraken modules  #
         #############################################
@@ -78,7 +78,7 @@ class webInterface():
         self.rx_data_que = queue.Queue(1) # Que to communicate with the receiver modules
 
         # Instantiate and configure Kraken SDR modules
-        self.module_receiver = ReceiverRTLSDR(data_que=self.rx_data_que, data_interface=settings.data_interface)
+        self.module_receiver = ReceiverRTLSDR(data_que=self.rx_data_que, data_interface=settings.data_interface, logging_level=settings.logging_level*10)
         self.module_receiver.daq_center_freq   = settings.center_freq*10**6
         self.module_receiver.daq_rx_gain       = settings.uniform_gain
         self.module_receiver.daq_squelch_th_dB = settings.squelch_threshold_dB
@@ -337,7 +337,8 @@ def get_preconfigs(config_files_path):
 
 trace_colors = px.colors.qualitative.Plotly
 trace_colors[3] = 'rgb(255,255,51)'
-
+valid_fir_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen' , 'bohman', 'blackmanharris', 'nuttall', 'barthann'] 
+valid_sample_rates = [0.25, 0.900001, 1.024, 1.4, 1.8, 1.92, 2.048, 2.4, 2.56]
 doa_trace_colors =	{
   "DoA Bartlett": "#00B5F7",
   "DoA Capon"   : "rgb(226,26,28)",
@@ -513,8 +514,12 @@ def generate_config_page_layout(webInterface_inst):
                         dcc.Input(id='cfg_daq_buffer_size', value=daq_cfg_params[1], type='number', debounce=True, className="field-body")
                 ], className="field"),
                 html.Div([
-                        html.Div("Sample rate [MHz]:", className="field-label"),                                         
-                        dcc.Input(id='cfg_sample_rate', value=daq_cfg_params[2]/10**6, type='number', debounce=True, className="field-body")
+                    html.Div("Sample rate [MHz]:", className="field-label"),
+                    dcc.Dropdown(id='cfg_sample_rate',
+                            options=[
+                                {'label': i, 'value': i} for i in valid_sample_rates                                
+                                ],
+                        value=daq_cfg_params[2]/10**6, style={"display":"inline-block"},className="field-body")
                 ], className="field"),
                 html.Div([
                         html.Div("Enable noise source control:", className="field-label"),                                         
@@ -547,8 +552,12 @@ def generate_config_page_layout(webInterface_inst):
                         dcc.Input(id='cfg_fir_tap_size', value=daq_cfg_params[9], type='number', debounce=True, className="field-body")
                 ], className="field"),
                 html.Div([
-                html.Div("FIR window:", className="field-label"),                                         
-                        dcc.Input(id='cfg_fir_window', value=daq_cfg_params[10], type='text', debounce=True, className="field-body")
+                    html.Div("FIR window:", className="field-label"),
+                    dcc.Dropdown(id='cfg_fir_window',
+                            options=[
+                                {'label': i, 'value': i} for i in valid_fir_windows                                
+                                ],
+                        value=daq_cfg_params[10], style={"display":"inline-block"},className="field-body")
                 ], className="field"),
                 html.Div([
                         html.Div("Enable filter reset:", className="field-label"),                                         
@@ -1508,7 +1517,9 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
     return "", ant_spacing_wavlength, ant_spacing_meter, ant_spacing_feet, ant_spacing_inch, ambiguity_warning
 
 @app.callback(Output("url"                   , "pathname"),
-              [Input("en_advanced_daq_cfg"   , "value")])
+              Input("en_advanced_daq_cfg"    , "value"),
+              prevent_initial_call = True
+)
 def reconfig_page_content(en_advanced_daq_cfg):
     if en_advanced_daq_cfg is not None and len(en_advanced_daq_cfg):    
         webInterface_inst.en_advanced_daq_cfg = True
