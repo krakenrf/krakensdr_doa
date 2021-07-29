@@ -265,6 +265,7 @@ def read_config_file(config_fname=daq_config_filename):
     param_list.append(parser.getint('calibration','gain_lock_interval'))
     param_list.append(parser.getint('calibration','require_track_lock_intervention'))
     param_list.append(parser.getint('calibration','cal_track_mode'))
+    param_list.append(parser.get('calibration','amplitude_cal_mode'))
     param_list.append(parser.getint('calibration','cal_frame_interval'))
     param_list.append(parser.getint('calibration','cal_frame_burst_size'))
     param_list.append(parser.getint('calibration','amplitude_tolerance'))
@@ -304,11 +305,12 @@ def write_config_file(param_list):
     parser['calibration']['gain_lock_interval']=str(param_list[15])
     parser['calibration']['require_track_lock_intervention']=str(param_list[16])
     parser['calibration']['cal_track_mode']=str(param_list[17])
-    parser['calibration']['cal_frame_interval']=str(param_list[18])
-    parser['calibration']['cal_frame_burst_size']=str(param_list[19])
-    parser['calibration']['amplitude_tolerance']=str(param_list[20])
-    parser['calibration']['phase_tolerance']=str(param_list[21])
-    parser['calibration']['maximum_sync_fails']=str(param_list[22])
+    parser['calibration']['amplitude_cal_mode']=str(param_list[18])
+    parser['calibration']['cal_frame_interval']=str(param_list[19])
+    parser['calibration']['cal_frame_burst_size']=str(param_list[20])
+    parser['calibration']['amplitude_tolerance']=str(param_list[21])
+    parser['calibration']['phase_tolerance']=str(param_list[22])
+    parser['calibration']['maximum_sync_fails']=str(param_list[23])
 
     ini_parameters = parser._sections
     error_list = ini_checker.check_ini(ini_parameters, settings.en_hw_check)
@@ -339,6 +341,8 @@ trace_colors = px.colors.qualitative.Plotly
 trace_colors[3] = 'rgb(255,255,51)'
 valid_fir_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen' , 'bohman', 'blackmanharris', 'nuttall', 'barthann'] 
 valid_sample_rates = [0.25, 0.900001, 1.024, 1.4, 1.8, 1.92, 2.048, 2.4, 2.56]
+valid_daq_buffer_sizes = (2**np.arange(10,21,1)).tolist()
+calibration_tack_modes = [['No tracking',0] , ['Periodic tracking',2]]
 doa_trace_colors =	{
   "DoA Bartlett": "#00B5F7",
   "DoA Capon"   : "rgb(226,26,28)",
@@ -510,8 +514,12 @@ def generate_config_page_layout(webInterface_inst):
                 ], className="field"),
                 html.H3("DAQ", id="cfg_group_daq"),
                 html.Div([
-                        html.Div("DAQ buffer size:", className="field-label"),                                         
-                        dcc.Input(id='cfg_daq_buffer_size', value=daq_cfg_params[1], type='number', debounce=True, className="field-body")
+                        html.Div("DAQ buffer size:", className="field-label"),                                                                 
+                        dcc.Dropdown(id='cfg_daq_buffer_size',
+                                    options=[
+                                            {'label': i, 'value': i} for i in valid_daq_buffer_sizes
+                                    ],
+                                    value=daq_cfg_params[1], style={"display":"inline-block"},className="field-body"),
                 ], className="field"),
                 html.Div([
                     html.Div("Sample rate [MHz]:", className="field-label"),
@@ -585,28 +593,42 @@ def generate_config_page_layout(webInterface_inst):
                         dcc.Checklist(options=option     , id="en_req_track_lock_intervention"   , className="field-body", value=en_req_track_lock_values),
                 ], className="field"),
                 html.Div([
-                        html.Div("Calibration track mode:", className="field-label"),                                         
-                        dcc.Input(id='cfg_cal_track_mode', value=daq_cfg_params[17], type='number', debounce=True, className="field-body")
+                        html.Div("Calibration track mode:", className="field-label"),                  
+                        dcc.Dropdown(id='cfg_cal_track_mode',
+                                    options=[
+                                            {'label': i[0], 'value': i[1]} for i in calibration_tack_modes
+                                    ],
+                                    value=daq_cfg_params[17], style={"display":"inline-block"},className="field-body"),                                        
+                ], className="field"),
+                html.Div([
+                        html.Div("Amplitude calibration mode :", className="field-label"),                  
+                        dcc.Dropdown(id='cfg_amplitude_cal_mode',
+                                    options=[
+                                            {'label': 'default', 'value': 'default'},
+                                            {'label': 'disabled', 'value': 'disabled'},
+                                            {'label': 'channel_power', 'value': 'channel_power'}
+                                    ],
+                                    value=daq_cfg_params[18], style={"display":"inline-block"},className="field-body"),                                        
                 ], className="field"),
                 html.Div([
                         html.Div("Calibration frame interval:", className="field-label"),                                         
-                        dcc.Input(id='cfg_cal_frame_interval', value=daq_cfg_params[18], type='number', debounce=True, className="field-body")
+                        dcc.Input(id='cfg_cal_frame_interval', value=daq_cfg_params[19], type='number', debounce=True, className="field-body")
                 ], className="field"),
                 html.Div([
                         html.Div("Calibration frame bursts size:", className="field-label"),                                         
-                        dcc.Input(id='cfg_cal_frame_burst_size', value=daq_cfg_params[19], type='number', debounce=True, className="field-body")
+                        dcc.Input(id='cfg_cal_frame_burst_size', value=daq_cfg_params[20], type='number', debounce=True, className="field-body")
                 ], className="field"),
                 html.Div([
                         html.Div("Amplitude tolerance [dB]:", className="field-label"),                                         
-                        dcc.Input(id='cfg_amplitude_tolerance', value=daq_cfg_params[20], type='number', debounce=True, className="field-body")
+                        dcc.Input(id='cfg_amplitude_tolerance', value=daq_cfg_params[21], type='number', debounce=True, className="field-body")
                 ], className="field"),
                 html.Div([
                         html.Div("Phase tolerance [deg]:", className="field-label"),                                         
-                        dcc.Input(id='cfg_phase_tolerance', value=daq_cfg_params[21], type='number', debounce=True, className="field-body")
+                        dcc.Input(id='cfg_phase_tolerance', value=daq_cfg_params[22], type='number', debounce=True, className="field-body")
                 ], className="field"),
                 html.Div([
                         html.Div("Maximum sync fails:", className="field-label"),                                         
-                        dcc.Input(id='cfg_max_sync_fails', value=daq_cfg_params[22], type='number', debounce=True, className="field-body")
+                        dcc.Input(id='cfg_max_sync_fails', value=daq_cfg_params[23], type='number', debounce=True, className="field-body")
                 ], className="field"),
                 html.Div([
                         html.Div("", id="daq_ini_check", className="field-label", style={"color":"white"}),
@@ -1276,6 +1298,7 @@ def update_squelch_params(en_dsp_squelch, squelch_threshold):
     Output(component_id='cfg_gain_lock'            , component_property="value"),
     Output(component_id="en_req_track_lock_intervention", component_property="value"),
     Output(component_id='cfg_cal_track_mode'       , component_property="value"),
+    Output(component_id='cfg_amplitude_cal_mode'   , component_property="value"),
     Output(component_id='cfg_cal_frame_interval'   , component_property="value"),
     Output(component_id='cfg_cal_frame_burst_size' , component_property="value"),
     Output(component_id='cfg_amplitude_tolerance'  , component_property="value"),
@@ -1296,8 +1319,8 @@ def update_daq_cfg_params(config_fname):
         param_list[11]=[1] if param_list[11] else [] # Enable filter reset
         param_list[14]=[1] if param_list[14] else [] # Enable IQ calibration
         param_list[16]=[1] if param_list[16] else [] # Enable Req track lock intervention        
-        return param_list[0:23]        
-    else: return (0)*23
+        return param_list[0:24]        
+    else: return (0)*24
 
 @app.callback(
     Output(component_id="placeholder_recofnig_daq" , component_property="children"),
@@ -1322,6 +1345,7 @@ def update_daq_cfg_params(config_fname):
     State(component_id='cfg_gain_lock'            , component_property="value"),
     State(component_id="en_req_track_lock_intervention", component_property="value"),
     State(component_id='cfg_cal_track_mode'       , component_property="value"),
+    State(component_id='cfg_amplitude_cal_mode'   , component_property="value"),
     State(component_id='cfg_cal_frame_interval'   , component_property="value"),
     State(component_id='cfg_cal_frame_burst_size' , component_property="value"),
     State(component_id='cfg_amplitude_tolerance'  , component_property="value"),
@@ -1334,8 +1358,9 @@ def reconfig_daq_chain(input_value,
                     en_squelch_mode,cfg_squelch_init_th,cfg_cpi_size,cfg_decimation_ratio,
                     cfg_fir_bw,cfg_fir_tap_size,cfg_fir_window,en_filter_reset,cfg_corr_size,
                     cfg_std_ch_ind,en_iq_cal,cfg_gain_lock,en_req_track_lock_intervention,
-                    cfg_cal_track_mode,cfg_cal_frame_interval,cfg_cal_frame_burst_size,
-                    cfg_amplitude_tolerance,cfg_phase_tolerance,cfg_max_sync_fails):
+                    cfg_cal_track_mode,cfg_amplitude_cal_mode,cfg_cal_frame_interval,
+                    cfg_cal_frame_burst_size, cfg_amplitude_tolerance,cfg_phase_tolerance,
+                    cfg_max_sync_fails):
     
     if input_value is None:
         raise PreventUpdate
@@ -1378,6 +1403,7 @@ def reconfig_daq_chain(input_value,
     else:
         param_list.append(0) 
     param_list.append(cfg_cal_track_mode)
+    param_list.append(cfg_amplitude_cal_mode)
     param_list.append(cfg_cal_frame_interval)
     param_list.append(cfg_cal_frame_burst_size)
     param_list.append(cfg_amplitude_tolerance)
