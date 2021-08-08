@@ -84,7 +84,7 @@ class webInterface():
         self.module_receiver.daq_squelch_th_dB = settings.squelch_threshold_dB
         self.module_receiver.rec_ip_addr       = settings.default_ip
 
-        self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver)
+        self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=settings.logging_level*10)
         self.module_signal_processor.en_spectrum          = settings.en_spectrum
         self.module_signal_processor.DOA_ant_alignment    = settings.ant_arrangement
         self.module_signal_processor.DOA_inter_elem_space = settings.ant_spacing 

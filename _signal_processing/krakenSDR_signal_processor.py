@@ -38,7 +38,7 @@ from pyargus import directionEstimation as de
 
 class SignalProcessor(threading.Thread):
     
-    def __init__(self, data_que, module_receiver):
+    def __init__(self, data_que, module_receiver, logging_level=10):
         """
             Parameters:
             -----------
@@ -47,6 +47,7 @@ class SignalProcessor(threading.Thread):
         """        
         super(SignalProcessor, self).__init__()
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging_level)
 
         self.module_receiver = module_receiver
         self.data_que = data_que
@@ -103,6 +104,10 @@ class SignalProcessor(threading.Thread):
                         
                 #-----> ACQUIRE NEW DATA FRAME <-----                        
                 self.module_receiver.get_iq_online()
+                # Capture cal frame for latency estimation
+                if self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_CAL:
+                    self.logger.debug("Calibration frame arrived:{0} ms".format(int(time.time_ns()/10**6)))
+                
                 # Normal data frame or cal frame ?
                 en_proc = self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_DATA
                 """
