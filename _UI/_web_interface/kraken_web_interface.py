@@ -922,7 +922,7 @@ def fetch_dsp_data(input_value, pathname):
     # External interface
     if doa_update_flag:
         DOA_str = str(int(webInterface_inst.doas[0]))
-        confidence_str  = "{:.2f}".format(np.max(webInterface_inst.doa_confidences))
+        confidence_str  = "{:d}".format(np.max(webInterface_inst.doa_confidences))
         max_power_level_str = "{:.1f}".format((np.maximum(-100, webInterface_inst.max_amplitude)))
         html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+confidence_str+"</CONF>\n<PWR>"+max_power_level_str+"</PWR>\n</DATA>"
         webInterface_inst.DOA_res_fd.seek(0)
