@@ -62,6 +62,7 @@ class webInterface():
         self.logger = logging.getLogger(__name__)        
         self.logger.setLevel(settings.logging_level*10)
         self.logger.info("Inititalizing web interface ")
+
         
         #############################################
         #  Initialize and Configure Kraken modules  #
@@ -126,7 +127,6 @@ class webInterface():
         self.doas                  = [] # Final measured DoAs [deg]
         self.doa_confidences       = []
         self.compass_ofset         = settings.compass_offset
-        self.DOA_res_fd            = open("_android_web/DOA_value.html","w+") #open("/ram/DOA_value.html","w+") # DOA estimation result file descriptor
 
         self.max_amplitude         = 0 # Used to help setting the threshold level of the squelch
         self.avg_powers            = []
@@ -190,7 +190,7 @@ class webInterface():
     def close_data_interfaces(self):
         self.module_receiver.eth_close()
     def close(self):
-        self.DOA_res_fd.close()
+        pass
     def config_doa_in_signal_processor(self):
         if self._doa_method == 0:
             self.module_signal_processor.en_DOA_Bartlett = True
@@ -919,16 +919,6 @@ def fetch_dsp_data(input_value, pathname):
     else:
         pass
         # Handle task here and call q.task_done()
-    # External interface
-    if doa_update_flag:
-        DOA_str = str(int(webInterface_inst.doas[0]))
-        confidence_str  = "{:d}".format(np.max(webInterface_inst.doa_confidences))
-        max_power_level_str = "{:.1f}".format((np.maximum(-100, webInterface_inst.max_amplitude)))
-        html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+confidence_str+"</CONF>\n<PWR>"+max_power_level_str+"</PWR>\n</DATA>"
-        webInterface_inst.DOA_res_fd.seek(0)
-        webInterface_inst.DOA_res_fd.write(html_str)
-        webInterface_inst.DOA_res_fd.truncate()
-        logging.debug("DoA results writen: {:s}".format(html_str))    
 
     if (pathname == "/config" or pathname=="/") and daq_status_update_flag:        
         return webInterface_inst.page_update_rate*1000, 1, no_update, no_update, freq_update

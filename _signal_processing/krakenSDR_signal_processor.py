@@ -36,6 +36,17 @@ from scipy.signal import correlate
 from scipy.signal import convolve
 from pyargus import directionEstimation as de
 
+import socket
+
+# Init UDP
+server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+# Enable broadcasting mode
+server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+# Set a timeout so the  socket does not block
+# indefinitely when trying to receive data.
+server.settimeout(0.2)
+
 class SignalProcessor(threading.Thread):
     
     def __init__(self, data_que, module_receiver):
@@ -47,6 +58,8 @@ class SignalProcessor(threading.Thread):
         """        
         super(SignalProcessor, self).__init__()
         self.logger = logging.getLogger(__name__)
+
+        self.DOA_res_fd = open("_android_web/DOA_value.html","w+")
 
         self.module_receiver = module_receiver
         self.data_que = data_que
@@ -96,7 +109,7 @@ class SignalProcessor(threading.Thread):
         """
         while True:
             time.sleep(1)
-            while self.run_processing:                     
+            while self.run_processing:  
                 que_data_packet = []
 
                 start_time = time.time()
@@ -192,35 +205,52 @@ class SignalProcessor(threading.Thread):
                         que_data_packet.append(['spectrum', spectrum])
 
                     #-----> DoA ESIMATION <----- 
+                    conf_val = 0
+                    theta_0 = 0
                     if self.en_DOA_estimation and self.data_ready:
                         self.estimate_DOA()                        
                         que_data_packet.append(['doa_thetas', self.DOA_theta])
                         if self.en_DOA_Bartlett:
                             doa_result_log = DOA_plot_util(self.DOA_Bartlett_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            conf_val = calculate_doa_papr(self.DOA_Bartlett_res)
                             que_data_packet.append(['DoA Bartlett', doa_result_log])
                             que_data_packet.append(['DoA Bartlett Max', theta_0])
-                            que_data_packet.append(['DoA Bartlett confidence', calculate_doa_papr(doa_result_log)])
+                            que_data_packet.append(['DoA Bartlett confidence', conf_val])
                         if self.en_DOA_Capon:
                             doa_result_log = DOA_plot_util(self.DOA_Capon_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            conf_val = calculate_doa_papr(self.DOA_Capon_res)
                             que_data_packet.append(['DoA Capon', doa_result_log])
                             que_data_packet.append(['DoA Capon Max', theta_0])
-                            que_data_packet.append(['DoA Capon confidence', calculate_doa_papr(doa_result_log)])
+                            que_data_packet.append(['DoA Capon confidence', conf_val])
                         if self.en_DOA_MEM:
                             doa_result_log = DOA_plot_util(self.DOA_MEM_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            conf_val = calculate_doa_papr(self.DOA_MEM_res)
                             que_data_packet.append(['DoA MEM', doa_result_log])
                             que_data_packet.append(['DoA MEM Max', theta_0])
-                            que_data_packet.append(['DoA MEM confidence', calculate_doa_papr(doa_result_log)])
+                            que_data_packet.append(['DoA MEM confidence', conf_val])
                         if self.en_DOA_MUSIC:
                             doa_result_log = DOA_plot_util(self.DOA_MUSIC_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            conf_val = calculate_doa_papr(self.DOA_MUSIC_res)
                             que_data_packet.append(['DoA MUSIC', doa_result_log])
                             que_data_packet.append(['DoA MUSIC Max', theta_0])
-                            que_data_packet.append(['DoA MUSIC confidence', calculate_doa_papr(doa_result_log)])
+                            que_data_packet.append(['DoA MUSIC confidence', conf_val])
+
+                        DOA_str = str(int(theta_0))
+                        confidence_str = "{:.2f}".format(np.max(conf_val))
+                        max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
+                        message = str(int(time.time() * 1000)) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
+                        server.sendto(message.encode(), ('<broadcast>', 37020))
+
+                        html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+confidence_str+"</CONF>\n<PWR>"+max_power_level_str+"</PWR>\n</DATA>"
+                        self.DOA_res_fd.seek(0)
+                        self.DOA_res_fd.write(html_str)
+                        self.DOA_res_fd.truncate()
+                        self.logger.debug("DoA results writen: {:s}".format(html_str))
                         
-                    
                     # Record IQ samples
                     if self.en_record:          
                         # TODO: Implement IQ frame recording          
@@ -228,7 +258,13 @@ class SignalProcessor(threading.Thread):
 
                 stop_time = time.time()
                 que_data_packet.append(['update_rate', stop_time-start_time])
-                self.data_que.put(que_data_packet)
+
+                if self.data_que.full():
+                    try:
+                        self.data_que.get(False) #empty que if not taken yet so fresh data is put in
+                    except queue.Empty:
+                        pass
+                self.data_que.put(que_data_packet, False) # Must be non-blocking so DOA can update when dash browser window is closed
 
     def estimate_DOA(self):
         """
@@ -252,13 +288,17 @@ class SignalProcessor(threading.Thread):
 
              # DOA estimation
             if self.en_DOA_Bartlett:
-                self.DOA_Bartlett_res = de.DOA_Bartlett(R, scanning_vectors)                                
+                DOA_Bartlett_res = de.DOA_Bartlett(R, scanning_vectors)
+                self.DOA_Bartlett_res = DOA_Bartlett_res
             if self.en_DOA_Capon:
-                self.DOA_Capon_res = de.DOA_Capon(R, scanning_vectors)                
+                DOA_Capon_res = de.DOA_Capon(R, scanning_vectors)
+                self.DOA_Capon_res = DOA_Capon_res
             if self.en_DOA_MEM:
-                self.DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)                
+                DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)
+                self.DOA_MEM_res = DOA_MEM_res
             if self.en_DOA_MUSIC:
-                self.DOA_MUSIC_res = de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)               
+                DOA_MUSIC_res = de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
+                self.DOA_MUSIC_res = DOA_MUSIC_res
 
         elif self.DOA_ant_alignment == "ULA":
             self.DOA_theta =  np.linspace(-90,90,181)
@@ -281,20 +321,22 @@ class SignalProcessor(threading.Thread):
                 DOA_MUSIC_res = de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
                 self.DOA_MUSIC_res = DOA_MUSIC_res        
 
-def DOA_plot_util(DOA_data, log_scale_min=-50):
+def DOA_plot_util(DOA_data, log_scale_min=-100):
     """
         This function prepares the calulcated DoA estimation results for plotting. 
         
-        Changes to log scale and removes extreme low values
-    """    
-    DOA_data = np.abs(DOA_data)
-    DOA_data = np.divide(DOA_data, np.max(DOA_data)) # Normalization
-    DOA_data = 10*np.log10(DOA_data) # Change to logscale
-    DOA_data = [log_scale_min if DOA_data_i < log_scale_min else DOA_data_i for DOA_data_i in DOA_data] # Remove extremely low values
-    return np.array(DOA_data)
+        - Noramlize DoA estimation results
+        - Changes to log scale
+    """
 
-def calculate_doa_papr(DOA_data, log_scale_min=-50):
-    c=10**(log_scale_min/10)
-    M=len(DOA_data)
-    scaling_factor = 99 / (10*np.log10(1/((c*M-c+1)/M))) 
-    return round(10*np.log10(1/np.average(10**(DOA_data/10)))*scaling_factor)
+    DOA_data = np.divide(np.abs(DOA_data), np.max(np.abs(DOA_data))) # Normalization    
+    DOA_data = 10*np.log10(DOA_data) # Change to logscale
+    
+    for i in range(len(DOA_data)): # Remove extremely low values
+        if DOA_data[i] < log_scale_min:
+            DOA_data[i] = log_scale_min
+    
+    return DOA_data
+
+def calculate_doa_papr(DOA_data):
+    return 10*np.log10(np.max(np.abs(DOA_data))/np.average(np.abs(DOA_data)))
