@@ -36,6 +36,17 @@ from scipy.signal import correlate
 from scipy.signal import convolve
 from pyargus import directionEstimation as de
 
+import socket
+
+# Init UDP
+server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+# Enable broadcasting mode
+server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+# Set a timeout so the  socket does not block
+# indefinitely when trying to receive data.
+server.settimeout(0.2)
+
 class SignalProcessor(threading.Thread):
     
     def __init__(self, data_que, module_receiver):
@@ -47,6 +58,8 @@ class SignalProcessor(threading.Thread):
         """        
         super(SignalProcessor, self).__init__()
         self.logger = logging.getLogger(__name__)
+
+        self.DOA_res_fd = open("_android_web/DOA_value.html","w+")
 
         self.module_receiver = module_receiver
         self.data_que = data_que
@@ -192,36 +205,52 @@ class SignalProcessor(threading.Thread):
                         que_data_packet.append(['spectrum', spectrum])
 
                     #-----> DoA ESIMATION <----- 
+                    conf_val = 0
+                    theta_0 = 0
                     if self.en_DOA_estimation and self.data_ready:
                         self.estimate_DOA()                        
                         que_data_packet.append(['doa_thetas', self.DOA_theta])
                         if self.en_DOA_Bartlett:
                             doa_result_log = DOA_plot_util(self.DOA_Bartlett_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            conf_val = calculate_doa_papr(self.DOA_Bartlett_res)
                             que_data_packet.append(['DoA Bartlett', doa_result_log])
                             que_data_packet.append(['DoA Bartlett Max', theta_0])
-                            que_data_packet.append(['DoA Bartlett confidence', calculate_doa_papr(self.DOA_Bartlett_res)])
+                            que_data_packet.append(['DoA Bartlett confidence', conf_val])
                         if self.en_DOA_Capon:
                             doa_result_log = DOA_plot_util(self.DOA_Capon_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            conf_val = calculate_doa_papr(self.DOA_Capon_res)
                             que_data_packet.append(['DoA Capon', doa_result_log])
                             que_data_packet.append(['DoA Capon Max', theta_0])
-                            que_data_packet.append(['DoA Capon confidence', calculate_doa_papr(self.DOA_Capon_res)])
+                            que_data_packet.append(['DoA Capon confidence', conf_val])
                         if self.en_DOA_MEM:
                             doa_result_log = DOA_plot_util(self.DOA_MEM_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            conf_val = calculate_doa_papr(self.DOA_MEM_res)
                             que_data_packet.append(['DoA MEM', doa_result_log])
                             que_data_packet.append(['DoA MEM Max', theta_0])
-                            que_data_packet.append(['DoA MEM confidence', calculate_doa_papr(self.DOA_MEM_res)])
+                            que_data_packet.append(['DoA MEM confidence', conf_val])
                         if self.en_DOA_MUSIC:
                             doa_result_log = DOA_plot_util(self.DOA_MUSIC_res)
                             theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            conf_val = calculate_doa_papr(self.DOA_MUSIC_res)
                             que_data_packet.append(['DoA MUSIC', doa_result_log])
                             que_data_packet.append(['DoA MUSIC Max', theta_0])
-                            que_data_packet.append(['DoA MUSIC confidence', calculate_doa_papr(self.DOA_MUSIC_res)])
+                            que_data_packet.append(['DoA MUSIC confidence', conf_val])
+
+                        DOA_str = str(int(theta_0))
+                        confidence_str = "{:.2f}".format(np.max(conf_val))
+                        max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
+                        message = str(int(time.time() * 1000)) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
+                        server.sendto(message.encode(), ('<broadcast>', 37020))
+
+                        html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+confidence_str+"</CONF>\n<PWR>"+max_power_level_str+"</PWR>\n</DATA>"
+                        self.DOA_res_fd.seek(0)
+                        self.DOA_res_fd.write(html_str)
+                        self.DOA_res_fd.truncate()
+                        self.logger.debug("DoA results writen: {:s}".format(html_str))
                         
-                        
-                    
                     # Record IQ samples
                     if self.en_record:          
                         # TODO: Implement IQ frame recording          
@@ -229,7 +258,13 @@ class SignalProcessor(threading.Thread):
 
                 stop_time = time.time()
                 que_data_packet.append(['update_rate', stop_time-start_time])
-                self.data_que.put(que_data_packet)
+
+                if self.data_que.full():
+                    try:
+                        self.data_que.get(False) #empty que if not taken yet so fresh data is put in
+                    except queue.Empty:
+                        pass
+                self.data_que.put(que_data_packet, False) # Must be non-blocking so DOA can update when dash browser window is closed
 
     def estimate_DOA(self):
         """
