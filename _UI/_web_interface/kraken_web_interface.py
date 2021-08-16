@@ -126,7 +126,7 @@ class webInterface():
         self.doa_confidences       = []
         self.compass_ofset         = settings.compass_offset
         self.DOA_res_fd            = open("_android_web/DOA_value.html","w+") #open("/ram/DOA_value.html","w+") # DOA estimation result file descriptor
-
+        self.daq_dsp_latency       = 0 # [ms]
         self.max_amplitude         = 0 # Used to help setting the threshold level of the squelch
         self.avg_powers            = []
         self.logger.info("Web interface object initialized")
@@ -629,6 +629,7 @@ def generate_config_page_layout(webInterface_inst):
     html.Div([
         html.H2("DAQ Subsystem Status", id="init_title_s"),
         html.Div([html.Div("Update rate:"              , id="label_daq_update_rate"   , className="field-label"), html.Div("- ms"        , id="body_daq_update_rate"   , className="field-body")], className="field"),
+        html.Div([html.Div("Latency:"                  , id="label_daq_dsp_latency"   , className="field-label"), html.Div("- ms"        , id="body_daq_dsp_latency"   , className="field-body")], className="field"),
         html.Div([html.Div("Frame index:"              , id="label_daq_frame_index"   , className="field-label"), html.Div("-"           , id="body_daq_frame_index"   , className="field-body")], className="field"),
         html.Div([html.Div("Frame type:"               , id="label_daq_frame_type"    , className="field-label"), html.Div("-"           , id="body_daq_frame_type"    , className="field-body")], className="field"),
         html.Div([html.Div("Frame sync:"               , id="label_daq_frame_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_frame_sync"    , className="field-body", style={"color": "red"})], className="field"),                
@@ -843,6 +844,8 @@ def fetch_dsp_data(input_value, pathname):
                 webInterface_inst._update_rate_arr[1:webInterface_inst._avg_win_size-1]                
                 webInterface_inst._update_rate_arr[webInterface_inst._avg_win_size-1] = webInterface_inst.daq_update_rate
                 webInterface_inst.page_update_rate = np.average(webInterface_inst._update_rate_arr)*0.8                
+            elif data_entry[0] == "latency":
+                webInterface_inst.daq_dsp_latency = data_entry[1]
             elif data_entry[0] == "max_amplitude":
                 webInterface_inst.max_amplitude = data_entry[1]                
             elif data_entry[0] == "avg_powers":                
@@ -922,6 +925,7 @@ def fetch_dsp_data(input_value, pathname):
 
 @app.callback(
     Output(component_id="body_daq_update_rate"        , component_property='children'),
+    Output(component_id="body_daq_dsp_latency"        , component_property='children'),    
     Output(component_id="body_daq_frame_index"        , component_property='children'),
     Output(component_id="body_daq_frame_sync"         , component_property='children'),
     Output(component_id="body_daq_frame_sync"         , component_property='style'),
@@ -969,10 +973,11 @@ def update_daq_status(input_value):
         conn_status_style={"color": "orange"}
 
     if webInterface_inst.daq_update_rate < 1:
-        daq_update_rate_str    = "{:.2f} ms".format(webInterface_inst.daq_update_rate*1000)
+        daq_update_rate_str    = "{:d} ms".format(round(webInterface_inst.daq_update_rate*1000))
     else:
         daq_update_rate_str    = "{:.2f} s".format(webInterface_inst.daq_update_rate)
 
+    daq_dsp_latency        = "{:d} ms".format(webInterface_inst.daq_dsp_latency) 
     daq_frame_index_str    = str(webInterface_inst.daq_frame_index)
     
     daq_frame_type_str =  webInterface_inst.daq_frame_type
@@ -1028,7 +1033,7 @@ def update_daq_status(input_value):
     daq_max_amp_str        = "{:.1f}".format(webInterface_inst.max_amplitude)
     daq_avg_powers_str     = webInterface_inst.avg_powers
     
-    return daq_update_rate_str, daq_frame_index_str, daq_frame_sync_str, \
+    return daq_update_rate_str, daq_dsp_latency, daq_frame_index_str, daq_frame_sync_str, \
             frame_sync_style, daq_frame_type_str, frame_type_style, \
             daq_power_level_str, daq_power_level_style, daq_conn_status_str, \
             conn_status_style, daq_delay_sync_str, delay_sync_style, \

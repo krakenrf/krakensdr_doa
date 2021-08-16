@@ -104,10 +104,7 @@ class SignalProcessor(threading.Thread):
                         
                 #-----> ACQUIRE NEW DATA FRAME <-----                        
                 self.module_receiver.get_iq_online()
-                # Capture cal frame for latency estimation
-                if self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_CAL:
-                    self.logger.debug("Calibration frame arrived:{0} ms".format(int(time.time_ns()/10**6)))
-                
+               
                 # Normal data frame or cal frame ?
                 en_proc = self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_DATA
                 """
@@ -232,8 +229,9 @@ class SignalProcessor(threading.Thread):
                         # TODO: Implement IQ frame recording          
                         self.logger.error("Saving IQ samples to npy is obsolete, IQ Frame saving is currently not implemented")
 
-                stop_time = time.time()
+                stop_time = time.time()                
                 que_data_packet.append(['update_rate', stop_time-start_time])
+                que_data_packet.append(['latency', int(stop_time*10**3)-self.module_receiver.iq_header.time_stamp])
                 self.data_que.put(que_data_packet)
 
     def estimate_DOA(self):
