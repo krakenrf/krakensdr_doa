@@ -42,8 +42,8 @@ daq_preconfigs_path   = os.path.join(
                         "config_files")
 daq_config_filename   = os.path.join(daq_subsystem_path, "daq_chain_config.ini")
 daq_stop_filename     = "daq_stop.sh"
-daq_start_filename    = "daq_start_sm.sh"
-#daq_start_filename    = "daq_synthetic_start.sh"
+#daq_start_filename    = "daq_start_sm.sh"
+daq_start_filename    = "daq_synthetic_start.sh"
 sys.path.insert(0, daq_subsystem_path)
 
 import ini_checker
@@ -118,6 +118,8 @@ class webInterface():
         self.daq_if_gains          ="[,,,,]"
         self.en_advanced_daq_cfg   = settings.en_advanced_daq_cfg 
         self.daq_ini_cfg_params    = read_config_file()
+        self.active_daq_ini_cfg    = "Default" # Holds the string identifier of the actively loaded DAQ ini configuration
+        self.tmp_daq_ini_cfg       = "Default"
 
         # DSP Processing Parameters and Results  
         self.spectrum              = None
@@ -491,8 +493,15 @@ def generate_config_page_layout(webInterface_inst):
             dcc.Dropdown(id='daq_cfg_files',
                     options=[
                         {'label': str(i[1]), 'value': i[0]} for i in preconfigs
-                    ],
-            style={"display":"inline-block", "width": "400px"},className="field-body"),
+                    ],            
+            clearable=False, 
+            placeholder="Select configuration file",
+            persistence=True,
+            style={"display":"inline-block", "width": "400px"},
+            className="field-body"),
+        ], className="field"),
+        html.Div([
+            html.Div("Active configuration: "+webInterface_inst.active_daq_ini_cfg, id="active_daq_ini_cfg", className="field-label"),
         ], className="field"),
         html.Div([
             html.Button('Reconfigure & Restart DAQ chain', id='btn_reconfig_daq_chain', className="btn"),
@@ -1344,12 +1353,13 @@ def update_daq_ini_params(
     param_list.append(cfg_max_sync_fails)
 
     webInterface_inst.daq_ini_cfg_params = param_list
+    webInterface_inst.tmp_daq_ini_cfg = "Custom"
     return 0
 
 @app.callback(
     Output(component_id="placeholder_recofnig_daq" , component_property="children"),
     Output(component_id="daq_ini_check"            , component_property="children"),
-    Output(component_id="daq_ini_check"            , component_property="style"),
+    Output(component_id="daq_ini_check"            , component_property="style"),    
     Input(component_id="btn_reconfig_daq_chain"    , component_property="n_clicks"),
     prevent_initial_call=True
 )
@@ -1404,7 +1414,9 @@ def reconfig_daq_chain(input_value):
     webInterface_inst.start_processing()
     logging.debug("Signal processing started")
     webInterface_inst.daq_restart = 0
-        
+    
+    webInterface_inst.active_daq_ini_cfg = webInterface_inst.tmp_daq_ini_cfg
+
     return 0,"",{"color":"white"}
 
 @app.callback(
@@ -1503,8 +1515,10 @@ def reconfig_page_content(en_advanced_daq_cfg, config_fname):
     ctx = dash.callback_context
     if ctx.triggered:
         component_id = ctx.triggered[0]['prop_id'].split('.')[0]        
-        if component_id   == "daq_cfg_files" and config_fname is not None: 
+        if component_id   == "daq_cfg_files" and config_fname is not None:             
             webInterface_inst.daq_ini_cfg_params = read_config_file(config_fname)
+            webInterface_inst.tmp_daq_ini_cfg = config_fname
+            # TODO: !!! READ CONFIGname from meta and set it as name!!!
         elif component_id == "en_advanced_daq_cfg":
             if en_advanced_daq_cfg is not None and len(en_advanced_daq_cfg):    
                 webInterface_inst.en_advanced_daq_cfg = True
