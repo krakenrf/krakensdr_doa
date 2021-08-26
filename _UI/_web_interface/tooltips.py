@@ -161,6 +161,15 @@ daq_ini_config_tooltips = html.Div([
         placement="bottom",
         className="tooltip"
         ),
+    dbc.Tooltip([
+        html.P("When periodic calibration track mode is selected the firmware regularly turn on the noise source for a short burst to\
+            check whether the IQ calibration is still valid or not. In case the calibrated state is lost, the firmware automatically\
+                initiates a reclaibration procedure")],
+        target="label_calibration_track_mode",
+        placement="bottom",
+        className="tooltip"
+        ),
+        
     # Calibration frame interval
     dbc.Tooltip([
         html.P("Number of data frames between two consecutive calibration burst. Used when periodic calibration mode is selected")],

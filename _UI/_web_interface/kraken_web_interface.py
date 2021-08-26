@@ -87,7 +87,7 @@ class webInterface():
         #############################################
 
         # Web interface internal 
-        self.disable_tooltips = False
+        self.disable_tooltips = settings.disable_tooltips
         self.page_update_rate = 1     
         self._avg_win_size = 10
         self._update_rate_arr = None
@@ -203,6 +203,7 @@ class webInterface():
         data["en_hw_check"]         = settings.en_hw_check
         data["en_advanced_daq_cfg"] = int(self.en_advanced_daq_cfg)
         data["logging_level"]       = settings.logging_level
+        data["disable_tooltips"]    = settings.disable_tooltips
 
         settings.write(data)
     def start_processing(self):
@@ -641,7 +642,7 @@ def generate_config_page_layout(webInterface_inst):
                         dcc.Checklist(options=option     , id="en_req_track_lock_intervention"   , className="field-body", value=en_req_track_lock_values),
                 ], className="field"),
                 html.Div([
-                        html.Div("Calibration track mode:", className="field-label"),                  
+                        html.Div("Calibration track mode:", className="field-label", id="label_calibration_track_mode"),                  
                         dcc.Dropdown(id='cfg_cal_track_mode',
                                     options=[
                                             {'label': i[0], 'value': i[1]} for i in calibration_tack_modes
@@ -649,7 +650,7 @@ def generate_config_page_layout(webInterface_inst):
                                     value=daq_cfg_params[18], style={"display":"inline-block"},className="field-body"),                                        
                 ], className="field"),
                 html.Div([
-                        html.Div("Amplitude calibration mode :", className="field-label"),                  
+                        html.Div("Amplitude calibration mode :", className="field-label", id="label_amplitude_calibration_mode"),                  
                         dcc.Dropdown(id='cfg_amplitude_cal_mode',
                                     options=[
                                             {'label': 'default', 'value': 'default'},

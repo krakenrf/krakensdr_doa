@@ -40,7 +40,7 @@ squelch_threshold_dB = settings.get("squelch_threshold_dB", 0.0)
 en_hw_check         = settings.get("en_hw_check", 0)
 en_advanced_daq_cfg = settings.get("en_advanced_daq_cfg", 0) 
 logging_level       = settings.get("logging_level", 0)
-
+disable_tooltips    = settings.get("disable_tooltips", 0)
 
 # Check and correct if needed
 if not ant_arrangement in ["ULA", "UCA"]:
@@ -82,6 +82,7 @@ def write(data = None):
         data["en_hw_check"]         = en_hw_check
         data["en_advanced_daq_cfg"] = en_advanced_daq_cfg
         data["logging_level"]       = logging_level
+        data["disable_tooltips"]    = disable_tooltips
 
     with open('settings.json', 'w') as outfile:
         json.dump(data, outfile)
