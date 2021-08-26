@@ -1,6 +1,6 @@
 # KrakenSDR Receiver
 
-# Copyright (C) 2018-2020  Carl Laufer, Tamás Pető
+# Copyright (C) 2018-2021  Carl Laufer, Tamás Pető
 #
 #
 #   This program is free software: you can redistribute it and/or modify

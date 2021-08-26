@@ -1,6 +1,6 @@
 # KrakenSDR Signal Processor
 #
-# Copyright (C) 2018-2020  Carl Laufer, Tamás Pető
+# Copyright (C) 2018-2021  Carl Laufer, Tamás Pető
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -181,7 +181,6 @@ class SignalProcessor(threading.Thread):
                             self.squelch_mask = np.ones(len(self.filtered_signal))*self.squelch_threshold
                             self.processed_signal = np.zeros([self.channel_number, len(self.filtered_signal)])
                         
-                        que_data_packet.append(['squelch_read'])
                     #-----> SPECTRUM PROCESSING <----- 
                     
                     if self.en_spectrum and self.data_ready:

@@ -1,4 +1,22 @@
-# -*- coding: utf-8 -*-
+# KrakenSDR Signal Processor
+#
+# Copyright (C) 2018-2021  Carl Laufer, Tamás Pető
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#
+# - coding: utf-8 -*-
 
 # Import built-in modules
 import logging
@@ -120,6 +138,7 @@ class webInterface():
         self.daq_ini_cfg_params    = read_config_file()
         self.active_daq_ini_cfg    = "Default" # Holds the string identifier of the actively loaded DAQ ini configuration
         self.tmp_daq_ini_cfg       = "Default"
+        self.daq_cfg_ini_error     = ""
 
         # DSP Processing Parameters and Results  
         self.spectrum              = None
@@ -133,8 +152,18 @@ class webInterface():
         self.max_amplitude         = 0 # Used to help setting the threshold level of the squelch
         self.avg_powers            = []
         self.logger.info("Web interface object initialized")
-        if self.daq_ini_cfg_params is not None: self.logger.info("Config file found and read succesfully")
-    
+        
+        if self.daq_ini_cfg_params is not None: 
+            self.logger.info("Config file found and read succesfully")        
+            
+            # Set initial Squelch parameters based on the content of the active config file
+            if self.daq_ini_cfg_params[5]: # Squelch is enabled
+                self.module_signal_processor.en_squelch = True                
+                self.module_receiver.daq_squelch_th_dB = round(20*np.log10(self.daq_ini_cfg_params[6]),1)
+                self.module_signal_processor.squelch_threshold = self.daq_ini_cfg_params[6]
+                # Note: There is no need to set the thresold in the DAQ Subsystem as it is configured from the ini-file.
+                
+
     def save_configuration(self):
         data = {}
 
@@ -423,7 +452,7 @@ def generate_config_page_layout(webInterface_inst):
         en_iq_cal_values          =[1] if daq_cfg_params[15] else []
         en_req_track_lock_values  =[1] if daq_cfg_params[17] else []
 
-        daq_data_iface_type       = daq_cfg_params[25]
+        #daq_data_iface_type       = daq_cfg_params[25]
     
         # Read available preconfig files
         preconfigs = get_preconfigs(daq_preconfigs_path)
@@ -511,7 +540,7 @@ def generate_config_page_layout(webInterface_inst):
             html.Button('Reconfigure & Restart DAQ chain', id='btn_reconfig_daq_chain', className="btn"),
         ], className="field"),
         html.Div([
-                html.Div("", id="daq_ini_check", className="field-label", style={"color":"white"}),
+                html.Div(webInterface_inst.daq_cfg_ini_error , id="daq_ini_check", className="field-label", style={"color":"red"}),
         ], className="field"),
         html.Div([html.Div("Advanced DAQ Configuration", id="label_en_advanced_daq_cfg"     , className="field-label"),
                 dcc.Checklist(options=option     , id="en_advanced_daq_cfg"     , className="field-body", value=en_advanced_daq_cfg),
@@ -1266,8 +1295,8 @@ def update_daq_params(input_value, f0, gain):
     
 @app.callback(
     Output(component_id="placeholder_update_squelch", component_property="children"),    
-    Input(component_id ="en_dsp_squelch_check"  , component_property="value"),
-    Input(component_id ="squelch_th"            , component_property="value"),
+    Input(component_id ="en_dsp_squelch_check"      , component_property="value"),
+    Input(component_id ="squelch_th"                , component_property="value"),
     prevent_initial_call=True
 )
 def update_squelch_params(en_dsp_squelch, squelch_threshold):
@@ -1315,6 +1344,7 @@ def update_daq_ini_params(
                     cfg_cal_track_mode,cfg_amplitude_cal_mode,cfg_cal_frame_interval,
                     cfg_cal_frame_burst_size, cfg_amplitude_tolerance,cfg_phase_tolerance,
                     cfg_max_sync_fails):
+    # TODO: Use disctionarry instead of parameter list
     param_list = []
     param_list.append("Custom")
     param_list.append(cfg_rx_channels)
@@ -1356,6 +1386,7 @@ def update_daq_ini_params(
     param_list.append(cfg_amplitude_tolerance)
     param_list.append(cfg_phase_tolerance)
     param_list.append(cfg_max_sync_fails)
+    param_list.append(webInterface_inst.daq_ini_cfg_params[25]) # Preserve data interface information
 
     webInterface_inst.daq_ini_cfg_params = param_list
 
@@ -1367,9 +1398,6 @@ def update_daq_ini_params(
 
 @app.callback(
     Output(component_id="placeholder_recofnig_daq" , component_property="children"),
-    Output(component_id="daq_ini_check"            , component_property="children"),
-    Output(component_id="daq_ini_check"            , component_property="style"),
-    Output(component_id="active_daq_ini_cfg"       , component_property="children"),
     Input(component_id="btn_reconfig_daq_chain"    , component_property="n_clicks"),
     prevent_initial_call=True
 )
@@ -1384,7 +1412,8 @@ def reconfig_daq_chain(input_value):
     """
     config_res, config_err = write_config_file(webInterface_inst.daq_ini_cfg_params)
     if config_res:
-        return -1,config_err[0],{"color":"red"}
+        webInterface_inst.daq_cfg_ini_error = config_err[0]
+        return -1#,config_err[0],{"color":"red"}
     else:    
         logging.info("DAQ Subsystem configuration file edited")
     
@@ -1418,17 +1447,25 @@ def reconfig_daq_chain(input_value):
     # Reinitialize receiver data interface
     if webInterface_inst.module_receiver.init_data_iface() == -1:
         logging.critical("Failed to restart the DAQ data interface")
-        return -1,"Failed to restart the DAQ data interface",{"color":"red"}
+        webInterface_inst.daq_cfg_ini_error = "Failed to restart the DAQ data interface"
+        return -1
     
     # Restart signal processing
     webInterface_inst.start_processing()
     logging.debug("Signal processing started")
     webInterface_inst.daq_restart = 0
     
+    # Set local Squelch-DSP parameters
+    if webInterface_inst.daq_ini_cfg_params[5]: # Squelch is enabled
+        webInterface_inst.module_signal_processor.en_squelch = True                
+        webInterface_inst.module_receiver.daq_squelch_th_dB = round(20*np.log10(webInterface_inst.daq_ini_cfg_params[6]),1)
+        webInterface_inst.module_signal_processor.squelch_threshold = webInterface_inst.daq_ini_cfg_params[6]
+        # Note: There is no need to set the thresold in the DAQ Subsystem as it is configured from the ini-file.
+
+    webInterface_inst.daq_cfg_ini_error = ""
     webInterface_inst.active_daq_ini_cfg = webInterface_inst.tmp_daq_ini_cfg
-    active_daq_cfg_str = "Active configuration: "+webInterface_inst.active_daq_ini_cfg
-    
-    return 0,"",{"color":"white"}, active_daq_cfg_str
+        
+    return 0
 
 @app.callback(
     Output(component_id="placeholder_update_dsp", component_property="children"),
@@ -1517,12 +1554,13 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
 
     return "", ant_spacing_wavlength, ant_spacing_meter, ant_spacing_feet, ant_spacing_inch, ambiguity_warning
 
-@app.callback(Output("url"                  , "pathname"),
-              Input("en_advanced_daq_cfg"   , "value"),
-              Input("daq_cfg_files"         , "value"),
+@app.callback(Output("url"                     , "pathname"),
+              Input("en_advanced_daq_cfg"      , "value"),
+              Input("daq_cfg_files"            , "value"),
+              Input("placeholder_recofnig_daq" , "children"),
               prevent_initial_call = True
 )
-def reconfig_page_content(en_advanced_daq_cfg, config_fname):    
+def reload_cfg_page(en_advanced_daq_cfg, config_fname, dummy_0):    
     ctx = dash.callback_context
     if ctx.triggered:
         component_id = ctx.triggered[0]['prop_id'].split('.')[0]        
