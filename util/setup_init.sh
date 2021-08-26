@@ -14,3 +14,4 @@ python3 -m pip install matplotlib
 
 # For web interface
 python3 -m pip install dash
+python3 -m pip install dash-bootstrap-components
