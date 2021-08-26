@@ -162,6 +162,8 @@ class webInterface():
                 self.module_receiver.daq_squelch_th_dB = round(20*np.log10(self.daq_ini_cfg_params[6]),1)
                 self.module_signal_processor.squelch_threshold = self.daq_ini_cfg_params[6]
                 # Note: There is no need to set the thresold in the DAQ Subsystem as it is configured from the ini-file.
+            else:  # Squelch is disabled
+                self.module_signal_processor.en_squelch = False 
                 
 
     def save_configuration(self):
@@ -1461,6 +1463,8 @@ def reconfig_daq_chain(input_value):
         webInterface_inst.module_receiver.daq_squelch_th_dB = round(20*np.log10(webInterface_inst.daq_ini_cfg_params[6]),1)
         webInterface_inst.module_signal_processor.squelch_threshold = webInterface_inst.daq_ini_cfg_params[6]
         # Note: There is no need to set the thresold in the DAQ Subsystem as it is configured from the ini-file.
+    else:  # Squelch is disabled
+        webInterface_inst.module_signal_processor.en_squelch = False 
 
     webInterface_inst.daq_cfg_ini_error = ""
     webInterface_inst.active_daq_ini_cfg = webInterface_inst.tmp_daq_ini_cfg
