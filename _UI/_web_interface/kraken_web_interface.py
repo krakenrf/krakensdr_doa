@@ -1472,24 +1472,25 @@ def reconfig_daq_chain(input_value):
     return 0
 
 @app.callback(
-    Output(component_id="placeholder_update_dsp", component_property="children"),
-    Output(component_id="ant_spacing_wavelength", component_property="value"),
-    Output(component_id="ant_spacing_meter"     , component_property="value"),
-    Output(component_id="ant_spacing_feet"      , component_property="value"),
-    Output(component_id="ant_spacing_inch"      , component_property="value"),  
-    Output(component_id="ambiguity_warning"     , component_property="children"),  
-    Input(component_id="placeholder_update_freq", component_property="children"),
-    Input(component_id="en_spectrum_check"      , component_property="value"),
-    Input(component_id="en_doa_check"           , component_property="value"),
-    Input(component_id="doa_method"             , component_property="value"),    
-    Input(component_id="en_fb_avg_check"        , component_property="value"),
-    Input(component_id="ant_spacing_wavelength" , component_property="value"),
-    Input(component_id="ant_spacing_meter"      , component_property="value"),
-    Input(component_id="ant_spacing_feet"       , component_property="value"),
-    Input(component_id="ant_spacing_inch"       , component_property="value"),
-    Input(component_id="radio_ant_arrangement"  , component_property="value"),
-    Input(component_id='doa_fig_type'           , component_property='value'),
-    Input(component_id='compass_ofset'          , component_property='value'),    
+    Output("placeholder_update_dsp", "children"),
+    Output("ant_spacing_wavelength", "value"),
+    Output("ant_spacing_meter"     , "value"),
+    Output("ant_spacing_feet"      , "value"),
+    Output("ant_spacing_inch"      , "value"),  
+    Output("ambiguity_warning"     , "children"),
+    Output("en_fb_avg_check"       , "options"),
+    Input("placeholder_update_freq", "children"),
+    Input("en_spectrum_check"      , "value"),
+    Input("en_doa_check"           , "value"),
+    Input("doa_method"             , "value"),    
+    Input("en_fb_avg_check"        , "value"),
+    Input("ant_spacing_wavelength" , "value"),
+    Input("ant_spacing_meter"      , "value"),
+    Input("ant_spacing_feet"       , "value"),
+    Input("ant_spacing_inch"       , "value"),
+    Input("radio_ant_arrangement"  , "value"),
+    Input('doa_fig_type'           , 'value'),
+    Input('compass_ofset'          , 'value'),    
     prevent_initial_call=True
 )
 def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
@@ -1521,12 +1522,14 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
         ant_spacing_wavlength = round(ant_spacing_meter / wavelength,3)
     
 
-    # Max phase diff and ambiguity warning        
+    # Max phase diff and ambiguity warning and Spatial smoothing control    
     if ant_arrangement == "ULA":
         max_phase_diff = ant_spacing_meter / wavelength
+        smoothing_possibility = [{"label":"", "value": 1, "disabled": False}] # Disables the checkbox
     elif ant_arrangement == "UCA":
         UCA_ant_spacing = (np.sqrt(2)*ant_spacing_meter*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
         max_phase_diff = UCA_ant_spacing/wavelength
+        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Enables the checkbox
     if max_phase_diff > 0.5:
         ambiguity_warning= "Warning: DoA estimation is ambiguous, max phase difference:{:.1f}°".format(np.rad2deg(2*np.pi*max_phase_diff))
     else:      
@@ -1556,7 +1559,7 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
     webInterface_inst._doa_fig_type = doa_fig_type
     webInterface_inst.compass_ofset = compass_ofset
 
-    return "", ant_spacing_wavlength, ant_spacing_meter, ant_spacing_feet, ant_spacing_inch, ambiguity_warning
+    return "", ant_spacing_wavlength, ant_spacing_meter, ant_spacing_feet, ant_spacing_inch, ambiguity_warning, smoothing_possibility
 
 @app.callback(Output("url"                     , "pathname"),
               Input("en_advanced_daq_cfg"      , "value"),
