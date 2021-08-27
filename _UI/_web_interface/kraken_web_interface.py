@@ -520,7 +520,7 @@ def generate_config_page_layout(webInterface_inst):
                             {'label': '48.0 dB', 'value': 48.0},
                             {'label': '49.6 dB', 'value': 49.6},
                             ],
-                    value=webInterface_inst.module_receiver.daq_rx_gain, style={"display":"inline-block"},className="field-body")
+                    value=webInterface_inst.module_receiver.daq_rx_gain, className="field-body")
                 ], className="field"),
         html.Div([
             html.Button('Update Receiver Parameters', id='btn-update_rx_param', className="btn"),
@@ -1516,7 +1516,7 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
         if component_id   == "placeholder_update_freq": 
             ant_spacing_meter = spacing_meter  
         else:
-            ant_spacing_meter = round(wavelength * webInterface_inst.module_signal_processor.DOA_inter_elem_space,3)
+            ant_spacing_meter = wavelength * webInterface_inst.module_signal_processor.DOA_inter_elem_space
         
         if component_id   == "ant_spacing_meter":
             ant_spacing_meter = spacing_meter
@@ -1527,10 +1527,12 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
         elif component_id == "ant_spacing_inch":
             ant_spacing_meter = spacing_inch/39.3700787
         
+        ant_spacing_meter = round(ant_spacing_meter, 3)
         webInterface_inst.module_signal_processor.DOA_inter_elem_space = ant_spacing_meter / wavelength
         ant_spacing_feet = round(ant_spacing_meter * 3.2808399,3)
         ant_spacing_inch = round(ant_spacing_meter * 39.3700787,3)
         ant_spacing_wavlength = round(ant_spacing_meter / wavelength,3)
+        
     
 
     # Max phase diff and ambiguity warning and Spatial smoothing control    
