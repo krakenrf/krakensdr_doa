@@ -22,7 +22,6 @@
 import logging
 import os
 import sys
-import copy
 import queue 
 import time
 import subprocess
@@ -80,7 +79,8 @@ class webInterface():
         self.logger = logging.getLogger(__name__)        
         self.logger.setLevel(settings.logging_level*10)
         self.logger.info("Inititalizing web interface ")
-
+        if not settings.settings_found:
+            self.logger.warning("Web Interface settings file is not found!")
         
         #############################################
         #  Initialize and Configure Kraken modules  #
@@ -406,8 +406,9 @@ option = [{"label":"", "value": 1}]
 #############################################
 #          Prepare Dash application         #
 ############################################
-
+webInterface_inst = webInterface()
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
+server = app.server
 app_log = logging.getLogger('werkzeug')
 #app_log.setLevel(settings.logging_level*10)
 app_log.setLevel(30) # TODO: Only during dev time
@@ -1609,11 +1610,10 @@ def display_page(pathname):
     elif pathname == "/doa":
         return generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"
 
-if __name__ == "__main__":
-    webInterface_inst = webInterface()
+if __name__ == "__main__":    
+    # For Development only, otherwise use gunicorn    
+    # Debug mode does not work when the data interface is set to shared-memory "shmem"! 
     app.run_server(debug=False, host="0.0.0.0")
-
-# Debug mode does not work when the data interface is set to shared-memory "shmem"! 
 
 """
 html.Div([

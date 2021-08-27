@@ -8,13 +8,14 @@ import os
 	Author : Tamas Peto
 """
 
-if os.path.exists('settings.json'):
-    with open('settings.json', 'r') as myfile:
-        settings=json.loads(myfile.read())
-else:
-    settings = {}
-    with open('settings.json', 'w') as outfile:
-        json.dump(settings, outfile)
+root_path          = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+settings_file_path = os.path.join(root_path,"settings.json")
+
+settings_found =False
+if os.path.exists(settings_file_path):
+    settings_found = True
+    with open(settings_file_path, 'r') as myfile:
+        settings=json.loads(myfile.read())        
 
 # DAQ Configuration
 center_freq    = settings.get("center_freq", 100.0)
