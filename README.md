@@ -45,7 +45,7 @@ The DSP parameters such as the antenna configuration, the used DoA estimation me
     (See:https://github.com/krakenrf/heimdall_daq_fw/Documentation)
 2. Set the IP address of the DAQ Subsystem in the settings.json, *default_ip* field.
 3. Start the DoA DSP software by typing:
-`./run.sh`
+`./gui_run.sh`
 4. To stop the server and the DSP processing chain run the following script:
 `./kill.sh`
 
