@@ -347,15 +347,15 @@ class ReceiverRTLSDR():
             ----------
                 :param: gain: IF gain value [dB]
                 :type:  gain: int
-        """
+        """                
         if self.receiver_connection_status: # Check connection
             self.daq_rx_gain     = gain
-
+            
             # Set center frequency
             cmd="GAIN"
             gain_list=[int(gain*10)]*self.M
             gain_bytes=pack("I"*self.M, *gain_list)
-            msg_bytes=(cmd.encode()+gain_bytes+bytearray(128-(self.M+1)*4))
+            msg_bytes=(cmd.encode()+gain_bytes+bytearray(128-(self.M+1)*4))  
             try:                
                 _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))            
             except:                

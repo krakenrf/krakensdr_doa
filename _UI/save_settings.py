@@ -19,7 +19,7 @@ if os.path.exists(settings_file_path):
 
 # DAQ Configuration
 center_freq    = settings.get("center_freq", 100.0)
-uniform_gain   = settings.get("uniform_gain", 0.0)
+uniform_gain   = settings.get("uniform_gain", 1.4)
 data_interface = settings.get("data_interface", "eth")
 default_ip     = settings.get("default_ip", "0.0.0.0")
 

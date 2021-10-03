@@ -99,7 +99,7 @@ class webInterface():
         # Instantiate and configure Kraken SDR modules
         self.module_receiver = ReceiverRTLSDR(data_que=self.rx_data_que, data_interface=settings.data_interface, logging_level=settings.logging_level*10)
         self.module_receiver.daq_center_freq   = settings.center_freq*10**6
-        self.module_receiver.daq_rx_gain       = settings.uniform_gain
+        self.module_receiver.daq_rx_gain       = settings.uniform_gain        
         self.module_receiver.daq_squelch_th_dB = settings.squelch_threshold_dB
         self.module_receiver.rec_ip_addr       = settings.default_ip
 
@@ -156,7 +156,12 @@ class webInterface():
         
         if self.daq_ini_cfg_params is not None: 
             self.logger.info("Config file found and read succesfully")        
-            
+            """
+             Set the number of channels in the receiver module because it is required 
+             to produce the initial gain configuration message (Only needed in shared-memory mode)
+            """
+            self.module_receiver.M = self.daq_ini_cfg_params[1]
+
             # Set initial Squelch parameters based on the content of the active config file
             if self.daq_ini_cfg_params[5]: # Squelch is enabled
                 self.module_signal_processor.en_squelch = True                
