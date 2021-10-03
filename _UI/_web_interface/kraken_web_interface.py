@@ -1305,6 +1305,7 @@ def update_daq_params(input_value, f0, gain):
     # Change antenna spacing config for DoA estimation
     webInterface_inst.module_signal_processor.DOA_inter_elem_space *=f0/webInterface_inst.daq_center_freq    
     webInterface_inst.config_daq_rf(f0,gain)        
+    logging.info("--> inter element sapcing changed - center freq: {:.2f}".format(webInterface_inst.module_signal_processor.DOA_inter_elem_space))
     return  ""
     
 @app.callback(
@@ -1509,7 +1510,7 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
                       en_fb_avg, spacing_wavlength, spacing_meter, spacing_feet, spacing_inch,
                       ant_arrangement, doa_fig_type, compass_ofset):
     ctx = dash.callback_context
-    
+    logging.info("---> Inital inter element sapcing: {:.2f}".format(webInterface_inst.module_signal_processor.DOA_inter_elem_space))
     if ctx.triggered:
         component_id = ctx.triggered[0]['prop_id'].split('.')[0]
         wavelength= 300 / webInterface_inst.daq_center_freq
@@ -1519,6 +1520,9 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
         else:
             ant_spacing_meter = wavelength * webInterface_inst.module_signal_processor.DOA_inter_elem_space
         
+        logging.info("---> Ant spacing meter: {:.2f}".format(ant_spacing_meter))
+        logging.info("---> DAQ Center freq: {:.2f}".format(webInterface_inst.daq_center_freq))
+
         if component_id   == "ant_spacing_meter":
             ant_spacing_meter = spacing_meter
         elif component_id == "ant_spacing_wavelength":
@@ -1528,13 +1532,15 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
         elif component_id == "ant_spacing_inch":
             ant_spacing_meter = spacing_inch/39.3700787
         
+        
+
         ant_spacing_meter = round(ant_spacing_meter, 3)
         webInterface_inst.module_signal_processor.DOA_inter_elem_space = ant_spacing_meter / wavelength
         ant_spacing_feet = round(ant_spacing_meter * 3.2808399,3)
         ant_spacing_inch = round(ant_spacing_meter * 39.3700787,3)
         ant_spacing_wavlength = round(ant_spacing_meter / wavelength,3)
         
-    
+        logging.info("New inter element sapcing: {:.2f}".format(webInterface_inst.module_signal_processor.DOA_inter_elem_space))
 
     # Max phase diff and ambiguity warning and Spatial smoothing control    
     if ant_arrangement == "ULA":

@@ -85,5 +85,5 @@ def write(data = None):
         data["logging_level"]       = logging_level
         data["disable_tooltips"]    = disable_tooltips
 
-    with open('settings.json', 'w') as outfile:
+    with open(settings_file_path, 'w') as outfile:
         json.dump(data, outfile)
