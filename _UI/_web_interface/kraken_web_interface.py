@@ -130,7 +130,7 @@ class webInterface():
         self.daq_sample_delay_sync = 0
         self.daq_iq_sync           = 0
         self.daq_noise_source_state= 0
-        self.daq_center_freq       = 100
+        self.daq_center_freq       = settings.center_freq
         self.daq_adc_fs            = "-"
         self.daq_fs                = "-"
         self.daq_cpi               = "-"
@@ -900,8 +900,8 @@ def fetch_dsp_data(input_value, pathname):
                 
                 if webInterface_inst.daq_center_freq != iq_header.rf_center_freq/10**6: 
                     freq_update = 1
-
-                webInterface_inst.daq_center_freq       = iq_header.rf_center_freq/10**6
+                
+                webInterface_inst.daq_center_freq       = iq_header.rf_center_freq/10**6                
                 webInterface_inst.daq_adc_fs            = iq_header.adc_sampling_freq/10**6
                 webInterface_inst.daq_fs                = iq_header.sampling_freq/10**6
                 webInterface_inst.daq_cpi               = int(iq_header.cpi_length*10**3/iq_header.sampling_freq)
@@ -1303,11 +1303,8 @@ def save_config_btn(input_value):
 def update_daq_params(input_value, f0, gain):
     if input_value is None:
         raise PreventUpdate
-    
-    # Change antenna spacing config for DoA estimation    
-    webInterface_inst.module_signal_processor.DOA_inter_elem_space *=f0/webInterface_inst.daq_center_freq    
+
     webInterface_inst.config_daq_rf(f0,gain)        
-    logger.warning("DOA INTER-ELEMENT SPACING CHANGED- Update daq params {:.2f}".format(webInterface_inst.module_signal_processor.DOA_inter_elem_space))
     return  ""
     
 @app.callback(
@@ -1512,23 +1509,14 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
                       en_fb_avg, spacing_wavlength, spacing_meter, spacing_feet, spacing_inch,
                       ant_arrangement, doa_fig_type, compass_ofset):
     ctx = dash.callback_context
-    logger.warning("Current value: {:.2f}".format(webInterface_inst.module_signal_processor.DOA_inter_elem_space))
+    
 
     if ctx.triggered:
         component_id = ctx.triggered[0]['prop_id'].split('.')[0]
         wavelength= 300 / webInterface_inst.daq_center_freq
-        
-        if component_id   == "placeholder_update_freq": 
-            ant_spacing_meter = spacing_meter            
-        else:
-            ant_spacing_meter = wavelength * webInterface_inst.module_signal_processor.DOA_inter_elem_space
-        
-        logging.info("---> Ant spacing meter: {:.2f}".format(ant_spacing_meter))
-        logging.info("---> DAQ Center freq: {:.2f}".format(webInterface_inst.daq_center_freq))
+        ant_spacing_meter = spacing_meter
 
-        if component_id   == "ant_spacing_meter":
-            ant_spacing_meter = spacing_meter
-        elif component_id == "ant_spacing_wavelength":
+        if component_id == "ant_spacing_wavelength":
             ant_spacing_meter = wavelength*spacing_wavlength
         elif component_id == "ant_spacing_feet":
             ant_spacing_meter = spacing_feet/3.2808399
@@ -1536,13 +1524,11 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
             ant_spacing_meter = spacing_inch/39.3700787
         
         
-
         ant_spacing_meter = round(ant_spacing_meter, 3)
         webInterface_inst.module_signal_processor.DOA_inter_elem_space = ant_spacing_meter / wavelength
         ant_spacing_feet = round(ant_spacing_meter * 3.2808399,3)
         ant_spacing_inch = round(ant_spacing_meter * 39.3700787,3)
-        ant_spacing_wavlength = round(ant_spacing_meter / wavelength,3)
-        logger.warning("DOA INTER-ELEMENT SPACING CHANGED- Update dsp params {:.2f}, cid:{:s}".format(webInterface_inst.module_signal_processor.DOA_inter_elem_space, component_id))
+        ant_spacing_wavlength = round(ant_spacing_meter / wavelength,3)        
 
     # Max phase diff and ambiguity warning and Spatial smoothing control    
     if ant_arrangement == "ULA":
