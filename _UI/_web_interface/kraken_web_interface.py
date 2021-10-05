@@ -75,6 +75,7 @@ class webInterface():
     def __init__(self):
         self.user_interface = None       
         
+        logging.basicConfig(level=settings.logging_level*10)
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(settings.logging_level*10)
         self.logger.info("Inititalizing web interface ")
@@ -103,7 +104,7 @@ class webInterface():
         self.module_receiver.daq_squelch_th_dB = settings.squelch_threshold_dB
         self.module_receiver.rec_ip_addr       = settings.default_ip
 
-        self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver)
+        self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=settings.logging_level*10)
         self.module_signal_processor.en_spectrum          = settings.en_spectrum
         self.module_signal_processor.DOA_ant_alignment    = settings.ant_arrangement
         self.module_signal_processor.DOA_inter_elem_space = settings.ant_spacing 
@@ -112,8 +113,7 @@ class webInterface():
         self.module_signal_processor.en_squelch           = settings.en_squelch
         self.config_doa_in_signal_processor()
         self.module_signal_processor.start()
-        self.logger.warning("inital DOA space: {:.2f}".format(settings.ant_spacing))
-
+        
         #############################################
         #       UI Status and Config variables      #
         #############################################
@@ -169,8 +169,7 @@ class webInterface():
                 self.module_signal_processor.squelch_threshold = self.daq_ini_cfg_params[6]
                 # Note: There is no need to set the thresold in the DAQ Subsystem as it is configured from the ini-file.
             else:  # Squelch is disabled
-                self.module_signal_processor.en_squelch = False 
-                
+                self.module_signal_processor.en_squelch = False         
 
     def save_configuration(self):
         data = {}
@@ -260,8 +259,8 @@ class webInterface():
         self.daq_cfg_iface_status = 1
         self.module_signal_processor.squelch_threshold = 10**(squelch_threshold_dB/20)
         self.module_receiver.set_squelch_threshold(squelch_threshold_dB)
-        logger.info("Updating receiver parameters")
-        logger.info("Squelch threshold : {:f} dB".format(squelch_threshold_dB))
+        webInterface_inst.logger.info("Updating receiver parameters")
+        webInterface_inst.logger.info("Squelch threshold : {:f} dB".format(squelch_threshold_dB))
     def config_daq_rf(self, f0, gain):
         """
             Configures the RF parameters in the DAQ module
@@ -270,9 +269,9 @@ class webInterface():
         self.module_receiver.set_center_freq(int(f0*10**6))
         self.module_receiver.set_if_gain(gain)
         
-        logger.info("Updating receiver parameters")
-        logger.info("Center frequency: {:f} MHz".format(f0))
-        logger.info("Gain: {:f} dB".format(gain))
+        webInterface_inst.logger.info("Updating receiver parameters")
+        webInterface_inst.logger.info("Center frequency: {:f} MHz".format(f0))
+        webInterface_inst.logger.info("Gain: {:f} dB".format(gain))
 
 def read_config_file(config_fname=daq_config_filename):
     parser = ConfigParser()
@@ -316,7 +315,7 @@ def read_config_file(config_fname=daq_config_filename):
     return param_list
    
 def write_config_file(param_list):
-    logger.info("Write config file: {0}".format(param_list))
+    webInterface_inst.logger.info("Write config file: {0}".format(param_list))
     parser = ConfigParser()
     found = parser.read([daq_config_filename])
     if not found:            
@@ -357,7 +356,7 @@ def write_config_file(param_list):
     error_list = ini_checker.check_ini(ini_parameters, settings.en_hw_check)
     if len(error_list):
         for e in error_list:
-            logger.error(e)
+            webInterface_inst.logger.error(e)
         return -1, error_list
     else:
         with open(daq_config_filename, 'w') as configfile:
@@ -411,15 +410,12 @@ option = [{"label":"", "value": 1}]
 #############################################
 #          Prepare Dash application         #
 ############################################
-logging.basicConfig(level=settings.logging_level*10)
-logger = logging.getLogger(__name__)        
 webInterface_inst = webInterface()
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 server = app.server
 # app_log = logger.getLogger('werkzeug')
 # app_log.setLevel(settings.logging_level*10)
 # app_log.setLevel(30) # TODO: Only during dev time
-
 app.layout = html.Div([
     dcc.Location(id='url', children='/config',refresh=False),
 
@@ -453,7 +449,7 @@ app.layout = html.Div([
 
     html.Div(id='page-content')
 ])
-def generate_config_page_layout(webInterface_inst):    
+def generate_config_page_layout(webInterface_inst):   
     # Read DAQ config file
     daq_cfg_params = webInterface_inst.daq_ini_cfg_params    
     
@@ -847,7 +843,7 @@ def generate_doa_page_layout(webInterface_inst):
     Input(component_id ="interval-component"           , component_property='n_intervals'),
     State(component_id ="url"                          , component_property='pathname')
 )
-def fetch_dsp_data(input_value, pathname):    
+def fetch_dsp_data(input_value, pathname):   
     daq_status_update_flag = 0    
     spectrum_update_flag   = 0
     doa_update_flag        = 0
@@ -870,7 +866,7 @@ def fetch_dsp_data(input_value, pathname):
                 daq_status_update_flag = 1        
     except queue.Empty:
         # Handle empty queue here
-        logger.debug("Receiver module que is empty")
+        webInterface_inst.logger.debug("Receiver module que is empty")
     else:
         pass
         # Handle task here and call q.task_done()    
@@ -881,7 +877,7 @@ def fetch_dsp_data(input_value, pathname):
         que_data_packet  = webInterface_inst.sp_data_que.get(False)
         for data_entry in que_data_packet:
             if data_entry[0] == "iq_header":
-                logger.debug("Iq header data fetched from signal processing que")
+                webInterface_inst.logger.debug("Iq header data fetched from signal processing que")
                 iq_header = data_entry[1]
                 # Unpack header
                 webInterface_inst.daq_frame_index = iq_header.cpi_index
@@ -935,7 +931,7 @@ def fetch_dsp_data(input_value, pathname):
                     avg_powers_str+=", "
                 webInterface_inst.avg_powers = avg_powers_str[:-2]                
             elif data_entry[0] == "spectrum":
-                logger.debug("Spectrum data fetched from signal processing que")
+                webInterface_inst.logger.info("Spectrum data fetched from signal processing que")
                 spectrum_update_flag = 1
                 webInterface_inst.spectrum = data_entry[1]
             elif data_entry[0] == "doa_thetas":
@@ -945,7 +941,7 @@ def fetch_dsp_data(input_value, pathname):
                 webInterface_inst.doa_labels      = []
                 webInterface_inst.doas            = []
                 webInterface_inst.doa_confidences = []
-                logger.debug("DoA estimation data fetched from signal processing que")                
+                webInterface_inst.logger.debug("DoA estimation data fetched from signal processing que")                
             elif data_entry[0] == "DoA Bartlett":
                 webInterface_inst.doa_results.append(data_entry[1])
                 webInterface_inst.doa_labels.append(data_entry[0])
@@ -975,11 +971,11 @@ def fetch_dsp_data(input_value, pathname):
             elif data_entry[0] == "DoA MUSIC confidence":
                 webInterface_inst.doa_confidences.append(data_entry[1])
             else:                
-                logger.warning("Unknown data entry: {:s}".format(data_entry[0]))
+                webInterface_inst.logger.warning("Unknown data entry: {:s}".format(data_entry[0]))
         
     except queue.Empty:
         # Handle empty queue here
-        logger.debug("Signal processing que is empty")
+        webInterface_inst.logger.debug("Signal processing que is empty")
     else:
         pass
         # Handle task here and call q.task_done()
@@ -1274,7 +1270,7 @@ def plot_doa(doa_update_flag):
     prevent_initial_call=True
 )
 def start_proc_btn(input_value):    
-    logger.info("Start pocessing btn pushed")    
+    webInterface_inst.logger.info("Start pocessing btn pushed")    
     webInterface_inst.start_processing()
     return ""
 
@@ -1284,7 +1280,7 @@ def start_proc_btn(input_value):
     prevent_initial_call=True
 )
 def stop_proc_btn(input_value):
-    logger.info("Stop pocessing btn pushed")    
+    webInterface_inst.logger.info("Stop pocessing btn pushed")    
     webInterface_inst.stop_processing()
     return ""
 
@@ -1294,7 +1290,7 @@ def stop_proc_btn(input_value):
     prevent_initial_call=True
 )
 def save_config_btn(input_value):
-    logger.info("Saving DAQ and DSP Configuration")    
+    webInterface_inst.logger.info("Saving DAQ and DSP Configuration")    
     webInterface_inst.save_configuration()
     return ""
 
@@ -1434,7 +1430,7 @@ def reconfig_daq_chain(input_value):
         webInterface_inst.daq_cfg_ini_error = config_err[0]
         return -1#,config_err[0],{"color":"red"}
     else:    
-        logger.info("DAQ Subsystem configuration file edited")
+        webInterface_inst.logger.info("DAQ Subsystem configuration file edited")
     
     webInterface_inst.daq_restart = 1
     """
@@ -1443,23 +1439,23 @@ def reconfig_daq_chain(input_value):
     # Stop signal processing
     webInterface_inst.stop_processing()   
     time.sleep(2)
-    logger.debug("Signal processing stopped")
+    webInterface_inst.logger.debug("Signal processing stopped")
 
     # Close control and IQ data interfaces
     webInterface_inst.close_data_interfaces()
-    logger.debug("Data interfaces are closed")
+    webInterface_inst.logger.debug("Data interfaces are closed")
 
     os.chdir(daq_subsystem_path)
 
     # Kill DAQ subsystem
     daq_stop_script = subprocess.Popen(['bash', daq_stop_filename])#, stdout=subprocess.DEVNULL)
     daq_stop_script.wait()
-    logger.debug("DAQ Subsystem halted")
+    webInterface_inst.logger.debug("DAQ Subsystem halted")
     
     # Start DAQ subsystem
     daq_start_script = subprocess.Popen(['bash', daq_start_filename])#, stdout=subprocess.DEVNULL)
     daq_start_script.wait()
-    logger.debug("DAQ Subsystem restarted")
+    webInterface_inst.logger.debug("DAQ Subsystem restarted")
     
     os.chdir(root_path)
 
@@ -1471,7 +1467,7 @@ def reconfig_daq_chain(input_value):
     
     # Restart signal processing
     webInterface_inst.start_processing()
-    logger.debug("Signal processing started")
+    webInterface_inst.logger.debug("Signal processing started")
     webInterface_inst.daq_restart = 0
     
     # Set local Squelch-DSP parameters
@@ -1549,12 +1545,12 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
         ambiguity_warning= ""
 
     if en_spectrum is not None and len(en_spectrum):
-        logger.debug("Spectrum estimation enabled")
+        webInterface_inst.logger.debug("Spectrum estimation enabled")
         webInterface_inst.module_signal_processor.en_spectrum = True
     else:
         webInterface_inst.module_signal_processor.en_spectrum = False       
     if en_doa is not None and len(en_doa):
-        logger.debug("DoA estimation enabled")
+        webInterface_inst.logger.debug("DoA estimation enabled")
         webInterface_inst.module_signal_processor.en_DOA_estimation = True
     else:
         webInterface_inst.module_signal_processor.en_DOA_estimation = False       
@@ -1563,7 +1559,7 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
     webInterface_inst.config_doa_in_signal_processor()
 
     if en_fb_avg is not None and len(en_fb_avg):
-        logger.debug("FB averaging enabled")
+        webInterface_inst.logger.debug("FB averaging enabled")
         webInterface_inst.module_signal_processor.en_DOA_FB_avg   = True
     else:
         webInterface_inst.module_signal_processor.en_DOA_FB_avg   = False
@@ -1599,7 +1595,7 @@ def reload_cfg_page(en_advanced_daq_cfg, config_fname, dummy_0):
               Output("header_spectrum","className"),
               Output("header_doa"     ,"className"),
               [Input("url"            , "pathname")])
-def display_page(pathname):
+def display_page(pathname):    
     if pathname == "/":
         return generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"
     elif pathname == "/config":

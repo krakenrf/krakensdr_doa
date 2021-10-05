@@ -49,7 +49,7 @@ server.settimeout(0.2)
 
 class SignalProcessor(threading.Thread):
     
-    def __init__(self, data_que, module_receiver):
+    def __init__(self, data_que, module_receiver,logging_level=10):
         """
             Parameters:
             -----------
@@ -58,6 +58,7 @@ class SignalProcessor(threading.Thread):
         """        
         super(SignalProcessor, self).__init__()
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging_level)
 
         root_path      = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
         doa_res_file_path = os.path.join(os.path.join(root_path,"_android_web","DOA_value.html"))        
