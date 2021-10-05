@@ -104,8 +104,7 @@ class webInterface():
         self.module_receiver.daq_squelch_th_dB = settings.squelch_threshold_dB
         self.module_receiver.rec_ip_addr       = settings.default_ip
 
-        self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=settings.logging_level*10)
-        self.module_signal_processor.en_spectrum          = settings.en_spectrum
+        self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=settings.logging_level*10)        
         self.module_signal_processor.DOA_ant_alignment    = settings.ant_arrangement
         self.module_signal_processor.DOA_inter_elem_space = settings.ant_spacing 
         self.module_signal_processor.en_DOA_estimation    = settings.en_doa
@@ -198,8 +197,7 @@ class webInterface():
 
         data["doa_fig_type"]    = doa_fig_type
         
-        # DSP misc
-        data["en_spectrum"]           = self.module_signal_processor.en_spectrum
+        # DSP misc        
         data["en_squelch"]            = self.module_signal_processor.en_squelch
         data["squelch_threshold_dB"]  = self.module_receiver.daq_squelch_th_dB
 
@@ -464,8 +462,7 @@ def generate_config_page_layout(webInterface_inst):
     
         # Read available preconfig files
         preconfigs = get_preconfigs(daq_preconfigs_path)
-
-    en_spectrum_values    =[1] if webInterface_inst.module_signal_processor.en_spectrum       else []
+    
     en_doa_values         =[1] if webInterface_inst.module_signal_processor.en_DOA_estimation else []
     en_fb_avg_values      =[1] if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []    
     en_dsp_squelch_values =[1] if webInterface_inst.module_signal_processor.en_squelch        else []
@@ -721,10 +718,6 @@ def generate_config_page_layout(webInterface_inst):
     dsp_config_card = \
     html.Div([
         html.H2("DSP Configuration", id="init_title_d"),
-        html.Div([html.Div("Enable spectrum estimation", id="label_en_spectrum" , className="field-label"),
-                dcc.Checklist(options=option          , id="en_spectrum_check" , className="field-body", value=en_spectrum_values),
-        ], className="field"),
-        
         html.Div([html.Div("Antenna configuration:"              , id="label_ant_arrangement"   , className="field-label"),
         dcc.RadioItems(
             options=[
@@ -931,7 +924,7 @@ def fetch_dsp_data(input_value, pathname):
                     avg_powers_str+=", "
                 webInterface_inst.avg_powers = avg_powers_str[:-2]                
             elif data_entry[0] == "spectrum":
-                webInterface_inst.logger.info("Spectrum data fetched from signal processing que")
+                webInterface_inst.logger.debug("Spectrum data fetched from signal processing que")
                 spectrum_update_flag = 1
                 webInterface_inst.spectrum = data_entry[1]
             elif data_entry[0] == "doa_thetas":
@@ -1492,8 +1485,7 @@ def reconfig_daq_chain(input_value):
     Output("ant_spacing_inch"      , "value"),  
     Output("ambiguity_warning"     , "children"),
     Output("en_fb_avg_check"       , "options"),
-    Input("placeholder_update_freq", "children"),
-    Input("en_spectrum_check"      , "value"),
+    Input("placeholder_update_freq", "children"),    
     Input("en_doa_check"           , "value"),
     Input("doa_method"             , "value"),    
     Input("en_fb_avg_check"        , "value"),
@@ -1506,7 +1498,7 @@ def reconfig_daq_chain(input_value):
     Input('compass_ofset'          , 'value'),    
     prevent_initial_call=True
 )
-def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
+def update_dsp_params(freq_update, en_doa, doa_method,
                       en_fb_avg, spacing_wavlength, spacing_meter, spacing_feet, spacing_inch,
                       ant_arrangement, doa_fig_type, compass_ofset):
     ctx = dash.callback_context
@@ -1544,11 +1536,6 @@ def update_dsp_params(freq_update, en_spectrum, en_doa, doa_method,
     else:      
         ambiguity_warning= ""
 
-    if en_spectrum is not None and len(en_spectrum):
-        webInterface_inst.logger.debug("Spectrum estimation enabled")
-        webInterface_inst.module_signal_processor.en_spectrum = True
-    else:
-        webInterface_inst.module_signal_processor.en_spectrum = False       
     if en_doa is not None and len(en_doa):
         webInterface_inst.logger.debug("DoA estimation enabled")
         webInterface_inst.module_signal_processor.en_DOA_estimation = True
@@ -1597,12 +1584,16 @@ def reload_cfg_page(en_advanced_daq_cfg, config_fname, dummy_0):
               [Input("url"            , "pathname")])
 def display_page(pathname):    
     if pathname == "/":
+        webInterface_inst.module_signal_processor.en_spectrum = False
         return generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"
     elif pathname == "/config":
+        webInterface_inst.module_signal_processor.en_spectrum = False
         return generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive" 
-    elif pathname == "/spectrum":
+    elif pathname == "/spectrum":        
+        webInterface_inst.module_signal_processor.en_spectrum = True
         return spectrum_page_layout, "header_inactive", "header_active", "header_inactive"
     elif pathname == "/doa":
+        webInterface_inst.module_signal_processor.en_spectrum = False
         return generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"
 
 if __name__ == "__main__":    

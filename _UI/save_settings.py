@@ -33,7 +33,6 @@ compass_offset  = settings.get("compass_offset", 0)
 doa_fig_type    = settings.get("doa_fig_type", "Linear plot")
 
 # DSP misc
-en_spectrum          = settings.get("en_spectrum",0) 
 en_squelch           = settings.get("en_squelch", 0)
 squelch_threshold_dB = settings.get("squelch_threshold_dB", 0.0)
 
@@ -74,8 +73,7 @@ def write(data = None):
         data["compass_offset"]  = compass_offset
         data["doa_fig_tpye"]    = doa_fig_type
 
-        # DSP misc
-        data["en_spectrum"]          = en_spectrum
+        # DSP misc        
         data["en_squelch"]           = en_squelch
         data["squelch_threshold_dB"] = squelch_threshold_dB
 
