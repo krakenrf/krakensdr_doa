@@ -845,7 +845,7 @@ def fetch_dsp_data(input_value, pathname):
                 webInterface_inst._update_rate_arr[webInterface_inst._avg_win_size-1] = webInterface_inst.daq_update_rate
                 webInterface_inst.page_update_rate = np.average(webInterface_inst._update_rate_arr)*0.8                
             elif data_entry[0] == "latency":
-                webInterface_inst.daq_dsp_latency = data_entry[1]
+                webInterface_inst.daq_dsp_latency = data_entry[1] + webInterface_inst.daq_cpi
             elif data_entry[0] == "max_amplitude":
                 webInterface_inst.max_amplitude = data_entry[1]                
             elif data_entry[0] == "avg_powers":                
