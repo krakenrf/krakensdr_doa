@@ -49,7 +49,7 @@ server.settimeout(0.2)
 
 class SignalProcessor(threading.Thread):
     
-    def __init__(self, data_que, module_receiver):
+    def __init__(self, data_que, module_receiver, logging_level=10):
         """
             Parameters:
             -----------
@@ -58,6 +58,7 @@ class SignalProcessor(threading.Thread):
         """        
         super(SignalProcessor, self).__init__()
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging_level)
 
         self.DOA_res_fd = open("_android_web/DOA_value.html","w+")
 
@@ -116,6 +117,7 @@ class SignalProcessor(threading.Thread):
                         
                 #-----> ACQUIRE NEW DATA FRAME <-----                        
                 self.module_receiver.get_iq_online()
+               
                 # Normal data frame or cal frame ?
                 en_proc = self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_DATA
                 """
@@ -256,8 +258,9 @@ class SignalProcessor(threading.Thread):
                         # TODO: Implement IQ frame recording          
                         self.logger.error("Saving IQ samples to npy is obsolete, IQ Frame saving is currently not implemented")
 
-                stop_time = time.time()
+                stop_time = time.time()                
                 que_data_packet.append(['update_rate', stop_time-start_time])
+                que_data_packet.append(['latency', int(stop_time*10**3)-self.module_receiver.iq_header.time_stamp])
 
                 if self.data_que.full():
                     try:
