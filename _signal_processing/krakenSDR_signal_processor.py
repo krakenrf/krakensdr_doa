@@ -1,6 +1,6 @@
 # KrakenSDR Signal Processor
 #
-# Copyright (C) 2018-2020  Carl Laufer, Tamás Pető
+# Copyright (C) 2018-2021  Carl Laufer, Tamás Pető
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,6 +50,7 @@ server.settimeout(0.2)
 class SignalProcessor(threading.Thread):
     
     def __init__(self, data_que, module_receiver, logging_level=10):
+
         """
             Parameters:
             -----------
@@ -60,7 +61,9 @@ class SignalProcessor(threading.Thread):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging_level)
 
-        self.DOA_res_fd = open("_android_web/DOA_value.html","w+")
+        root_path      = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        doa_res_file_path = os.path.join(os.path.join(root_path,"_android_web","DOA_value.html"))        
+        self.DOA_res_fd = open(doa_res_file_path,"w+")
 
         self.module_receiver = module_receiver
         self.data_que = data_que
@@ -183,7 +186,6 @@ class SignalProcessor(threading.Thread):
                             self.squelch_mask = np.ones(len(self.filtered_signal))*self.squelch_threshold
                             self.processed_signal = np.zeros([self.channel_number, len(self.filtered_signal)])
                         
-                        que_data_packet.append(['squelch_read'])
                     #-----> SPECTRUM PROCESSING <----- 
                     
                     if self.en_spectrum and self.data_ready:

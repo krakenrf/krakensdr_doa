@@ -8,17 +8,18 @@ import os
 	Author : Tamas Peto
 """
 
-if os.path.exists('settings.json'):
-    with open('settings.json', 'r') as myfile:
-        settings=json.loads(myfile.read())
-else:
-    settings = {}
-    with open('settings.json', 'w') as outfile:
-        json.dump(settings, outfile)
+root_path          = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+settings_file_path = os.path.join(root_path,"settings.json")
+
+settings_found =False
+if os.path.exists(settings_file_path):
+    settings_found = True
+    with open(settings_file_path, 'r') as myfile:
+        settings=json.loads(myfile.read())        
 
 # DAQ Configuration
 center_freq    = settings.get("center_freq", 100.0)
-uniform_gain   = settings.get("uniform_gain", 0.0)
+uniform_gain   = settings.get("uniform_gain", 1.4)
 data_interface = settings.get("data_interface", "eth")
 default_ip     = settings.get("default_ip", "0.0.0.0")
 
@@ -32,7 +33,6 @@ compass_offset  = settings.get("compass_offset", 0)
 doa_fig_type    = settings.get("doa_fig_type", "Linear plot")
 
 # DSP misc
-en_spectrum          = settings.get("en_spectrum",0) 
 en_squelch           = settings.get("en_squelch", 0)
 squelch_threshold_dB = settings.get("squelch_threshold_dB", 0.0)
 
@@ -40,7 +40,7 @@ squelch_threshold_dB = settings.get("squelch_threshold_dB", 0.0)
 en_hw_check         = settings.get("en_hw_check", 0)
 en_advanced_daq_cfg = settings.get("en_advanced_daq_cfg", 0) 
 logging_level       = settings.get("logging_level", 0)
-
+disable_tooltips    = settings.get("disable_tooltips", 0)
 
 # Check and correct if needed
 if not ant_arrangement in ["ULA", "UCA"]:
@@ -73,8 +73,7 @@ def write(data = None):
         data["compass_offset"]  = compass_offset
         data["doa_fig_tpye"]    = doa_fig_type
 
-        # DSP misc
-        data["en_spectrum"]          = en_spectrum
+        # DSP misc        
         data["en_squelch"]           = en_squelch
         data["squelch_threshold_dB"] = squelch_threshold_dB
 
@@ -82,6 +81,7 @@ def write(data = None):
         data["en_hw_check"]         = en_hw_check
         data["en_advanced_daq_cfg"] = en_advanced_daq_cfg
         data["logging_level"]       = logging_level
+        data["disable_tooltips"]    = disable_tooltips
 
-    with open('settings.json', 'w') as outfile:
+    with open(settings_file_path, 'w') as outfile:
         json.dump(data, outfile)

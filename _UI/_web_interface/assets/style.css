@@ -150,10 +150,16 @@ iframe{
   width: 100%;  
 }
 .btn_save_cfg:hover{
-  color: rgb(0, 0, 0);
+  color: rgb(154, 233, 102);
   background-color: #ff6600;
 }
-
+.tooltip{
+  color: rgb(0, 0, 0);
+  background-color: #ffffff;
+  opacity: 0.95;
+  border-radius:0.2em;  
+  width: 300px;
+}
 .card{
  background-color: #000000;
  border: 0.1em solid #ffffff;

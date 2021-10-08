@@ -1,6 +1,6 @@
 # KrakenSDR Receiver
 
-# Copyright (C) 2018-2020  Carl Laufer, Tamás Pető
+# Copyright (C) 2018-2021  Carl Laufer, Tamás Pető
 #
 #
 #   This program is free software: you can redistribute it and/or modify
@@ -21,9 +21,9 @@
 
 # Import built-in modules
 import sys
+import os
 import time
 from struct import pack, unpack
-from scipy import signal
 import socket
 import _thread
 from threading import Lock
@@ -32,6 +32,7 @@ import logging
 
 # Import third party modules
 import numpy as np
+from scipy import signal
 from iq_header import IQHeader
 from shmemIface import inShmemIface
 class ReceiverRTLSDR():
@@ -70,7 +71,10 @@ class ReceiverRTLSDR():
         self.socket_inst = socket.socket()
         self.receiverBufferSize = 2 ** 18  # Size of the Ethernet receiver buffer measured in bytes     
             
-        # -> Shared memory
+        # -> Shared memory        
+        root_path          = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        daq_path           = os.path.join(os.path.dirname(root_path),"heimdall_daq_fw")        
+        self.daq_shmem_control_path = os.path.join(os.path.join(daq_path,"Firmware"),"_data_control/")        
         self.init_data_iface()
 
         # Control interface
@@ -86,7 +90,7 @@ class ReceiverRTLSDR():
     def init_data_iface(self):
         if self.data_interface == "shmem":
             # Open shared memory interface to capture the DAQ firmware output
-            self.in_shmem_iface = inShmemIface("delay_sync_iq", "../heimdall_daq_fw/Firmware/_data_control/")
+            self.in_shmem_iface = inShmemIface("delay_sync_iq", self.daq_shmem_control_path)
             if not self.in_shmem_iface.init_ok:
                 self.logger.critical("Shared memory initialization failed")
                 self.in_shmem_iface.destory_sm_buffer()
@@ -343,15 +347,15 @@ class ReceiverRTLSDR():
             ----------
                 :param: gain: IF gain value [dB]
                 :type:  gain: int
-        """
+        """                
         if self.receiver_connection_status: # Check connection
             self.daq_rx_gain     = gain
-
+            
             # Set center frequency
             cmd="GAIN"
             gain_list=[int(gain*10)]*self.M
             gain_bytes=pack("I"*self.M, *gain_list)
-            msg_bytes=(cmd.encode()+gain_bytes+bytearray(128-(self.M+1)*4))
+            msg_bytes=(cmd.encode()+gain_bytes+bytearray(128-(self.M+1)*4))  
             try:                
                 _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))            
             except:                
