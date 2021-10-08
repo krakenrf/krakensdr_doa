@@ -1454,7 +1454,7 @@ def reconfig_daq_chain(input_value):
 
     # Reinitialize receiver data interface
     if webInterface_inst.module_receiver.init_data_iface() == -1:
-        logger.critical("Failed to restart the DAQ data interface")
+        webInterface_inst.logger.critical("Failed to restart the DAQ data interface")
         webInterface_inst.daq_cfg_ini_error = "Failed to restart the DAQ data interface"
         return -1
     
