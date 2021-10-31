@@ -59,8 +59,8 @@ daq_preconfigs_path   = os.path.join(
                         "config_files")
 daq_config_filename   = os.path.join(daq_subsystem_path, "daq_chain_config.ini")
 daq_stop_filename     = "daq_stop.sh"
-#daq_start_filename    = "daq_start_sm.sh"
-daq_start_filename    = "daq_synthetic_start.sh"
+daq_start_filename    = "daq_start_sm.sh"
+#daq_start_filename    = "daq_synthetic_start.sh"
 sys.path.insert(0, daq_subsystem_path)
 
 import ini_checker
@@ -271,7 +271,7 @@ class webInterface():
         webInterface_inst.logger.info("Center frequency: {:f} MHz".format(f0))
         webInterface_inst.logger.info("Gain: {:f} dB".format(gain))
 
-def read_config_file(config_fname=daq_config_filename):
+def read_config_file(config_fname=daq_config_filename):    
     parser = ConfigParser()
     found = parser.read([config_fname])
     param_list = []
@@ -364,6 +364,7 @@ def write_config_file(param_list):
 def get_preconfigs(config_files_path):
     parser = ConfigParser()
     preconfigs = []
+    preconfigs.append([daq_config_filename, "Initial"])
     for root, dirs, files in os.walk(config_files_path):
         if len(files):
             config_file_path = os.path.join(root, files[0])
@@ -1572,7 +1573,7 @@ def reload_cfg_page(en_advanced_daq_cfg, config_fname, dummy_0):
     ctx = dash.callback_context
     if ctx.triggered:
         component_id = ctx.triggered[0]['prop_id'].split('.')[0]        
-        if component_id   == "daq_cfg_files" and config_fname is not None:             
+        if component_id   == "daq_cfg_files" and config_fname is not None:
             webInterface_inst.daq_ini_cfg_params = read_config_file(config_fname)
             webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0]            
         elif component_id == "en_advanced_daq_cfg":
