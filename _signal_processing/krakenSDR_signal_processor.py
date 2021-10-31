@@ -97,7 +97,6 @@ class SignalProcessor(threading.Thread):
         self.spectrum_window = "hann"#"blackmanharris"
         self.run_processing = False
         
-        self.fs = 1.024 * 10**6  # Update from header
         self.channel_number = 4  # Update from header
         
         # Result vectors
@@ -121,8 +120,9 @@ class SignalProcessor(threading.Thread):
                 #-----> ACQUIRE NEW DATA FRAME <-----                        
                 self.module_receiver.get_iq_online()
                
-                # Normal data frame or cal frame ?
-                en_proc = self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_DATA
+                # Check frame type for processing
+                en_proc = (self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_DATA)# or \
+                          #(self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_CAL) For debug purposes
                 """
                     You can enable here to process other frame types (such as call type frames)
                 """
@@ -142,7 +142,6 @@ class SignalProcessor(threading.Thread):
                             
                 # Configure processing parameteres based on the settings of the DAQ chain
                 if self.first_frame:
-                    self.fs = self.module_receiver.iq_header.sampling_freq
                     self.channel_number = self.module_receiver.iq_header.active_ant_chs
                     self.first_frame = 0
                 
@@ -198,13 +197,13 @@ class SignalProcessor(threading.Thread):
                         #-> Spectral estimation with the Welch method
                         spectrum = np.ones((self.channel_number+1,N), dtype=np.float32)
                         for m in range(self.channel_number):
-                            f, Pxx_den = signal.welch(self.processed_signal[m, :], self.fs, 
+                            f, Pxx_den = signal.welch(self.processed_signal[m, :], self.module_receiver.iq_header.sampling_freq, 
                                                     nperseg=N, 
                                                     return_onesided=False, 
                                                     window=self.spectrum_window,
                                                     scaling="spectrum")
                             spectrum[1+m,:] = np.fft.fftshift(10*np.log10(Pxx_den))
-                        spectrum[0,:] = np.fft.fftshift(f)
+                        spectrum[0,:] = np.fft.fftshift(f) + self.module_receiver.iq_header.rf_center_freq
 
                         que_data_packet.append(['spectrum', spectrum])
 
