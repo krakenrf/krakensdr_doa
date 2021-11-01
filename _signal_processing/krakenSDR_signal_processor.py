@@ -122,7 +122,7 @@ class SignalProcessor(threading.Thread):
                
                 # Check frame type for processing
                 en_proc = (self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_DATA)# or \
-                          #(self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_CAL) For debug purposes
+                          #(self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_CAL)# For debug purposes
                 """
                     You can enable here to process other frame types (such as call type frames)
                 """
@@ -193,7 +193,7 @@ class SignalProcessor(threading.Thread):
                             N = self.spectrum_window_size
                         else:
                             N = len(self.processed_signal[0,:])
-                        
+
                         #-> Spectral estimation with the Welch method
                         spectrum = np.ones((self.channel_number+1,N), dtype=np.float32)
                         for m in range(self.channel_number):
@@ -203,8 +203,7 @@ class SignalProcessor(threading.Thread):
                                                     window=self.spectrum_window,
                                                     scaling="spectrum")
                             spectrum[1+m,:] = np.fft.fftshift(10*np.log10(Pxx_den))
-                        spectrum[0,:] = np.fft.fftshift(f) + self.module_receiver.iq_header.rf_center_freq
-
+                        spectrum[0,:] = np.fft.fftshift(f)
                         que_data_packet.append(['spectrum', spectrum])
 
                     #-----> DoA ESIMATION <----- 

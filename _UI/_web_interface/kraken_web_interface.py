@@ -1114,16 +1114,24 @@ def update_daq_status(input_value):
 def plot_spectrum(spectrum_update_flag):
     fig = go.Figure(layout=fig_layout)
     if webInterface_inst.spectrum is not None:
-        # Plot traces
-        freqs = webInterface_inst.spectrum[0,:]    
+        if abs(webInterface_inst.spectrum[0,0]) > 10**6: 
+            freq_label="Frequency [MHz]"
+        elif abs(webInterface_inst.spectrum[0,0]) > 10**3: 
+            freq_label="Frequency [kHz]"
+        else:
+            freq_label="Frequency [Hz]"
+        freq_label+=", Center:{:.1f} MHz".format(webInterface_inst.daq_center_freq)
+
+        # Plot traces                    
         for m in range(np.size(webInterface_inst.spectrum, 0)-1):   
-            fig.add_trace(go.Scatter(x=freqs, y=webInterface_inst.spectrum[m+1, :], 
+            fig.add_trace(go.Scatter(x=webInterface_inst.spectrum[0,:],
+                                     y=webInterface_inst.spectrum[m+1, :], 
                                      name="Channel {:d}".format(m),
                                      line = dict(color = trace_colors[m],
                                                  width = 3)
                                     ))
         
-        fig.update_xaxes(title_text="Frequency [MHz]", 
+        fig.update_xaxes(title_text=freq_label, 
                         color='rgba(255,255,255,1)', 
                         title_font_size=20, 
                         tickfont_size=figure_font_size,
