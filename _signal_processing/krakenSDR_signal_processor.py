@@ -94,7 +94,7 @@ class SignalProcessor(threading.Thread):
             
         # Processing parameters        
         self.spectrum_window_size = 1024
-        self.spectrum_window = "hann"#"blackmanharris"
+        self.spectrum_window = "blackmanharris"
         self.run_processing = False
         
         self.channel_number = 4  # Update from header
@@ -182,8 +182,9 @@ class SignalProcessor(threading.Thread):
                             self.data_ready=True
                         else:
                             self.logger.info("Signal burst is not found, try to adjust the threshold levels")
-                            self.squelch_mask = np.ones(len(self.filtered_signal))*self.squelch_threshold
-                            self.processed_signal = np.zeros([self.channel_number, len(self.filtered_signal)])
+                            self.data_ready=True                            
+                            #self.squelch_mask = np.ones(len(self.filtered_signal))*self.squelch_threshold
+                            #self.processed_signal = np.zeros([self.channel_number, len(self.filtered_signal)])
                         
                     #-----> SPECTRUM PROCESSING <----- 
                     
@@ -194,14 +195,33 @@ class SignalProcessor(threading.Thread):
                         else:
                             N = len(self.processed_signal[0,:])
 
+                           ######################################
+                        #spectrum[0, :] = np.fft.fftshift(np.fft.fftfreq(N, 1/self.module_receiver.iq_header.sampling_freq))/10**6
+
+                        #m = self.channel_number
+                        #spectrum[1:m+1,:] = 10*np.log10(np.fft.fftshift(np.abs(np.fft.fft(self.processed_signal[0:m, :]))))
+
+                        #for m in range(self.channel_number):
+                        #    spectrum[m+1,:] = 10*np.log10(np.fft.fftshift(np.abs(np.fft.fft(self.processed_signal[m, :]))))
+
+
+                          ########################################
+
+
                         #-> Spectral estimation with the Welch method
                         spectrum = np.ones((self.channel_number+1,N), dtype=np.float32)
                         for m in range(self.channel_number):
                             f, Pxx_den = signal.welch(self.processed_signal[m, :], self.module_receiver.iq_header.sampling_freq, 
-                                                    nperseg=N, 
+                                                    nperseg=N,
+                                                    nfft=N,
                                                     return_onesided=False, 
                                                     window=self.spectrum_window,
                                                     scaling="spectrum")
+                            
+                            #f, Pxx_den = signal.periodogram(self.processed_signal[m, :], self.module_receiver.iq_header.sampling_freq, 
+                            #                        nfft=N,
+                            #                        scaling="spectrum")
+
                             spectrum[1+m,:] = np.fft.fftshift(10*np.log10(Pxx_den))
                         spectrum[0,:] = np.fft.fftshift(f)
                         que_data_packet.append(['spectrum', spectrum])
@@ -245,7 +265,7 @@ class SignalProcessor(threading.Thread):
                         confidence_str = "{:.2f}".format(np.max(conf_val))
                         max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
                         message = str(int(time.time() * 1000)) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
-                        server.sendto(message.encode(), ('<broadcast>', 37020))
+                        #server.sendto(message.encode(), ('<broadcast>', 37020))
 
                         html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+confidence_str+"</CONF>\n<PWR>"+max_power_level_str+"</PWR>\n</DATA>"
                         self.DOA_res_fd.seek(0)

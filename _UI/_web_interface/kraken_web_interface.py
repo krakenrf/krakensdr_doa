@@ -372,6 +372,13 @@ def get_preconfigs(config_files_path):
             parameters = parser._sections
             preconfigs.append([config_file_path, parameters['meta']['config_name']])
     return preconfigs
+
+#############################################
+#          Prepare Dash application         #
+############################################
+webInterface_inst = webInterface()
+
+
 #############################################
 #       Prepare component dependencies      #
 #############################################
@@ -400,16 +407,23 @@ fig_layout = go.Layout(
         showlegend=True    
     )
 fig_dummy = go.Figure(layout=fig_layout)
-fig_dummy.add_trace(go.Scatter(x=x, y=y, name = "Avg spectrum"))
+#fig_dummy.add_trace(go.Scatter(x=x, y=y, name = "Avg spectrum"))
+
+for m in range(0, webInterface_inst.module_receiver.M):   
+    fig_dummy.add_trace(go.Scatter(x=x,
+                             y=y, 
+                             name="Channel {:d}".format(m),
+                             line = dict(color = trace_colors[m],
+                                         width = 2)
+                             ))
+
+
 fig_dummy.update_xaxes(title_text="Frequency [MHz]")
 fig_dummy.update_yaxes(title_text="Amplitude [dB]")   
 
 option = [{"label":"", "value": 1}]
 
-#############################################
-#          Prepare Dash application         #
-############################################
-webInterface_inst = webInterface()
+
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 server = app.server
 # app_log = logger.getLogger('werkzeug')
@@ -430,7 +444,7 @@ app.layout = html.Div([
 
     dcc.Interval(
         id='interval-component',
-        interval=500, # in milliseconds
+        interval=25, # in milliseconds
         n_intervals=0
     ),
     html.Div(id="placeholder_start"                , style={"display":"none"}),
@@ -809,20 +823,33 @@ def generate_config_page_layout(webInterface_inst):
         
 spectrum_page_layout = html.Div([   
     html.Div([
+    dcc.Store(id='spectrum-store', data=[dict(x=x, y=y)] * webInterface_inst.module_receiver.M),
     dcc.Graph(
         style={"height": "inherit"},
         id="spectrum-graph",
-        figure=fig_dummy
+        figure=fig_dummy #spectrum_fig #fig_dummy
     )], className="monitor_card"),
 ])
 def generate_doa_page_layout(webInterface_inst):
     doa_page_layout = html.Div([        
+        html.Div([html.Div("MAX DOA Angle:", 
+                 id="label_doa_max",
+                 className="field-label"),
+                 html.Div("deg",
+                 id="body_doa_max", 
+                 className="field-body")],
+                 className="field"),
+
         html.Div([    
+        #dcc.Graph(id='doa-graph-test', figure=doa_fig),
+        dcc.Store(id='doa-store', data=[dict(x=x, y=y)]),
+        dcc.Store(id='doa-graph-type-store', data=0),
         dcc.Graph(
             style={"height": "inherit"},
             id="doa-graph",
             figure=fig_dummy
         )], className="monitor_card"),
+
     ])
     return doa_page_layout
 
@@ -1103,16 +1130,38 @@ def update_daq_status(input_value):
             noise_source_style, daq_rf_center_freq_str, daq_sampling_freq_str, \
             daq_cpi_str, webInterface_inst.daq_if_gains, daq_max_amp_str, \
             daq_avg_powers_str
-            
 
+
+app.clientside_callback(
+    """
+    function (data) {
+        return [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length]
+    }
+    """,
+    Output('spectrum-graph', 'extendData'),
+    Input('spectrum-store', 'data')
+)
 
 @app.callback(
-    Output(component_id='spectrum-graph', component_property='figure'),
+    Output(component_id='spectrum-store', component_property='data'),
     Input(component_id='placeholder_spectrum_page_upd', component_property='children'),
     prevent_initial_call=True
 )
-def plot_spectrum(spectrum_update_flag):
+def update_spectrum_store(spectrum_update_flag):
+    update_data = []
+    for m in range(1, webInterface_inst.module_receiver.M+1):    
+        update_data.append(dict(x=webInterface_inst.spectrum[0,:], y=webInterface_inst.spectrum[m, :]))
+
+    return update_data
+
+@app.callback(
+    Output('spectrum-graph', 'figure'),
+    Input('url', 'pathname'),
+)
+def plot_spectrum(pathname):
+
     fig = go.Figure(layout=fig_layout)
+
     if webInterface_inst.spectrum is not None:
         if abs(webInterface_inst.spectrum[0,0]) > 10**6: 
             freq_label="Frequency [MHz]"
@@ -1122,10 +1171,11 @@ def plot_spectrum(spectrum_update_flag):
             freq_label="Frequency [Hz]"
         freq_label+=", Center:{:.1f} MHz".format(webInterface_inst.daq_center_freq)
 
+
         # Plot traces                    
         for m in range(np.size(webInterface_inst.spectrum, 0)-1):   
             fig.add_trace(go.Scatter(x=webInterface_inst.spectrum[0,:],
-                                     y=webInterface_inst.spectrum[m+1, :], 
+                                     y=webInterface_inst.spectrum[m+1, :],
                                      name="Channel {:d}".format(m),
                                      line = dict(color = trace_colors[m],
                                                  width = 3)
@@ -1146,14 +1196,66 @@ def plot_spectrum(spectrum_update_flag):
                         mirror=True,
                         ticks='outside',
                         showline=True)
-        return fig
+    else :
+        for m in range(0, webInterface_inst.module_receiver.M):   
+            fig.add_trace(go.Scatter(x=x,
+                               y=y, 
+                               name="Channel {:d}".format(m),
+                               line = dict(color = trace_colors[m],
+                                           width = 2)
+                               ))
+
+    return fig
+
+
+
+
+
+# DOA Graph Clientside Callback
+app.clientside_callback(
+    """
+    function (data, graph_type) {
+        if(graph_type == 0) {
+            return [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length];
+        } else {
+            return [{theta: data.map(i => i.x), r: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length];
+        }
+    }
+    """,
+    Output('doa-graph', 'extendData'),
+    Input('doa-store', 'data'), 
+    State('doa-graph-type-store', 'data')
+)
 
 @app.callback(
-    Output(component_id='doa-graph'              , component_property='figure'),
-    Input(component_id='placeholder_doa_page_upd', component_property='children'),    
+    Output(component_id='doa-store', component_property='data'),
+    Output(component_id='doa-graph-type-store', component_property='data'),
+    Output(component_id='body_doa_max', component_property='children'),
+    Input(component_id='placeholder_doa_page_upd', component_property='children'),
     prevent_initial_call=True
 )
-def plot_doa(doa_update_flag):
+def update_doa_store(doa_update_flag):
+    update_data = [] #dict(x=x, y=y)
+    if webInterface_inst.doa_thetas is not None:
+        doa_max_str = str(webInterface_inst.doas[0])+"°"
+
+        if webInterface_inst._doa_fig_type == 2 :
+            doa_max_str = (360-webInterface_inst.doas[0]+webInterface_inst.compass_ofset)%360
+        update_data = [[dict(x=webInterface_inst.doa_thetas, y=webInterface_inst.doa_results[0])], webInterface_inst._doa_fig_type, doa_max_str]
+
+    return update_data
+
+
+#@app.callback(
+#    Output(component_id='doa-graph'              , component_property='figure'),
+#    Input(component_id='placeholder_doa_page_upd', component_property='children'),    
+#    prevent_initial_call=True
+#)
+@app.callback(
+    Output('doa-graph', 'figure'),
+    Input('url', 'pathname'),
+)
+def plot_doa(pathname):
     fig = go.Figure(layout=fig_layout)
     
     if webInterface_inst.doa_thetas is not None:
@@ -1161,7 +1263,7 @@ def plot_doa(doa_update_flag):
         if webInterface_inst._doa_fig_type == 0 : 
             # Plot traces 
             for i, doa_result in enumerate(webInterface_inst.doa_results):                 
-                label = webInterface_inst.doa_labels[i]+": "+str(webInterface_inst.doas[i])+"°"
+                label = webInterface_inst.doa_labels[i]
                 fig.add_trace(go.Scatter(x=webInterface_inst.doa_thetas, 
                                         y=doa_result,
                                         name=label,
@@ -1203,14 +1305,14 @@ def plot_doa(doa_update_flag):
                                  )           
 
             for i, doa_result in enumerate(webInterface_inst.doa_results):
-                label = webInterface_inst.doa_labels[i]+": "+str(webInterface_inst.doas[i])+"°"
+                label = webInterface_inst.doa_labels[i]
                 fig.add_trace(go.Scatterpolar(theta=webInterface_inst.doa_thetas, 
                                             r=doa_result,
                                             name=label,
                                             line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
                                             fill= 'toself'
                                             ))
-                fig.add_trace(go.Scatterpolar(
+                '''fig.add_trace(go.Scatterpolar(
                                                 r = [0,min(doa_result)],
                                                 theta = [webInterface_inst.doas[i],
                                                          webInterface_inst.doas[i]],
@@ -1219,7 +1321,7 @@ def plot_doa(doa_update_flag):
                                                 line = dict(
                                                     color = doa_trace_colors[webInterface_inst.doa_labels[i]],
                                                     dash='dash'
-                                                )))
+                                                )))'''
             # --- Compass  ---
         elif webInterface_inst._doa_fig_type == 2 :
             #thetas_compass = webInterface_inst.doa_thetas[::-1]            
@@ -1247,7 +1349,7 @@ def plot_doa(doa_update_flag):
                     
                 else:
                     doa_compass = (360-webInterface_inst.doas[i]+webInterface_inst.compass_ofset)%360
-                label = webInterface_inst.doa_labels[i]+": "+str(doa_compass)+"°"           
+                label = webInterface_inst.doa_labels[i]
                 """
                 fig.add_trace(go.Scatterpolar(theta=thetas_compass, 
                                             r=doa_result,
@@ -1260,13 +1362,17 @@ def plot_doa(doa_update_flag):
                                                 r = [0,min(doa_result)],
                                                 theta = [doa_compass,
                                                          doa_compass],
-                                                mode = 'lines',
-                                                name = label,
-                                                showlegend=True,                                                      
-                                                line = dict(
-                                                    color = doa_trace_colors[webInterface_inst.doa_labels[i]],
-                                                    dash='dash'
-                                                )))
+                                                name= label,
+                                                line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
+                                                fill= 'toself'
+                                                ))
+                                                #mode = 'lines',
+                                                #name = label,
+                                                #showlegend=True,                                                      
+                                                #line = dict(
+                                                #    color = doa_trace_colors[webInterface_inst.doa_labels[i]],
+                                                #    dash='dash'
+                                                #)))
 
         return fig
 
