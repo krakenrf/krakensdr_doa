@@ -37,6 +37,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
 from configparser import ConfigParser
+from waitress import serve
+#from gevent.pywsgi import WSGIServer
 
 # Import Kraken SDR modules
 current_path          = os.path.dirname(os.path.realpath(__file__))
@@ -1160,50 +1162,60 @@ def update_spectrum_store(spectrum_update_flag):
 )
 def plot_spectrum(pathname):
 
+    if pathname == "/spectrum":
+        while webInterface_inst.spectrum is None : time.sleep(0.1)
+    else:
+        return []
+
     fig = go.Figure(layout=fig_layout)
 
-    if webInterface_inst.spectrum is not None:
-        if abs(webInterface_inst.spectrum[0,0]) > 10**6: 
-            freq_label="Frequency [MHz]"
-        elif abs(webInterface_inst.spectrum[0,0]) > 10**3: 
-            freq_label="Frequency [kHz]"
-        else:
-            freq_label="Frequency [Hz]"
-        freq_label+=", Center:{:.1f} MHz".format(webInterface_inst.daq_center_freq)
+#    if webInterface_inst.spectrum is not None:
+    if abs(webInterface_inst.spectrum[0,0]) > 10**6: 
+        freq_label="Frequency [MHz]"
+    elif abs(webInterface_inst.spectrum[0,0]) > 10**3: 
+        freq_label="Frequency [kHz]"
+    else:
+        freq_label="Frequency [Hz]"
+    freq_label+=", Center:{:.1f} MHz".format(webInterface_inst.daq_center_freq)
 
 
-        # Plot traces                    
-        for m in range(np.size(webInterface_inst.spectrum, 0)-1):   
-            fig.add_trace(go.Scatter(x=webInterface_inst.spectrum[0,:],
-                                     y=webInterface_inst.spectrum[m+1, :],
-                                     name="Channel {:d}".format(m),
-                                     line = dict(color = trace_colors[m],
-                                                 width = 3)
-                                    ))
+    # Plot traces                    
+    for m in range(np.size(webInterface_inst.spectrum, 0)-1):   
+        fig.add_trace(go.Scatter(x=webInterface_inst.spectrum[0,:],
+                                 y=webInterface_inst.spectrum[m+1, :],
+                                 name="Channel {:d}".format(m),
+                                 line = dict(color = trace_colors[m],
+                                             width = 1)
+                                ))
+
+
+    fig.update_xaxes(title_text=freq_label, 
+                    color='rgba(255,255,255,1)', 
+                    title_font_size=20, 
+                    tickfont_size=figure_font_size,
+                    mirror=True,
+                    ticks='outside',
+                    showline=True)
+    fig.update_yaxes(title_text="Amplitude [dB]",
+                    color='rgba(255,255,255,1)', 
+                    title_font_size=20, 
+                    tickfont_size=figure_font_size, 
+                    #range=[-5, 5],
+                    mirror=True,
+                    ticks='outside',
+                    showline=True)
+
         
-        fig.update_xaxes(title_text=freq_label, 
-                        color='rgba(255,255,255,1)', 
-                        title_font_size=20, 
-                        tickfont_size=figure_font_size,
-                        mirror=True,
-                        ticks='outside',
-                        showline=True)
-        fig.update_yaxes(title_text="Amplitude [dB]",
-                        color='rgba(255,255,255,1)', 
-                        title_font_size=20, 
-                        tickfont_size=figure_font_size, 
-                        #range=[-5, 5],
-                        mirror=True,
-                        ticks='outside',
-                        showline=True)
-    else :
-        for m in range(0, webInterface_inst.module_receiver.M):   
-            fig.add_trace(go.Scatter(x=x,
-                               y=y, 
-                               name="Channel {:d}".format(m),
-                               line = dict(color = trace_colors[m],
-                                           width = 2)
-                               ))
+#    else :
+#        for m in range(0, webInterface_inst.module_receiver.M):   
+#            fig.add_trace(go.Scatter(x=x,
+#                               y=y, 
+#                               name="Channel {:d}".format(m),
+#                               line = dict(color = trace_colors[m],
+#                                           width = 1)
+#                               ))
+
+
 
     return fig
 
@@ -1235,27 +1247,28 @@ app.clientside_callback(
     prevent_initial_call=True
 )
 def update_doa_store(doa_update_flag):
-    update_data = [] #dict(x=x, y=y)
+    update_data = []
     if webInterface_inst.doa_thetas is not None:
         doa_max_str = str(webInterface_inst.doas[0])+"°"
+        update_data = [[dict(x=webInterface_inst.doa_thetas, y=webInterface_inst.doa_results[0])], webInterface_inst._doa_fig_type, doa_max_str]
 
         if webInterface_inst._doa_fig_type == 2 :
             doa_max_str = (360-webInterface_inst.doas[0]+webInterface_inst.compass_ofset)%360
-        update_data = [[dict(x=webInterface_inst.doa_thetas, y=webInterface_inst.doa_results[0])], webInterface_inst._doa_fig_type, doa_max_str]
+            update_data = [[dict(x=(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360, y=webInterface_inst.doa_results[0])], webInterface_inst._doa_fig_type, doa_max_str]
 
     return update_data
 
 
-#@app.callback(
-#    Output(component_id='doa-graph'              , component_property='figure'),
-#    Input(component_id='placeholder_doa_page_upd', component_property='children'),    
-#    prevent_initial_call=True
-#)
 @app.callback(
     Output('doa-graph', 'figure'),
     Input('url', 'pathname'),
 )
 def plot_doa(pathname):
+
+    if pathname != "/doa":
+        return []
+
+
     fig = go.Figure(layout=fig_layout)
     
     if webInterface_inst.doa_thetas is not None:
@@ -1289,59 +1302,49 @@ def plot_doa(pathname):
                             showline=True)
         # --- Polar plot ---
         elif webInterface_inst._doa_fig_type == 1:
-            if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":           
-                fig.update_layout(polar = dict(sector = [0, 180], 
-                                               radialaxis_tickfont_size = figure_font_size,
-                                               angularaxis = dict(rotation=90,                                                                  
-                                                                  tickfont_size = figure_font_size
-                                                                  )
-                                                )
-                                 )                
-            else: #UCA                
-                fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
-                                               angularaxis = dict(rotation=90,                                                                   
-                                                                  tickfont_size = figure_font_size)                                               
-                                               )
-                                 )           
+            #if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":           
+            #    fig.update_layout(polar = dict(sector = [0, 180], 
+            #                                   radialaxis_tickfont_size = figure_font_size,
+            #                                   angularaxis = dict(rotation=90,                                                                  
+            #                                                      tickfont_size = figure_font_size
+            #                                                      )
+            #                                    )
+            #                     )                
+            #else: #UCA                
+            fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
+                                           angularaxis = dict(rotation=90,
+                                                              tickfont_size = figure_font_size)
+                                           )
+                             )
 
             for i, doa_result in enumerate(webInterface_inst.doa_results):
                 label = webInterface_inst.doa_labels[i]
                 fig.add_trace(go.Scatterpolar(theta=webInterface_inst.doa_thetas, 
-                                            r=doa_result,
-                                            name=label,
-                                            line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
-                                            fill= 'toself'
-                                            ))
-                '''fig.add_trace(go.Scatterpolar(
-                                                r = [0,min(doa_result)],
-                                                theta = [webInterface_inst.doas[i],
-                                                         webInterface_inst.doas[i]],
-                                                mode = 'lines',
-                                                showlegend=False,                                                      
-                                                line = dict(
-                                                    color = doa_trace_colors[webInterface_inst.doa_labels[i]],
-                                                    dash='dash'
-                                                )))'''
+                                             r=doa_result,
+                                             name=label,
+                                             line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
+                                             fill= 'toself'
+                                             ))
             # --- Compass  ---
         elif webInterface_inst._doa_fig_type == 2 :
             #thetas_compass = webInterface_inst.doa_thetas[::-1]            
             #thetas_compass += webInterface_inst.compass_ofset
-            if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":             
-                fig.update_layout(polar = dict(sector = [0, 180], 
-                                            radialaxis_tickfont_size = figure_font_size,
-                                            angularaxis = dict(rotation=90+webInterface_inst.compass_ofset,
-                                                                direction="clockwise",
-                                                                tickfont_size = figure_font_size
-                                                                )
-                                                )
-                                )                
-            else: #UCA                
-                fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
-                                            angularaxis = dict(rotation=90+webInterface_inst.compass_ofset, 
-                                                                direction="clockwise",
-                                                                tickfont_size = figure_font_size)                                               
-                                            )
-                                )           
+            #if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":             
+            #    fig.update_layout(polar = dict(sector = [0, 180], 
+            #                                radialaxis_tickfont_size = figure_font_size,
+            #                                angularaxis = dict(rotation=90+webInterface_inst.compass_ofset,
+            #                                                    direction="clockwise",
+            #                                                    tickfont_size = figure_font_size
+            #                                                    )
+            #                                    )
+            #                    )                
+            #else: #UCA                
+            fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
+                                        angularaxis = dict(rotation=90+webInterface_inst.compass_ofset, 
+                                                            direction="clockwise",
+                                                            tickfont_size = figure_font_size)                                               
+                                        )
+                            )
 
             for i, doa_result in enumerate(webInterface_inst.doa_results):                 
                 if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":
@@ -1358,10 +1361,8 @@ def plot_doa(pathname):
                                             fill= 'toself'
                                             ))
                 """
-                fig.add_trace(go.Scatterpolar(
-                                                r = [0,min(doa_result)],
-                                                theta = [doa_compass,
-                                                         doa_compass],
+                fig.add_trace(go.Scatterpolar(theta=(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360, 
+                                                r=doa_result,
                                                 name= label,
                                                 line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
                                                 fill= 'toself'
@@ -1719,7 +1720,8 @@ def display_page(pathname):
 if __name__ == "__main__":    
     # For Development only, otherwise use gunicorn    
     # Debug mode does not work when the data interface is set to shared-memory "shmem"! 
-    app.run_server(debug=False, host="0.0.0.0")
+    #app.run_server(debug=False, host="0.0.0.0")
+    serve(app.server, host="0.0.0.0", port=8050)
 
 """
 html.Div([

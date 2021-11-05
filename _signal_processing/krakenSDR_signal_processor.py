@@ -303,7 +303,7 @@ class SignalProcessor(threading.Thread):
         M = self.channel_number        
 
         if self.DOA_ant_alignment == "UCA":
-            self.DOA_theta =  np.linspace(0,360,361)
+            self.DOA_theta =  np.linspace(0,359,360)
 
             x = self.DOA_inter_elem_space * np.cos(2*np.pi/M * np.arange(M))
             y = -self.DOA_inter_elem_space * np.sin(2*np.pi/M * np.arange(M)) # For this specific array only
@@ -324,10 +324,10 @@ class SignalProcessor(threading.Thread):
                 self.DOA_MUSIC_res = DOA_MUSIC_res
 
         elif self.DOA_ant_alignment == "ULA":
-            self.DOA_theta =  np.linspace(-90,90,181)
+            self.DOA_theta =  np.linspace(0,359,360)
 
             x = np.zeros(M)
-            y = np.arange(M) * self.DOA_inter_elem_space            
+            y = -np.arange(M) * self.DOA_inter_elem_space            
             scanning_vectors = de.gen_scanning_vectors(M, x, y, self.DOA_theta)
 
             # DOA estimation
