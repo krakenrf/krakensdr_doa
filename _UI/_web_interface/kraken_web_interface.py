@@ -406,7 +406,10 @@ fig_layout = go.Layout(
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)', 
         template='plotly_dark',
-        showlegend=True    
+        showlegend=True,
+        margin=go.layout.Margin(
+            t=0 #top margin
+        )    
     )
 fig_dummy = go.Figure(layout=fig_layout)
 #fig_dummy.add_trace(go.Scatter(x=x, y=y, name = "Avg spectrum"))
@@ -424,6 +427,13 @@ fig_dummy.update_xaxes(title_text="Frequency [MHz]")
 fig_dummy.update_yaxes(title_text="Amplitude [dB]")   
 
 option = [{"label":"", "value": 1}]
+
+
+waterfall_fig = go.Figure(layout=fig_layout)
+waterfall_fig.add_trace(go.Heatmap(
+#                       z=waterfall_init))
+                       z=[[]]))
+
 
 
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
@@ -826,11 +836,28 @@ def generate_config_page_layout(webInterface_inst):
 spectrum_page_layout = html.Div([   
     html.Div([
     dcc.Store(id='spectrum-store', data=[dict(x=x, y=y)] * webInterface_inst.module_receiver.M),
+    dcc.Store(id='spectrum-update-flag', data=0),
     dcc.Graph(
-        style={"height": "inherit"},
+        #style={"height": "inherit"},
         id="spectrum-graph",
         figure=fig_dummy #spectrum_fig #fig_dummy
-    )], className="monitor_card"),
+    ),
+    dcc.Graph(
+        #style={"height": "inherit"},
+        id="waterfall-graph",
+        figure=waterfall_fig #fig_dummy #spectrum_fig #fig_dummy
+    ),
+], className="monitor_card"),
+
+    #html.Div([
+    #dcc.Graph(
+    #    style={"height": "inherit"},
+    #    id="waterfall-graph",
+    #    figure=fig_dummy #spectrum_fig #fig_dummy
+    #)], className="monitor_card"),
+
+
+
 ])
 def generate_doa_page_layout(webInterface_inst):
     doa_page_layout = html.Div([        
@@ -851,7 +878,6 @@ def generate_doa_page_layout(webInterface_inst):
             id="doa-graph",
             figure=fig_dummy
         )], className="monitor_card"),
-
     ])
     return doa_page_layout
 
@@ -1137,10 +1163,16 @@ def update_daq_status(input_value):
 app.clientside_callback(
     """
     function (data) {
-        return [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length]
+        /*return [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length]*/
+
+        return [
+                [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length],
+                [{z: [[data[0].y]]}, [0], 100]
+               ]
     }
     """,
     Output('spectrum-graph', 'extendData'),
+    Output('waterfall-graph', 'extendData'),
     Input('spectrum-store', 'data')
 )
 
@@ -1158,11 +1190,13 @@ def update_spectrum_store(spectrum_update_flag):
 
 @app.callback(
     Output('spectrum-graph', 'figure'),
-    Input('url', 'pathname'),
-)
+    Output('waterfall-graph', 'figure'),
+    Input('url', 'pathname'))
 def plot_spectrum(pathname):
 
     if pathname == "/spectrum":
+    #if pathname == "/config":
+    #    pass
         while webInterface_inst.spectrum is None : time.sleep(0.1)
     else:
         return []
@@ -1187,6 +1221,8 @@ def plot_spectrum(pathname):
                                  line = dict(color = trace_colors[m],
                                              width = 1)
                                 ))
+
+    #fig.update_layout(margin=dict(t=0))
 
 
     fig.update_xaxes(title_text=freq_label, 
@@ -1217,8 +1253,29 @@ def plot_spectrum(pathname):
 
 
 
-    return fig
+    waterfall_init = [[-80] * len(webInterface_inst.spectrum[1, :])] * 100
+    waterfall_fig = go.Figure(layout=fig_layout)
+    waterfall_fig.add_trace(go.Heatmap(
+                           z=waterfall_init,
+                         colorscale=[[0.0, '#000020'], 
+                         [0.0714, '#000030'], 
+                         [0.1428, '#000050'],
+                         [0.2142, '#000091'], 
+                         [0.2856, '#1E90FF'], 
+                         [0.357, '#FFFFFF'],
+                         [0.4284, '#FFFF00'],
+                         [0.4998, '#FE6D16'],
+                         [0.5712, '#FE6D16'],
+                         [0.6426, '#FF0000'],
+                         [0.714, '#FF0000'],
+                         [0.7854, '#C60000'],
+                         [0.8568, '#9F0000'],
+                         [0.9282, '#750000'],
+                         [1.0, '#4A0000']]))
+                           #z=[[]]))
 
+    return fig, waterfall_fig
+    #return fig
 
 
 

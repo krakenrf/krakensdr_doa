@@ -189,6 +189,7 @@ class SignalProcessor(threading.Thread):
                     #-----> SPECTRUM PROCESSING <----- 
                     
                     if self.en_spectrum and self.data_ready:
+                    #if True and self.data_ready:
 
                         if len(self.processed_signal[0,:]) > self.spectrum_window_size:
                             N = self.spectrum_window_size
