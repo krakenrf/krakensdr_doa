@@ -414,7 +414,7 @@ fig_layout = go.Layout(
 fig_dummy = go.Figure(layout=fig_layout)
 #fig_dummy.add_trace(go.Scatter(x=x, y=y, name = "Avg spectrum"))
 
-for m in range(0, webInterface_inst.module_receiver.M):   
+for m in range(0, webInterface_inst.module_receiver.M+1): #+1 for the auto decimation window selection
     fig_dummy.add_trace(go.Scatter(x=x,
                              y=y, 
                              name="Channel {:d}".format(m),
@@ -456,7 +456,7 @@ app.layout = html.Div([
 
     dcc.Interval(
         id='interval-component',
-        interval=25, # in milliseconds
+        interval=250, # in milliseconds
         n_intervals=0
     ),
     html.Div(id="placeholder_start"                , style={"display":"none"}),
@@ -885,7 +885,7 @@ def generate_doa_page_layout(webInterface_inst):
 #          CALLBACK FUNCTIONS
 #============================================  
 @app.callback(   
-    Output(component_id="interval-component"           , component_property='interval'),    
+#    Output(component_id="interval-component"           , component_property='interval'),    
     Output(component_id="placeholder_config_page_upd"  , component_property='children'),
     Output(component_id="placeholder_spectrum_page_upd", component_property='children'),
     Output(component_id="placeholder_doa_page_upd"     , component_property='children'),
@@ -971,7 +971,7 @@ def fetch_dsp_data(input_value, pathname):
                 webInterface_inst._update_rate_arr[0:webInterface_inst._avg_win_size-2] = \
                 webInterface_inst._update_rate_arr[1:webInterface_inst._avg_win_size-1]                
                 webInterface_inst._update_rate_arr[webInterface_inst._avg_win_size-1] = webInterface_inst.daq_update_rate
-                webInterface_inst.page_update_rate = np.average(webInterface_inst._update_rate_arr)*0.8                
+                webInterface_inst.page_update_rate = np.average(webInterface_inst._update_rate_arr)*0.4                
             elif data_entry[0] == "latency":
                 webInterface_inst.daq_dsp_latency = data_entry[1] + webInterface_inst.daq_cpi
             elif data_entry[0] == "max_amplitude":
@@ -1033,13 +1033,17 @@ def fetch_dsp_data(input_value, pathname):
         # Handle task here and call q.task_done()
 
     if (pathname == "/config" or pathname=="/") and daq_status_update_flag:        
-        return webInterface_inst.page_update_rate*1000, 1, no_update, no_update, freq_update
+#        return webInterface_inst.page_update_rate*1000, 1, no_update, no_update, freq_update
+        return 1, no_update, no_update, freq_update
     elif pathname == "/spectrum" and spectrum_update_flag:
-        return webInterface_inst.page_update_rate*1000, no_update, 1, no_update, no_update
+#        return webInterface_inst.page_update_rate*1000, no_update, 1, no_update, no_update
+        return no_update, 1, no_update, no_update
     elif pathname == "/doa" and doa_update_flag:
-        return webInterface_inst.page_update_rate*1000, no_update, no_update, 1, no_update
+#        return webInterface_inst.page_update_rate*1000, no_update, no_update, 1, no_update
+        return no_update, no_update, 1, no_update
     else:
-        return  webInterface_inst.page_update_rate*1000, no_update, no_update, no_update, no_update
+#        return  webInterface_inst.page_update_rate*1000, no_update, no_update, no_update, no_update
+        return  no_update, no_update, no_update, no_update
 
 @app.callback(
     Output(component_id="body_daq_update_rate"        , component_property='children'),
@@ -1183,7 +1187,7 @@ app.clientside_callback(
 )
 def update_spectrum_store(spectrum_update_flag):
     update_data = []
-    for m in range(1, webInterface_inst.module_receiver.M+1):    
+    for m in range(1, np.size(webInterface_inst.spectrum, 0)): #webInterface_inst.module_receiver.M+1):    
         update_data.append(dict(x=webInterface_inst.spectrum[0,:], y=webInterface_inst.spectrum[m, :]))
 
     return update_data
@@ -1199,7 +1203,7 @@ def plot_spectrum(pathname):
     #    pass
         while webInterface_inst.spectrum is None : time.sleep(0.1)
     else:
-        return []
+        return [] 
 
     fig = go.Figure(layout=fig_layout)
 
@@ -1214,13 +1218,25 @@ def plot_spectrum(pathname):
 
 
     # Plot traces                    
-    for m in range(np.size(webInterface_inst.spectrum, 0)-1):   
+    for m in range(np.size(webInterface_inst.spectrum, 0)-2):   
         fig.add_trace(go.Scatter(x=webInterface_inst.spectrum[0,:],
                                  y=webInterface_inst.spectrum[m+1, :],
                                  name="Channel {:d}".format(m),
                                  line = dict(color = trace_colors[m],
                                              width = 1)
                                 ))
+
+
+    fig.add_hline(y=webInterface_inst.module_receiver.daq_squelch_th_dB)
+
+    m = np.size(webInterface_inst.spectrum,0)-1
+    fig.add_trace(go.Scatter(x=webInterface_inst.spectrum[0,:],
+                             y=webInterface_inst.spectrum[m, :],
+                             name="Squelch Threshold",
+                             line = dict(color = trace_colors[m],
+                                         width = 2)
+                             ))
+
 
     #fig.update_layout(margin=dict(t=0))
 
@@ -1236,7 +1252,7 @@ def plot_spectrum(pathname):
                     color='rgba(255,255,255,1)', 
                     title_font_size=20, 
                     tickfont_size=figure_font_size, 
-                    #range=[-5, 5],
+                    range=[-90, 0],
                     mirror=True,
                     ticks='outside',
                     showline=True)
