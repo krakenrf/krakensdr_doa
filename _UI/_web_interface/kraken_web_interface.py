@@ -25,20 +25,35 @@ import sys
 import queue 
 import time
 import subprocess
-
+import orjson
 # Import third-party modules
-import dash
+
+#Testing dash_devices
+
+#import dash
+#from dash.dependencies import Input, Output, State
+
+import plotly.io as pio
+pio.renderers.default = 'iframe'
+
 import dash_core_components as dcc
 import dash_html_components as html
+
+import dash_devices as dash
+from dash_devices.dependencies import Input, Output, State
+#from dash import html
+
+
 from dash.exceptions import PreventUpdate
 from dash.dash import no_update
-from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
 from configparser import ConfigParser
-from waitress import serve
+#from waitress import serve
 #from gevent.pywsgi import WSGIServer
+
+from threading import Timer
 
 # Import Kraken SDR modules
 current_path          = os.path.dirname(os.path.realpath(__file__))
@@ -70,7 +85,7 @@ import save_settings as settings
 from krakenSDR_receiver import ReceiverRTLSDR
 from krakenSDR_signal_processor import SignalProcessor
 
-import tooltips
+#import tooltips
 
 class webInterface():
 
@@ -138,7 +153,7 @@ class webInterface():
         self.daq_if_gains          ="[,,,,]"
         self.en_advanced_daq_cfg   = settings.en_advanced_daq_cfg 
         self.daq_ini_cfg_params    = read_config_file()
-        self.active_daq_ini_cfg    = "Default" # Holds the string identifier of the actively loaded DAQ ini configuration
+        self.active_daq_ini_cfg    = self.daq_ini_cfg_params[0] #"Default" # Holds the string identifier of the actively loaded DAQ ini configuration
         self.tmp_daq_ini_cfg       = "Default"
         self.daq_cfg_ini_error     = ""
 
@@ -154,6 +169,50 @@ class webInterface():
         self.max_amplitude         = 0 # Used to help setting the threshold level of the squelch
         self.avg_powers            = []
         self.logger.info("Web interface object initialized")        
+
+        self.dsp_timer = None
+        
+        self.pathname = ""
+        self.reset_doa_graph_flag = False
+
+
+        # TODO: Delete this
+        trace_colors = px.colors.qualitative.Plotly
+        trace_colors[3] = 'rgb(255,255,51)'
+
+        fig_layout = go.Layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)', 
+            template='plotly_dark',
+            showlegend=True,
+            margin=go.layout.Margin(
+            t=0 #top margin
+            )
+        )
+
+        self.spectrum_fig = go.Figure(layout=fig_layout)
+
+        for m in range(0, self.module_receiver.M+1): #+1 for the auto decimation window selection
+            self.spectrum_fig.add_trace(go.Scatter(x=[1,2,3],
+                             y=[1,2,3], 
+                             name="Channel {:d}".format(m),
+                             line = dict(color = trace_colors[m],
+                                         width = 2)
+                             ))
+
+
+        self.waterfall_fig = go.Figure(layout=fig_layout)
+        self.waterfall_fig.add_trace(go.Heatmapgl(
+#                       z=waterfall_init))
+                       z=[[1,2,3,4,5]]))
+
+        self.spectrum_redraw_flag = True
+
+        self.waterfall_avg = []
+        self.count = 0
+
+
+        self.spectrum_graph_ready = 0
         
         if self.daq_ini_cfg_params is not None: 
             self.logger.info("Config file found and read succesfully")        
@@ -171,6 +230,8 @@ class webInterface():
                 # Note: There is no need to set the thresold in the DAQ Subsystem as it is configured from the ini-file.
             else:  # Squelch is disabled
                 self.module_signal_processor.en_squelch = False         
+
+
 
     def save_configuration(self):
         data = {}
@@ -366,7 +427,7 @@ def write_config_file(param_list):
 def get_preconfigs(config_files_path):
     parser = ConfigParser()
     preconfigs = []
-    preconfigs.append([daq_config_filename, "Initial"])
+    preconfigs.append([daq_config_filename, "Current"])
     for root, dirs, files in os.walk(config_files_path):
         if len(files):
             config_file_path = os.path.join(root, files[0])
@@ -388,7 +449,7 @@ webInterface_inst = webInterface()
 trace_colors = px.colors.qualitative.Plotly
 trace_colors[3] = 'rgb(255,255,51)'
 valid_fir_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen' , 'bohman', 'blackmanharris', 'nuttall', 'barthann'] 
-valid_sample_rates = [0.25, 0.900001, 1.024, 1.4, 1.8, 1.92, 2.048, 2.4, 2.56]
+valid_sample_rates = [0.25, 0.900001, 1.024, 1.4, 1.8, 1.92, 2.048, 2.4, 2.56, 3.2]
 valid_daq_buffer_sizes = (2**np.arange(10,21,1)).tolist()
 calibration_tack_modes = [['No tracking',0] , ['Periodic tracking',2]]
 doa_trace_colors =	{
@@ -411,6 +472,7 @@ fig_layout = go.Layout(
             t=0 #top margin
         )    
     )
+
 fig_dummy = go.Figure(layout=fig_layout)
 #fig_dummy.add_trace(go.Scatter(x=x, y=y, name = "Avg spectrum"))
 
@@ -428,23 +490,60 @@ fig_dummy.update_yaxes(title_text="Amplitude [dB]")
 
 option = [{"label":"", "value": 1}]
 
+spectrum_fig = go.Figure(layout=fig_layout)
+
+for m in range(0, webInterface_inst.module_receiver.M+1): #+1 for the auto decimation window selection
+    spectrum_fig.add_trace(go.Scatter(x=x,
+                             y=y, 
+                             name="Channel {:d}".format(m),
+                             line = dict(color = trace_colors[m],
+                                         width = 2)
+                             ))
+
 
 waterfall_fig = go.Figure(layout=fig_layout)
-waterfall_fig.add_trace(go.Heatmap(
+waterfall_fig.add_trace(go.Heatmapgl(
 #                       z=waterfall_init))
-                       z=[[]]))
+                       z=[[1,2,3,4,5]]))
 
 
 
+waterfall_init = [[-80] * webInterface_inst.module_signal_processor.spectrum_window_size] * 50 # TODO: Set 1024 to FFT resolution
+
+waterfall_fig = go.Figure(layout=fig_layout)
+waterfall_fig.add_trace(go.Heatmapgl(
+                         z=waterfall_init,
+                         zsmooth=False,
+                         hoverinfo='skip',
+                         colorscale=[[0.0, '#000020'],
+                         [0.0714, '#000030'],
+                         [0.1428, '#000050'],
+                         [0.2142, '#000091'],
+                         [0.2856, '#1E90FF'],
+                         [0.357, '#FFFFFF'],
+                         [0.4284, '#FFFF00'],
+                         [0.4998, '#FE6D16'],
+                         [0.5712, '#FE6D16'],
+                         [0.6426, '#FF0000'],
+                         [0.714, '#FF0000'],
+                         [0.7854, '#C60000'],
+                         [0.8568, '#9F0000'],
+                         [0.9282, '#750000'],
+                         [1.0, '#4A0000']]))
+
+doa_fig = go.Figure(layout=fig_layout)
+
+
+#app = dash.Dash(__name__, suppress_callback_exceptions=True, compress=True, update_title="") # cannot use update_title with dash_devices
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
-server = app.server
+
 # app_log = logger.getLogger('werkzeug')
 # app_log.setLevel(settings.logging_level*10)
 # app_log.setLevel(30) # TODO: Only during dev time
 app.layout = html.Div([
     dcc.Location(id='url', children='/config',refresh=False),
 
-    html.Div([html.H1('Kraken SDR - Direction of Arrival Estimation')], style={"text-align": "center"}, className="main_title"),
+    html.Div([html.H1('KrakenSDR - Direction of Arrival Estimation')], style={"text-align": "center"}, className="main_title"),
     html.Div([html.A("Configuration", className="header_active"   , id="header_config"  ,href="/config"),
             html.A("Spectrum"       , className="header_inactive" , id="header_spectrum",href="/spectrum"),   
             html.A("DoA Estimation" , className="header_inactive" , id="header_doa"     ,href="/doa"),
@@ -456,7 +555,7 @@ app.layout = html.Div([
 
     dcc.Interval(
         id='interval-component',
-        interval=250, # in milliseconds
+        interval=500, # in milliseconds
         n_intervals=0
     ),
     html.Div(id="placeholder_start"                , style={"display":"none"}),
@@ -471,6 +570,7 @@ app.layout = html.Div([
     html.Div(id="placeholder_config_page_upd"      , style={"display":"none"}),
     html.Div(id="placeholder_spectrum_page_upd"    , style={"display":"none"}),
     html.Div(id="placeholder_doa_page_upd"         , style={"display":"none"}),
+    html.Div(id="dummy_output"                     , style={"display":"none"}),
 
     html.Div(id='page-content')
 ])
@@ -499,7 +599,7 @@ def generate_config_page_layout(webInterface_inst):
     wavelength= 300 / webInterface_inst.daq_center_freq
     
     ant_spacing_wavelength = webInterface_inst.module_signal_processor.DOA_inter_elem_space
-    ant_spacing_meter = wavelength * ant_spacing_wavelength
+    ant_spacing_meter = round(wavelength * ant_spacing_wavelength, 3)
     ant_spacing_feet  = ant_spacing_meter*3.2808399
     ant_spacing_inch  = ant_spacing_meter*39.3700787
     
@@ -753,15 +853,16 @@ def generate_config_page_layout(webInterface_inst):
                 {'label': "UCA", 'value': "UCA"},                
             ], value=webInterface_inst.module_signal_processor.DOA_ant_alignment, className="field-body", labelStyle={'display': 'inline-block'}, id="radio_ant_arrangement")
         ], className="field"),        
-        html.Div("Spacing:"              , id="label_ant_spacing"   , className="field-label"),
-        html.Div([html.Div("[wavelength]:"        , id="label_ant_spacing_wavelength"  , className="field-label"), 
-                    dcc.Input(id="ant_spacing_wavelength", value=ant_spacing_wavelength, type='number', debounce=False, className="field-body")]),
+        #html.Div("Spacing:"              , id="label_ant_spacing"   , className="field-label"),
+                    #dcc.Input(id="ant_spacing_wavelength", value=ant_spacing_wavelength, type='number', debounce=False, className="field-body")]),
         html.Div([html.Div("[meter]:"             , id="label_ant_spacing_meter"  , className="field-label"), 
                     dcc.Input(id="ant_spacing_meter", value=ant_spacing_meter, type='number', debounce=False, className="field-body")]),
-        html.Div([html.Div("[feet]:"              , id="label_ant_spacing_feet"   , className="field-label"), 
-                    dcc.Input(id="ant_spacing_feet", value=ant_spacing_feet, type='number'  , debounce=False, className="field-body")]),
-        html.Div([html.Div("[inch]:"              , id="label_ant_spacing_inch"   , className="field-label"), 
-                    dcc.Input(id="ant_spacing_inch", value=ant_spacing_inch, type='number'  , debounce=False, className="field-body")]),
+        html.Div([html.Div("Wavelength Multiplier"         , id="label_ant_spacing_wavelength"        , className="field-label"), html.Div("1"      , id="body_ant_spacing_wavelength"        , className="field-body")], className="field"),
+
+        #html.Div([html.Div("[feet]:"              , id="label_ant_spacing_feet"   , className="field-label"), 
+        #            dcc.Input(id="ant_spacing_feet", value=ant_spacing_feet, type='number'  , debounce=False, className="field-body")]),
+        #html.Div([html.Div("[inch]:"              , id="label_ant_spacing_inch"   , className="field-label"), 
+        #            dcc.Input(id="ant_spacing_inch", value=ant_spacing_inch, type='number'  , debounce=False, className="field-body")]),
         html.Div([html.Div("", id="ambiguity_warning" , className="field", style={"color":"orange"})]),                
 
         # --> DoA estimation configuration checkboxes <--  
@@ -824,30 +925,28 @@ def generate_config_page_layout(webInterface_inst):
 
     config_page_component_list = [daq_config_card, daq_status_card, dsp_config_card, display_options_card,squelch_card]
 
-    if not webInterface_inst.disable_tooltips:
-        config_page_component_list.append(tooltips.dsp_config_tooltips)
-        if len(en_advanced_daq_cfg):
-            if daq_cfg_params is not None:
-                config_page_component_list.append(tooltips.daq_ini_config_tooltips)
+#    if not webInterface_inst.disable_tooltips:
+#        config_page_component_list.append(tooltips.dsp_config_tooltips)
+#        if len(en_advanced_daq_cfg):
+#            if daq_cfg_params is not None:
+#                config_page_component_list.append(tooltips.daq_ini_config_tooltips)
 
     return html.Div(children=config_page_component_list)
 
         
 spectrum_page_layout = html.Div([   
     html.Div([
-    dcc.Store(id='spectrum-store', data=[dict(x=x, y=y)] * webInterface_inst.module_receiver.M),
-    dcc.Store(id='spectrum-update-flag', data=0),
+    dcc.Store(id="spectrum-store"),
     dcc.Graph(
-        #style={"height": "inherit"},
         id="spectrum-graph",
         figure=fig_dummy #spectrum_fig #fig_dummy
     ),
     dcc.Graph(
-        #style={"height": "inherit"},
         id="waterfall-graph",
-        figure=waterfall_fig #fig_dummy #spectrum_fig #fig_dummy
+        figure=waterfall_fig #waterfall fig remains unchanged always due to slow speed to update entire graph #fig_dummy #spectrum_fig #fig_dummy
     ),
 ], className="monitor_card"),
+
 
     #html.Div([
     #dcc.Graph(
@@ -876,7 +975,7 @@ def generate_doa_page_layout(webInterface_inst):
         dcc.Graph(
             style={"height": "inherit"},
             id="doa-graph",
-            figure=fig_dummy
+            figure=doa_fig #fig_dummy #doa_fig #fig_dummy
         )], className="monitor_card"),
     ])
     return doa_page_layout
@@ -884,16 +983,15 @@ def generate_doa_page_layout(webInterface_inst):
 #============================================
 #          CALLBACK FUNCTIONS
 #============================================  
-@app.callback(   
-#    Output(component_id="interval-component"           , component_property='interval'),    
-    Output(component_id="placeholder_config_page_upd"  , component_property='children'),
-    Output(component_id="placeholder_spectrum_page_upd", component_property='children'),
-    Output(component_id="placeholder_doa_page_upd"     , component_property='children'),
-    Output(component_id="placeholder_update_freq"      , component_property='children'),  
-    Input(component_id ="interval-component"           , component_property='n_intervals'),
-    State(component_id ="url"                          , component_property='pathname')
-)
-def fetch_dsp_data(input_value, pathname):   
+@app.callback_connect
+def func(client, connect):
+    #print(client, connect, len(app.clients))
+    if connect and len(app.clients)==1:
+        fetch_dsp_data()
+    elif not connect and len(app.clients)==0:
+        webInterface_inst.dsp_timer.cancel()
+
+def fetch_dsp_data():   
     daq_status_update_flag = 0    
     spectrum_update_flag   = 0
     doa_update_flag        = 0
@@ -971,7 +1069,7 @@ def fetch_dsp_data(input_value, pathname):
                 webInterface_inst._update_rate_arr[0:webInterface_inst._avg_win_size-2] = \
                 webInterface_inst._update_rate_arr[1:webInterface_inst._avg_win_size-1]                
                 webInterface_inst._update_rate_arr[webInterface_inst._avg_win_size-1] = webInterface_inst.daq_update_rate
-                webInterface_inst.page_update_rate = np.average(webInterface_inst._update_rate_arr)*0.4                
+                webInterface_inst.page_update_rate = np.average(webInterface_inst._update_rate_arr)*0.8
             elif data_entry[0] == "latency":
                 webInterface_inst.daq_dsp_latency = data_entry[1] + webInterface_inst.daq_cpi
             elif data_entry[0] == "max_amplitude":
@@ -1024,7 +1122,6 @@ def fetch_dsp_data(input_value, pathname):
                 webInterface_inst.doa_confidences.append(data_entry[1])
             else:                
                 webInterface_inst.logger.warning("Unknown data entry: {:s}".format(data_entry[0]))
-        
     except queue.Empty:
         # Handle empty queue here
         webInterface_inst.logger.debug("Signal processing que is empty")
@@ -1032,53 +1129,34 @@ def fetch_dsp_data(input_value, pathname):
         pass
         # Handle task here and call q.task_done()
 
-    if (pathname == "/config" or pathname=="/") and daq_status_update_flag:        
-#        return webInterface_inst.page_update_rate*1000, 1, no_update, no_update, freq_update
-        return 1, no_update, no_update, freq_update
-    elif pathname == "/spectrum" and spectrum_update_flag:
-#        return webInterface_inst.page_update_rate*1000, no_update, 1, no_update, no_update
-        return no_update, 1, no_update, no_update
-    elif pathname == "/doa" and doa_update_flag:
-#        return webInterface_inst.page_update_rate*1000, no_update, no_update, 1, no_update
-        return no_update, no_update, 1, no_update
-    else:
-#        return  webInterface_inst.page_update_rate*1000, no_update, no_update, no_update, no_update
-        return  no_update, no_update, no_update, no_update
+    if (webInterface_inst.pathname == "/config" or webInterface_inst.pathname == "/") and daq_status_update_flag:
+        update_daq_status()
+    elif webInterface_inst.pathname == "/spectrum" and spectrum_update_flag:
+        plot_spectrum()
+    elif webInterface_inst.pathname == "/doa" and doa_update_flag:
+        plot_doa()
 
-@app.callback(
-    Output(component_id="body_daq_update_rate"        , component_property='children'),
-    Output(component_id="body_daq_dsp_latency"        , component_property='children'),    
-    Output(component_id="body_daq_frame_index"        , component_property='children'),
-    Output(component_id="body_daq_frame_sync"         , component_property='children'),
-    Output(component_id="body_daq_frame_sync"         , component_property='style'),
-    Output(component_id="body_daq_frame_type"         , component_property='children'),
-    Output(component_id="body_daq_frame_type"         , component_property='style'),    
-    Output(component_id="body_daq_power_level"        , component_property='children'),
-    Output(component_id="body_daq_power_level"        , component_property='style'),
-    Output(component_id="body_daq_conn_status"        , component_property='children'),
-    Output(component_id="body_daq_conn_status"        , component_property='style'),    
-    Output(component_id="body_daq_delay_sync"         , component_property='children'),
-    Output(component_id="body_daq_delay_sync"         , component_property='style'),
-    Output(component_id="body_daq_iq_sync"            , component_property='children'),
-    Output(component_id="body_daq_iq_sync"            , component_property='style'),
-    Output(component_id="body_daq_noise_source"       , component_property='children'),
-    Output(component_id="body_daq_noise_source"       , component_property='style'),
-    Output(component_id="body_daq_rf_center_freq"     , component_property='children'),
-    Output(component_id="body_daq_sampling_freq"      , component_property='children'),
-    Output(component_id="body_daq_cpi"                , component_property='children'),   
-    Output(component_id="body_daq_if_gain"            , component_property='children'),
-    Output(component_id="body_max_amp"                , component_property='children'),
-    Output(component_id="body_avg_powers"             , component_property='children'),    
-    Input(component_id ="placeholder_config_page_upd" , component_property='children'),    
-    prevent_initial_call=True
-)
-def update_daq_status(input_value):         
-         
+    #if (pathname == "/config" or pathname=="/") and daq_status_update_flag:        
+    #    pass
+    #elif pathname == "/spectrum" and spectrum_update_flag:
+    #    pass
+    #elif pathname == "/doa" and doa_update_flag:
+    #    pass
+    #else:
+    #    pass
+
+    webInterface_inst.dsp_timer = Timer(.01, fetch_dsp_data)
+    webInterface_inst.dsp_timer.start()
+
+
+def update_daq_status():
+
     #############################################
     #      Prepare UI component properties      #
     #############################################
-    
+
     if webInterface_inst.daq_conn_status == 1:
+
         if not webInterface_inst.daq_cfg_iface_status:
             daq_conn_status_str = "Connected"
             conn_status_style={"color": "green"}
@@ -1088,7 +1166,7 @@ def update_daq_status(input_value):
     else:
         daq_conn_status_str = "Disconnected"
         conn_status_style={"color": "red"}
-    
+
     if webInterface_inst.daq_restart:
         daq_conn_status_str = "Restarting.."
         conn_status_style={"color": "orange"}
@@ -1098,28 +1176,27 @@ def update_daq_status(input_value):
     else:
         daq_update_rate_str    = "{:.2f} s".format(webInterface_inst.daq_update_rate)
 
-    daq_dsp_latency        = "{:d} ms".format(webInterface_inst.daq_dsp_latency) 
+    daq_dsp_latency        = "{:d} ms".format(webInterface_inst.daq_dsp_latency)
     daq_frame_index_str    = str(webInterface_inst.daq_frame_index)
-    
+
     daq_frame_type_str =  webInterface_inst.daq_frame_type
     if webInterface_inst.daq_frame_type == "Data":
-        frame_type_style   = frame_type_style={"color": "green"} 
+        frame_type_style   = frame_type_style={"color": "green"}
     elif webInterface_inst.daq_frame_type == "Dummy":
-        frame_type_style   = frame_type_style={"color": "white"} 
+        frame_type_style   = frame_type_style={"color": "white"}
     elif webInterface_inst.daq_frame_type == "Calibration":
-        frame_type_style   = frame_type_style={"color": "orange"} 
+        frame_type_style   = frame_type_style={"color": "orange"}
     elif webInterface_inst.daq_frame_type == "Trigger wait":
         frame_type_style   = frame_type_style={"color": "yellow"}
     else:
-        frame_type_style   = frame_type_style={"color": "red"}    
+        frame_type_style   = frame_type_style={"color": "red"}
 
     if webInterface_inst.daq_frame_sync:
-        daq_frame_sync_str = "LOSS"    
+        daq_frame_sync_str = "LOSS"
         frame_sync_style={"color": "red"}
     else:
         daq_frame_sync_str = "Ok"
         frame_sync_style={"color": "green"}
-
     if webInterface_inst.daq_sample_delay_sync:
         daq_delay_sync_str     = "Ok"
         delay_sync_style={"color": "green"}
@@ -1140,7 +1217,7 @@ def update_daq_status(input_value):
     else:
         daq_noise_source_str   = "Disabled"
         noise_source_style={"color": "green"}
-    
+
     if webInterface_inst.daq_power_level:
         daq_power_level_str = "Overdrive"
         daq_power_level_style={"color": "red"}
@@ -1153,15 +1230,278 @@ def update_daq_status(input_value):
     daq_cpi_str            = str(webInterface_inst.daq_cpi)
     daq_max_amp_str        = "{:.1f}".format(webInterface_inst.max_amplitude)
     daq_avg_powers_str     = webInterface_inst.avg_powers
-    
-    return daq_update_rate_str, daq_dsp_latency, daq_frame_index_str, daq_frame_sync_str, \
-            frame_sync_style, daq_frame_type_str, frame_type_style, \
-            daq_power_level_str, daq_power_level_style, daq_conn_status_str, \
-            conn_status_style, daq_delay_sync_str, delay_sync_style, \
-            daq_iq_sync_str, iq_sync_style, daq_noise_source_str, \
-            noise_source_style, daq_rf_center_freq_str, daq_sampling_freq_str, \
-            daq_cpi_str, webInterface_inst.daq_if_gains, daq_max_amp_str, \
-            daq_avg_powers_str
+
+
+    app.push_mods({
+           'body_daq_update_rate': {'children': daq_update_rate_str},
+           'body_daq_dsp_latency': {'children': daq_dsp_latency},
+           'body_daq_frame_index': {'children': daq_frame_index_str},
+           'body_daq_frame_sync': {'children': daq_frame_sync_str},
+           'body_daq_frame_type': {'children': daq_frame_type_str},
+           'body_daq_power_level': {'children': daq_power_level_str},
+           'body_daq_conn_status': {'children': daq_conn_status_str },
+           'body_daq_delay_sync': {'children': daq_delay_sync_str},
+           'body_daq_iq_sync': {'children': daq_iq_sync_str},
+           'body_daq_noise_source': {'children': daq_noise_source_str},
+           'body_daq_rf_center_freq': {'children': daq_rf_center_freq_str},
+           'body_daq_sampling_freq': {'children': daq_sampling_freq_str},
+           'body_daq_cpi': {'children': daq_cpi_str},
+           'body_daq_if_gain': {'children': webInterface_inst.daq_if_gains},
+           'body_max_amp': {'children': daq_max_amp_str},
+           'body_avg_powers': {'children': daq_avg_powers_str}
+    })
+
+    app.push_mods({
+           'body_daq_frame_sync': {'style': frame_sync_style},
+           'body_daq_frame_type': {'style': frame_type_style},
+           'body_daq_power_level': {'style': daq_power_level_style},
+           'body_daq_conn_status': {'style': conn_status_style},
+           'body_daq_delay_sync': {'style': delay_sync_style},
+           'body_daq_iq_sync': {'style': iq_sync_style},
+           'body_daq_noise_source': {'style': noise_source_style},
+    })
+
+    # Make Antenna Array Info Refresh
+    app.push_mods({
+           'placeholder_update_freq': {'children': 0},
+    })
+
+
+@app.callback_shared(
+    #[Output(component_id="placeholder_update_rx" , component_property="children")],
+    None,
+    [Input(component_id ="btn-update_rx_param"   , component_property="n_clicks")],
+    [State(component_id ="daq_center_freq"       , component_property='value'),
+    State(component_id ="daq_rx_gain"           , component_property='value')],
+    #prevent_initial_call=True
+)
+def update_daq_params(input_value, f0, gain):
+    if input_value is None:
+        raise PreventUpdate
+
+    webInterface_inst.config_daq_rf(f0,gain)
+    #return  ""
+
+
+@app.callback_shared(
+    None,
+    [Input(component_id ="en_dsp_squelch_check"      , component_property="value"),
+    Input(component_id ="squelch_th"                , component_property="value")],
+)
+def update_squelch_params(en_dsp_squelch, squelch_threshold):
+    if en_dsp_squelch is not None and len(en_dsp_squelch):
+        webInterface_inst.module_signal_processor.en_squelch = True
+    else:
+        webInterface_inst.module_signal_processor.en_squelch = False
+
+    webInterface_inst.config_squelch_value(squelch_threshold)
+
+
+
+
+@app.callback([Output("page-content"   , "children"),
+              Output("header_config"  ,"className"),  
+              Output("header_spectrum","className"),
+              Output("header_doa"     ,"className")],
+              [Input("url"            , "pathname")])
+def display_page(pathname):    
+    global spectrum_fig
+    global doa_fig
+    webInterface_inst.pathname = pathname
+
+    if pathname == "/":
+        webInterface_inst.module_signal_processor.en_spectrum = False
+        return [generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"]
+    elif pathname == "/config":
+        webInterface_inst.module_signal_processor.en_spectrum = False
+        return [generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"]
+    elif pathname == "/spectrum":        
+        webInterface_inst.module_signal_processor.en_spectrum = True
+        spectrum_fig = None # Force reload of graphs as axes may change etc
+        time.sleep(1)
+        return [spectrum_page_layout, "header_inactive", "header_active", "header_inactive"]
+    elif pathname == "/doa":
+        webInterface_inst.module_signal_processor.en_spectrum = False
+        #webInterface_inst.reset_doa_graph_flag = True
+        doa_fig = None
+        #while webInterface_inst.reset_doa_graph_flag: time.sleep(1) # Wait until the graph is reset
+        #while doa_fig == None : time.sleep(0.1) # Wait for doa_fig to reconfigure in timer callback
+        time.sleep(1)
+        return [generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"]
+    return [no_update, no_update, no_update, no_update]
+
+
+@app.callback_shared(
+    None,
+    [Input(component_id='btn-start_proc', component_property='n_clicks')],
+)
+def start_proc_btn(input_value):
+    webInterface_inst.logger.info("Start pocessing btn pushed")
+    webInterface_inst.start_processing()
+
+@app.callback_shared(
+    None,
+    [Input(component_id='btn-stop_proc', component_property='n_clicks')],
+)
+def stop_proc_btn(input_value):
+    webInterface_inst.logger.info("Stop pocessing btn pushed")
+    webInterface_inst.stop_processing()
+
+@app.callback_shared(
+    None,
+    [Input(component_id='btn-save_cfg'     , component_property='n_clicks')],
+)
+def save_config_btn(input_value):
+    webInterface_inst.logger.info("Saving DAQ and DSP Configuration")
+    webInterface_inst.save_configuration()
+
+
+def plot_doa():
+    global doa_fig
+
+    #if webInterface_inst.reset_doa_graph_flag == True:
+    #    doa_fig = []
+    if doa_fig == None:
+        doa_fig = go.Figure(layout=fig_layout)
+
+        if webInterface_inst.doa_thetas is not None:
+            # --- Linear plot ---
+            if webInterface_inst._doa_fig_type == 0 :
+                # Plot traces
+                for i, doa_result in enumerate(webInterface_inst.doa_results):
+                    label = webInterface_inst.doa_labels[i]
+                    doa_fig.add_trace(go.Scatter(x=webInterface_inst.doa_thetas,
+                                        y=doa_result,
+                                        name=label,
+                                        line = dict(
+                                                    color = doa_trace_colors[webInterface_inst.doa_labels[i]],
+                                                    width = 3)
+                            ))
+
+                doa_fig.update_xaxes(title_text="Incident angle [deg]",
+                            color='rgba(255,255,255,1)',
+                            title_font_size=20,
+                            tickfont_size=figure_font_size,
+                            mirror=True,
+                            ticks='outside',
+                            showline=True)
+                doa_fig.update_yaxes(title_text="Amplitude [dB]",
+                            color='rgba(255,255,255,1)',
+                            title_font_size=20,
+                            tickfont_size=figure_font_size,
+                            #range=[-5, 5],
+                            mirror=True,
+                            ticks='outside',
+                            showline=True)
+# --- Polar plot ---
+            elif webInterface_inst._doa_fig_type == 1:
+            #if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":
+            #    fig.update_layout(polar = dict(sector = [0, 180],
+            #                                   radialaxis_tickfont_size = figure_font_size,
+            #                                   angularaxis = dict(rotation=90,
+            #                                                      tickfont_size = figure_font_size
+            #                                                      )
+            #                                    )
+            #                     )
+            #else: #UCA
+                doa_fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
+                                           angularaxis = dict(rotation=90,
+                                                              tickfont_size = figure_font_size)
+                                           )
+                             )
+
+                for i, doa_result in enumerate(webInterface_inst.doa_results):
+                    label = webInterface_inst.doa_labels[i]
+                    doa_fig.add_trace(go.Scatterpolar(theta=webInterface_inst.doa_thetas,
+                                             r=doa_result,
+                                             name=label,
+                                             line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
+                                             fill= 'toself'
+                                             ))
+            # --- Compass  ---
+            elif webInterface_inst._doa_fig_type == 2 :
+            #thetas_compass = webInterface_inst.doa_thetas[::-1]
+            #thetas_compass += webInterface_inst.compass_ofset
+            #if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":
+            #    fig.update_layout(polar = dict(sector = [0, 180],
+            #                                radialaxis_tickfont_size = figure_font_size,
+            #                                angularaxis = dict(rotation=90+webInterface_inst.compass_ofset,
+            #                                                    direction="clockwise",
+            #                                                    tickfont_size = figure_font_size
+            #                                                    )
+            #                                    )
+            #                    )
+            #else: #UCA
+                doa_fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
+                                        angularaxis = dict(rotation=90+webInterface_inst.compass_ofset,
+                                                            direction="clockwise",
+                                                            tickfont_size = figure_font_size)
+                                        )
+                            )
+
+                for i, doa_result in enumerate(webInterface_inst.doa_results):
+                    if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":
+                        doa_compass = 0-webInterface_inst.doas[i]+webInterface_inst.compass_ofset
+                    else:
+                        doa_compass = (360-webInterface_inst.doas[i]+webInterface_inst.compass_ofset)%360
+                    label = webInterface_inst.doa_labels[i]
+
+                    doa_fig.add_trace(go.Scatterpolar(theta=(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360,
+                                                r=doa_result,
+                                                name= label,
+                                                line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
+                                                fill= 'toself'
+                                                ))
+                                                #mode = 'lines',
+                                                #name = label,
+                                                #showlegend=True,
+                                                #line = dict(
+                                                #    color = doa_trace_colors[webInterface_inst.doa_labels[i]],
+                                                #    dash='dash'
+                                                #)))
+        #app.push_mods({ 
+        #   'doa-graph': {'figure': doa_fig},
+        #})
+        #webInterface_inst.reset_doa_graph_flag = False
+    else:
+        update_data = []
+        fig_type = []
+        doa_max_str = ""
+        if webInterface_inst.doa_thetas is not None:
+            doa_max_str = str(webInterface_inst.doas[0])+"°"
+            update_data = [dict(x=webInterface_inst.doa_thetas, y=webInterface_inst.doa_results[0])]
+            fig_type = webInterface_inst._doa_fig_type
+
+            if webInterface_inst._doa_fig_type == 2 :
+                doa_max_str = (360-webInterface_inst.doas[0]+webInterface_inst.compass_ofset)%360
+                update_data = [dict(x=(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360, y=webInterface_inst.doa_results[0])]
+                fig_type = webInterface_inst._doa_fig_type
+
+            app.push_mods({ 
+                'doa-graph-type-store': {'data': fig_type},
+                'doa-store': {'data': update_data},
+                'body_doa_max': {'children': doa_max_str}
+            })
+
+
+
+
+
+# DOA Graph Clientside Callback
+app.clientside_callback(
+    """
+    function (data, graph_type) {
+        if(graph_type == 0) {
+            return [[{x: data.map(i => i.x), y: data.map(i => i.y)}, [0], data[0].x.length]];
+        } else {
+            return [[{theta: data.map(i => i.x), r: data.map(i => i.y)}, [0], data[0].x.length]];
+        }
+    }
+    """,
+    [Output('doa-graph', 'extendData')],
+    [Input('doa-store', 'data')],
+    [State('doa-graph-type-store', 'data')]
+)
 
 
 app.clientside_callback(
@@ -1169,115 +1509,80 @@ app.clientside_callback(
     function (data) {
         /*return [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length]*/
 
+        const every_nth = (arr, nth) => arr.filter((e, i) => i % nth === (nth | 0) - 1);
+
+
         return [
                 [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length],
-                [{z: [[data[0].y]]}, [0], 100]
+                [{z: [[every_nth(data[0].y, 1)]]}, [0], 50]
                ]
     }
     """,
-    Output('spectrum-graph', 'extendData'),
-    Output('waterfall-graph', 'extendData'),
-    Input('spectrum-store', 'data')
+    [Output('spectrum-graph', 'extendData'),
+    Output('waterfall-graph', 'extendData')],
+    [Input('spectrum-store', 'data')]
 )
 
-@app.callback(
-    Output(component_id='spectrum-store', component_property='data'),
-    Input(component_id='placeholder_spectrum_page_upd', component_property='children'),
-    prevent_initial_call=True
-)
-def update_spectrum_store(spectrum_update_flag):
-    update_data = []
-    for m in range(1, np.size(webInterface_inst.spectrum, 0)): #webInterface_inst.module_receiver.M+1):    
-        update_data.append(dict(x=webInterface_inst.spectrum[0,:], y=webInterface_inst.spectrum[m, :]))
-
-    return update_data
-
-@app.callback(
-    Output('spectrum-graph', 'figure'),
-    Output('waterfall-graph', 'figure'),
-    Input('url', 'pathname'))
-def plot_spectrum(pathname):
-
-    if pathname == "/spectrum":
-    #if pathname == "/config":
-    #    pass
-        while webInterface_inst.spectrum is None : time.sleep(0.1)
-    else:
-        return [] 
-
-    fig = go.Figure(layout=fig_layout)
-
-#    if webInterface_inst.spectrum is not None:
-    if abs(webInterface_inst.spectrum[0,0]) > 10**6: 
+def plot_spectrum():
+    global spectrum_fig
+    global waterfall_fig
+    if spectrum_fig == None:
+        spectrum_fig = go.Figure(layout=fig_layout)
         freq_label="Frequency [MHz]"
-    elif abs(webInterface_inst.spectrum[0,0]) > 10**3: 
-        freq_label="Frequency [kHz]"
-    else:
-        freq_label="Frequency [Hz]"
-    freq_label+=", Center:{:.1f} MHz".format(webInterface_inst.daq_center_freq)
 
+        x=webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6
 
-    # Plot traces                    
-    for m in range(np.size(webInterface_inst.spectrum, 0)-2):   
-        fig.add_trace(go.Scatter(x=webInterface_inst.spectrum[0,:],
-                                 y=webInterface_inst.spectrum[m+1, :],
-                                 name="Channel {:d}".format(m),
-                                 line = dict(color = trace_colors[m],
-                                             width = 1)
-                                ))
+        # Plot traces
+        for m in range(np.size(webInterface_inst.spectrum, 0)-2):
+            spectrum_fig.add_trace(go.Scatter(x=x,
+                                     y=webInterface_inst.spectrum[m+1, :],
+                                     name="Channel {:d}".format(m),
+                                     line = dict(color = trace_colors[m],
+                                                 width = 1)
+                                    ))
 
+        spectrum_fig.add_hline(y=webInterface_inst.module_receiver.daq_squelch_th_dB)
 
-    fig.add_hline(y=webInterface_inst.module_receiver.daq_squelch_th_dB)
-
-    m = np.size(webInterface_inst.spectrum,0)-1
-    fig.add_trace(go.Scatter(x=webInterface_inst.spectrum[0,:],
+        # Add selected window plot
+        m = np.size(webInterface_inst.spectrum,0)-1
+        spectrum_fig.add_trace(go.Scatter(x=x,
                              y=webInterface_inst.spectrum[m, :],
-                             name="Squelch Threshold",
+                             name="Selected Signal Window",
                              line = dict(color = trace_colors[m],
-                                         width = 2)
+                                         width = 3)
                              ))
 
-
-    #fig.update_layout(margin=dict(t=0))
-
-
-    fig.update_xaxes(title_text=freq_label, 
-                    color='rgba(255,255,255,1)', 
-                    title_font_size=20, 
+        spectrum_fig.update_xaxes(title_text=freq_label,
+                    color='rgba(255,255,255,1)',
+                    title_font_size=20,
                     tickfont_size=figure_font_size,
+                    range=[np.min(x), np.max(x)],
+                    rangemode='normal',
                     mirror=True,
                     ticks='outside',
                     showline=True)
-    fig.update_yaxes(title_text="Amplitude [dB]",
-                    color='rgba(255,255,255,1)', 
-                    title_font_size=20, 
-                    tickfont_size=figure_font_size, 
+        spectrum_fig.update_yaxes(title_text="Amplitude [dB]",
+                    color='rgba(255,255,255,1)',
+                    title_font_size=20,
+                    tickfont_size=figure_font_size,
                     range=[-90, 0],
                     mirror=True,
                     ticks='outside',
                     showline=True)
 
-        
-#    else :
-#        for m in range(0, webInterface_inst.module_receiver.M):   
-#            fig.add_trace(go.Scatter(x=x,
-#                               y=y, 
-#                               name="Channel {:d}".format(m),
-#                               line = dict(color = trace_colors[m],
-#                                           width = 1)
-#                               ))
+        """
+        waterfall_init = [[-80] * len(webInterface_inst.spectrum[1, :])] * 100
 
-
-
-    waterfall_init = [[-80] * len(webInterface_inst.spectrum[1, :])] * 100
-    waterfall_fig = go.Figure(layout=fig_layout)
-    waterfall_fig.add_trace(go.Heatmap(
-                           z=waterfall_init,
-                         colorscale=[[0.0, '#000020'], 
-                         [0.0714, '#000030'], 
+        waterfall_fig = go.Figure(layout=fig_layout)
+        waterfall_fig.add_trace(go.Heatmapgl(
+                         z=waterfall_init,
+                         zsmooth=False,
+                         hoverinfo='skip',
+                         colorscale=[[0.0, '#000020'],
+                         [0.0714, '#000030'],
                          [0.1428, '#000050'],
-                         [0.2142, '#000091'], 
-                         [0.2856, '#1E90FF'], 
+                         [0.2142, '#000091'],
+                         [0.2856, '#1E90FF'],
                          [0.357, '#FFFFFF'],
                          [0.4284, '#FFFF00'],
                          [0.4998, '#FE6D16'],
@@ -1288,231 +1593,136 @@ def plot_spectrum(pathname):
                          [0.8568, '#9F0000'],
                          [0.9282, '#750000'],
                          [1.0, '#4A0000']]))
-                           #z=[[]]))
-
-    return fig, waterfall_fig
-    #return fig
-
-
-
-
-# DOA Graph Clientside Callback
-app.clientside_callback(
-    """
-    function (data, graph_type) {
-        if(graph_type == 0) {
-            return [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length];
-        } else {
-            return [{theta: data.map(i => i.x), r: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length];
-        }
-    }
-    """,
-    Output('doa-graph', 'extendData'),
-    Input('doa-store', 'data'), 
-    State('doa-graph-type-store', 'data')
-)
-
-@app.callback(
-    Output(component_id='doa-store', component_property='data'),
-    Output(component_id='doa-graph-type-store', component_property='data'),
-    Output(component_id='body_doa_max', component_property='children'),
-    Input(component_id='placeholder_doa_page_upd', component_property='children'),
-    prevent_initial_call=True
-)
-def update_doa_store(doa_update_flag):
-    update_data = []
-    if webInterface_inst.doa_thetas is not None:
-        doa_max_str = str(webInterface_inst.doas[0])+"°"
-        update_data = [[dict(x=webInterface_inst.doa_thetas, y=webInterface_inst.doa_results[0])], webInterface_inst._doa_fig_type, doa_max_str]
-
-        if webInterface_inst._doa_fig_type == 2 :
-            doa_max_str = (360-webInterface_inst.doas[0]+webInterface_inst.compass_ofset)%360
-            update_data = [[dict(x=(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360, y=webInterface_inst.doa_results[0])], webInterface_inst._doa_fig_type, doa_max_str]
-
-    return update_data
-
-
-@app.callback(
-    Output('doa-graph', 'figure'),
-    Input('url', 'pathname'),
-)
-def plot_doa(pathname):
-
-    if pathname != "/doa":
-        return []
-
-
-    fig = go.Figure(layout=fig_layout)
+        """
+        app.push_mods({
+               'spectrum-graph': {'figure': spectrum_fig},
+        #       'waterfall-graph': {'figure': waterfall_fig}
+        })
     
-    if webInterface_inst.doa_thetas is not None:
-        # --- Linear plot ---
-        if webInterface_inst._doa_fig_type == 0 : 
-            # Plot traces 
-            for i, doa_result in enumerate(webInterface_inst.doa_results):                 
-                label = webInterface_inst.doa_labels[i]
-                fig.add_trace(go.Scatter(x=webInterface_inst.doa_thetas, 
-                                        y=doa_result,
-                                        name=label,
-                                        line = dict(
-                                                    color = doa_trace_colors[webInterface_inst.doa_labels[i]],
-                                                    width = 3)
-                            ))
-            
-            fig.update_xaxes(title_text="Incident angle [deg]", 
-                            color='rgba(255,255,255,1)', 
-                            title_font_size=20, 
-                            tickfont_size=figure_font_size,
-                            mirror=True,
-                            ticks='outside',
-                            showline=True)
-            fig.update_yaxes(title_text="Amplitude [dB]",
-                            color='rgba(255,255,255,1)', 
-                            title_font_size=20, 
-                            tickfont_size=figure_font_size, 
-                            #range=[-5, 5],
-                            mirror=True,
-                            ticks='outside',
-                            showline=True)
-        # --- Polar plot ---
-        elif webInterface_inst._doa_fig_type == 1:
-            #if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":           
-            #    fig.update_layout(polar = dict(sector = [0, 180], 
-            #                                   radialaxis_tickfont_size = figure_font_size,
-            #                                   angularaxis = dict(rotation=90,                                                                  
-            #                                                      tickfont_size = figure_font_size
-            #                                                      )
-            #                                    )
-            #                     )                
-            #else: #UCA                
-            fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
-                                           angularaxis = dict(rotation=90,
-                                                              tickfont_size = figure_font_size)
-                                           )
-                             )
-
-            for i, doa_result in enumerate(webInterface_inst.doa_results):
-                label = webInterface_inst.doa_labels[i]
-                fig.add_trace(go.Scatterpolar(theta=webInterface_inst.doa_thetas, 
-                                             r=doa_result,
-                                             name=label,
-                                             line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
-                                             fill= 'toself'
-                                             ))
-            # --- Compass  ---
-        elif webInterface_inst._doa_fig_type == 2 :
-            #thetas_compass = webInterface_inst.doa_thetas[::-1]            
-            #thetas_compass += webInterface_inst.compass_ofset
-            #if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":             
-            #    fig.update_layout(polar = dict(sector = [0, 180], 
-            #                                radialaxis_tickfont_size = figure_font_size,
-            #                                angularaxis = dict(rotation=90+webInterface_inst.compass_ofset,
-            #                                                    direction="clockwise",
-            #                                                    tickfont_size = figure_font_size
-            #                                                    )
-            #                                    )
-            #                    )                
-            #else: #UCA                
-            fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
-                                        angularaxis = dict(rotation=90+webInterface_inst.compass_ofset, 
-                                                            direction="clockwise",
-                                                            tickfont_size = figure_font_size)                                               
-                                        )
-                            )
-
-            for i, doa_result in enumerate(webInterface_inst.doa_results):                 
-                if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":
-                    doa_compass = 0-webInterface_inst.doas[i]+webInterface_inst.compass_ofset
-                    
-                else:
-                    doa_compass = (360-webInterface_inst.doas[i]+webInterface_inst.compass_ofset)%360
-                label = webInterface_inst.doa_labels[i]
-                """
-                fig.add_trace(go.Scatterpolar(theta=thetas_compass, 
-                                            r=doa_result,
-                                            name=label,
-                                            line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
-                                            fill= 'toself'
-                                            ))
-                """
-                fig.add_trace(go.Scatterpolar(theta=(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360, 
-                                                r=doa_result,
-                                                name= label,
-                                                line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
-                                                fill= 'toself'
-                                                ))
-                                                #mode = 'lines',
-                                                #name = label,
-                                                #showlegend=True,                                                      
-                                                #line = dict(
-                                                #    color = doa_trace_colors[webInterface_inst.doa_labels[i]],
-                                                #    dash='dash'
-                                                #)))
-
-        return fig
-
-    
-@app.callback(    
-    Output(component_id='placeholder_start', component_property='children'),
-    Input(component_id='btn-start_proc', component_property='n_clicks'),
-    prevent_initial_call=True
-)
-def start_proc_btn(input_value):    
-    webInterface_inst.logger.info("Start pocessing btn pushed")    
-    webInterface_inst.start_processing()
-    return ""
-
-@app.callback(    
-    Output(component_id='placeholder_stop', component_property='children'),
-    Input(component_id='btn-stop_proc', component_property='n_clicks'),
-    prevent_initial_call=True
-)
-def stop_proc_btn(input_value):
-    webInterface_inst.logger.info("Stop pocessing btn pushed")    
-    webInterface_inst.stop_processing()
-    return ""
-
-@app.callback(    
-    Output(component_id='placeholder_save', component_property='children'),
-    Input(component_id='btn-save_cfg'     , component_property='n_clicks'),
-    prevent_initial_call=True
-)
-def save_config_btn(input_value):
-    webInterface_inst.logger.info("Saving DAQ and DSP Configuration")    
-    webInterface_inst.save_configuration()
-    return ""
-
-@app.callback(
-    Output(component_id="placeholder_update_rx" , component_property="children"),    
-    Input(component_id ="btn-update_rx_param"   , component_property="n_clicks"),
-    State(component_id ="daq_center_freq"       , component_property='value'),    
-    State(component_id ="daq_rx_gain"           , component_property='value'),     
-    prevent_initial_call=True
-)
-def update_daq_params(input_value, f0, gain):
-    if input_value is None:
-        raise PreventUpdate
-
-    webInterface_inst.config_daq_rf(f0,gain)        
-    return  ""
-    
-@app.callback(
-    Output(component_id="placeholder_update_squelch", component_property="children"),    
-    Input(component_id ="en_dsp_squelch_check"      , component_property="value"),
-    Input(component_id ="squelch_th"                , component_property="value"),
-    prevent_initial_call=True
-)
-def update_squelch_params(en_dsp_squelch, squelch_threshold):
-    if en_dsp_squelch is not None and len(en_dsp_squelch):
-        webInterface_inst.module_signal_processor.en_squelch = True
     else:
-        webInterface_inst.module_signal_processor.en_squelch = False
-    
-    webInterface_inst.config_squelch_value(squelch_threshold)
-    return 0
+        update_data = []
+        for m in range(1, np.size(webInterface_inst.spectrum, 0)): #webInterface_inst.module_receiver.M+1):
+            #update_data.append(dict(x=webInterface_inst.spectrum[0,:], y=webInterface_inst.spectrum[m, :]))
+            update_data.append(dict(x=webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6, y=webInterface_inst.spectrum[m, :]))
+
+        app.push_mods({
+           'spectrum-store': {'data': update_data}
+           #'spectrum-graph': {'extendData': spec},
+           #'waterfall-graph': {'extendData': waterfall}
+        })
+
+
 
 @app.callback(
-    Output(component_id='placeholder_update_daq_ini_params', component_property="children"),
-    Input(component_id='cfg_rx_channels'          , component_property="value"),
+    Output("placeholder_update_dsp", "children"),
+    #None,
+    [Input(component_id ="interval-component"           , component_property='n_intervals')],
+    [State(component_id ="url"                          , component_property='pathname')]
+)
+def update_dsp_timer(freq_update, pathname):
+    if pathname == "/config":
+        return 1 
+    return Output('dummy_output', 'children', '')
+
+@app.callback(
+    [Output(component_id="body_ant_spacing_wavelength",  component_property='children'),
+    Output(component_id="label_ant_spacing_meter",  component_property='children'),
+    Output(component_id="ambiguity_warning",  component_property='children'),
+    Output(component_id="en_fb_avg_check",  component_property="options")],
+    [Input(component_id ="placeholder_update_dsp"       , component_property='children')],
+    [State(component_id ="en_doa_check"       , component_property='value'),
+    State(component_id ="en_fb_avg_check"           , component_property='value'),
+    State(component_id ="ant_spacing_meter"           , component_property='value'),
+    State(component_id ="radio_ant_arrangement"           , component_property='value'),
+    State(component_id ="doa_fig_type"           , component_property='value'),
+    State(component_id ="doa_method"           , component_property='value'),
+    State(component_id ="compass_ofset"           , component_property='value')],
+)
+#def update_dsp_params(pathname, en_doa, doa_method,
+#                      en_fb_avg, spacing_wavlength, spacing_meter, spacing_feet, spacing_inch,
+#                      ant_arrangement, doa_fig_type, compass_ofset, update_btn):
+#def update_dsp_params(n_intervals, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset):
+def update_dsp_params(freq_update, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset): #, input_value):
+
+    #if input_value is None:
+    #    raise PreventUpdate
+
+    #ctx = dash.callback_context
+    #if ctx.triggered:
+    #    component_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    #    if component_id == "btn-update_rx_param":
+    #        wavelength= 300 / webInterface_inst.daq_center_freq
+
+    ant_spacing_meter = spacing_meter
+    wavelength= 300 / webInterface_inst.daq_center_freq
+    webInterface_inst.module_signal_processor.DOA_inter_elem_space = ant_spacing_meter / wavelength
+    ant_spacing_feet = round(ant_spacing_meter * 3.2808399,3)
+    ant_spacing_inch = round(ant_spacing_meter * 39.3700787,3)
+    ant_spacing_wavelength = round(ant_spacing_meter / wavelength,3)
+
+    #app.push_mods({
+          # 'ant_spacing_wavelength': {'value': ant_spacing_wavelength},
+    #       'body_ant_spacing_wavelength' : {'children': str(ant_spacing_wavelength)}
+    #       'ant_spacing_meter': {'value': ant_spacing_meter},
+    #       'ant_spacing_feet': {'value': ant_spacing_feet},
+    #       'ant_spacing_inch': {'value': ant_spacing_inch}
+    #})
+
+    spacing_label = ""
+
+    # Max phase diff and ambiguity warning and Spatial smoothing control
+    if ant_arrangement == "ULA": 
+        max_phase_diff = ant_spacing_meter / wavelength 
+        smoothing_possibility = [{"label":"", "value": 1, "disabled": False}] # Disables the checkbox 
+        spacing_label = "Interelement Spacing (meters)"
+        #app.push_mods({
+        #   'label_ant_spacing_meter': {'children': "Interelement Spacing (meters)"}
+        #})
+    elif ant_arrangement == "UCA":
+        UCA_ant_spacing = (np.sqrt(2)*ant_spacing_meter*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
+        max_phase_diff = UCA_ant_spacing/wavelength
+        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Enables the checkbox
+        spacing_label = "Array Radius (meters)"
+
+        #app.push_mods({
+        #   'label_ant_spacing_meter': {'children': "Array Radius (meters)"}
+        #})
+
+    if max_phase_diff > 0.5:
+        ambiguity_warning= "Warning: DoA estimation is ambiguous, max phase difference:{:.1f}°".format(np.rad2deg(2*np.pi*max_phase_diff))
+    else:
+        ambiguity_warning= ""
+
+    if en_doa is not None and len(en_doa):
+        webInterface_inst.logger.debug("DoA estimation enabled")
+        webInterface_inst.module_signal_processor.en_DOA_estimation = True
+    else:
+        webInterface_inst.module_signal_processor.en_DOA_estimation = False
+
+    webInterface_inst._doa_method=doa_method
+    webInterface_inst.config_doa_in_signal_processor()
+
+    if en_fb_avg is not None and len(en_fb_avg):
+        webInterface_inst.logger.debug("FB averaging enabled")
+        webInterface_inst.module_signal_processor.en_DOA_FB_avg   = True
+    else:
+        webInterface_inst.module_signal_processor.en_DOA_FB_avg   = False
+
+    webInterface_inst.module_signal_processor.DOA_ant_alignment=ant_arrangement
+    webInterface_inst._doa_fig_type = doa_fig_type
+    webInterface_inst.compass_ofset = compass_ofset
+
+    #app.push_mods({
+    #   'ambiguity_warning': {'children': ambiguity_warning},
+    #   'en_fb_avg_check': {'options': smoothing_possibility}
+    #})
+    return [str(ant_spacing_wavelength), spacing_label, ambiguity_warning, smoothing_possibility]
+
+
+
+@app.callback(
+    [Output(component_id='placeholder_update_daq_ini_params', component_property="children")],
+    [Input(component_id='cfg_rx_channels'          , component_property="value"),
     Input(component_id='cfg_daq_buffer_size'      , component_property="value"),
     Input(component_id='cfg_sample_rate'          , component_property="value"),
     Input(component_id="en_noise_source_ctr"      , component_property="value"),
@@ -1535,11 +1745,11 @@ def update_squelch_params(en_dsp_squelch, squelch_threshold):
     Input(component_id='cfg_cal_frame_burst_size' , component_property="value"),
     Input(component_id='cfg_amplitude_tolerance'  , component_property="value"),
     Input(component_id='cfg_phase_tolerance'      , component_property="value"),
-    Input(component_id='cfg_max_sync_fails'       , component_property="value"),
-    prevent_initial_call=True
+    Input(component_id='cfg_max_sync_fails'       , component_property="value")],
+    #prevent_initial_call=True
 )
 def update_daq_ini_params(
-                    cfg_rx_channels,cfg_daq_buffer_size,cfg_sample_rate,en_noise_source_ctr,                    
+                    cfg_rx_channels,cfg_daq_buffer_size,cfg_sample_rate,en_noise_source_ctr,
                     en_squelch_mode,cfg_squelch_init_th,cfg_cpi_size,cfg_decimation_ratio,
                     cfg_fir_bw,cfg_fir_tap_size,cfg_fir_window,en_filter_reset,cfg_corr_size,
                     cfg_std_ch_ind,en_iq_cal,cfg_gain_lock,en_req_track_lock_intervention,
@@ -1555,11 +1765,11 @@ def update_daq_ini_params(
     if en_noise_source_ctr is not None and len(en_noise_source_ctr):
         param_list.append(1)
     else:
-        param_list.append(0)    
+        param_list.append(0)
     if en_squelch_mode is not None and len(en_squelch_mode):
         param_list.append(1)
     else:
-        param_list.append(0)        
+        param_list.append(0)
     param_list.append(cfg_squelch_init_th)
     param_list.append(cfg_cpi_size)
     param_list.append(cfg_decimation_ratio)
@@ -1569,18 +1779,18 @@ def update_daq_ini_params(
     if en_filter_reset is not None and len(en_filter_reset):
         param_list.append(1)
     else:
-        param_list.append(0)     
+        param_list.append(0)
     param_list.append(cfg_corr_size)
     param_list.append(cfg_std_ch_ind)
     if en_iq_cal is not None and len(en_iq_cal):
         param_list.append(1)
     else:
-        param_list.append(0) 
+        param_list.append(0)
     param_list.append(cfg_gain_lock)
     if en_req_track_lock_intervention is not None and len(en_req_track_lock_intervention):
         param_list.append(1)
     else:
-        param_list.append(0) 
+        param_list.append(0)
     param_list.append(cfg_cal_track_mode)
     param_list.append(cfg_amplitude_cal_mode)
     param_list.append(cfg_cal_frame_interval)
@@ -1589,42 +1799,65 @@ def update_daq_ini_params(
     param_list.append(cfg_phase_tolerance)
     param_list.append(cfg_max_sync_fails)
     param_list.append(webInterface_inst.daq_ini_cfg_params[25]) # Preserve data interface information
-
     webInterface_inst.daq_ini_cfg_params = param_list
 
-    ctx = dash.callback_context    
+    ctx = dash.callback_context
     if ctx.triggered:
-        if len(ctx.triggered) ==1: # User manually changed one parameter          
+        if len(ctx.triggered) ==1: # User manually changed one parameter
             webInterface_inst.tmp_daq_ini_cfg = "Custom"
-    return 0
+    return [0]
+
+
+@app.callback([Output("url"                     , "pathname")],
+              [Input("en_advanced_daq_cfg"      , "value"),
+              Input("daq_cfg_files"            , "value"),
+              Input("placeholder_recofnig_daq" , "children"),
+              Input("placeholder_update_rx" , "children")]
+              #prevent_initial_call = True
+)
+def reload_cfg_page(en_advanced_daq_cfg, config_fname, dummy_0, dummy_1):
+    ctx = dash.callback_context
+    if ctx.triggered:
+        component_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        if component_id   == "daq_cfg_files" and config_fname is not None:
+            webInterface_inst.daq_ini_cfg_params = read_config_file(config_fname)
+            webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0]
+        elif component_id == "en_advanced_daq_cfg":
+            if en_advanced_daq_cfg is not None and len(en_advanced_daq_cfg):
+                webInterface_inst.en_advanced_daq_cfg = True
+            else:
+                webInterface_inst.en_advanced_daq_cfg = False
+    return ["/config"]
 
 @app.callback(
-    Output(component_id="placeholder_recofnig_daq" , component_property="children"),
-    Input(component_id="btn_reconfig_daq_chain"    , component_property="n_clicks"),
-    prevent_initial_call=True
+    #[Output(component_id="placeholder_recofnig_daq" , component_property="children")],\
+    None,
+    [Input(component_id="btn_reconfig_daq_chain"    , component_property="n_clicks")]
+    #prevent_initial_call=True
 )
 def reconfig_daq_chain(input_value):
-    
+
     if input_value is None:
-        raise PreventUpdate
+        return [no_update]
+#        raise PreventUpdate
 
     # TODO: Check data interface mode here !
-    """
-        Update DAQ Subsystem config file
-    """
+
+    #    Update DAQ Subsystem config file
+
     config_res, config_err = write_config_file(webInterface_inst.daq_ini_cfg_params)
     if config_res:
         webInterface_inst.daq_cfg_ini_error = config_err[0]
-        return -1#,config_err[0],{"color":"red"}
-    else:    
+        return Output("placeholder_recofnig_daq", "children", '-1')
+    else:
         webInterface_inst.logger.info("DAQ Subsystem configuration file edited")
-    
+
     webInterface_inst.daq_restart = 1
-    """
-        Restart DAQ Subsystem
-    """
+    
+    #    Restart DAQ Subsystem
+    
     # Stop signal processing
-    webInterface_inst.stop_processing()   
+    webInterface_inst.stop_processing()
     time.sleep(2)
     webInterface_inst.logger.debug("Signal processing stopped")
 
@@ -1633,168 +1866,55 @@ def reconfig_daq_chain(input_value):
     webInterface_inst.logger.debug("Data interfaces are closed")
 
     os.chdir(daq_subsystem_path)
-
     # Kill DAQ subsystem
     daq_stop_script = subprocess.Popen(['bash', daq_stop_filename])#, stdout=subprocess.DEVNULL)
     daq_stop_script.wait()
     webInterface_inst.logger.debug("DAQ Subsystem halted")
-    
+
     # Start DAQ subsystem
     daq_start_script = subprocess.Popen(['bash', daq_start_filename])#, stdout=subprocess.DEVNULL)
     daq_start_script.wait()
     webInterface_inst.logger.debug("DAQ Subsystem restarted")
-    
+
     os.chdir(root_path)
 
     # Reinitialize receiver data interface
     if webInterface_inst.module_receiver.init_data_iface() == -1:
         webInterface_inst.logger.critical("Failed to restart the DAQ data interface")
         webInterface_inst.daq_cfg_ini_error = "Failed to restart the DAQ data interface"
-        return -1
-    
+        return [-1]
+
     # Restart signal processing
     webInterface_inst.start_processing()
     webInterface_inst.logger.debug("Signal processing started")
     webInterface_inst.daq_restart = 0
-    
+
     # Set local Squelch-DSP parameters
     if webInterface_inst.daq_ini_cfg_params[5]: # Squelch is enabled
-        webInterface_inst.module_signal_processor.en_squelch = True                
+        webInterface_inst.module_signal_processor.en_squelch = True
         webInterface_inst.module_receiver.daq_squelch_th_dB = round(20*np.log10(webInterface_inst.daq_ini_cfg_params[6]),1)
         webInterface_inst.module_signal_processor.squelch_threshold = webInterface_inst.daq_ini_cfg_params[6]
         # Note: There is no need to set the thresold in the DAQ Subsystem as it is configured from the ini-file.
     else:  # Squelch is disabled
-        webInterface_inst.module_signal_processor.en_squelch = False 
+        webInterface_inst.module_signal_processor.en_squelch = False
+
+    # Set number of channels
+    webInterface_inst.module_signal_processor.first_frame = 1
+    #webInterface_inst.module_signal_processor.channel_number = webInterface_inst.daq_ini_cfg_params[1]
+
 
     webInterface_inst.daq_cfg_ini_error = ""
     webInterface_inst.active_daq_ini_cfg = webInterface_inst.tmp_daq_ini_cfg
-        
-    return 0
 
-@app.callback(
-    Output("placeholder_update_dsp", "children"),
-    Output("ant_spacing_wavelength", "value"),
-    Output("ant_spacing_meter"     , "value"),
-    Output("ant_spacing_feet"      , "value"),
-    Output("ant_spacing_inch"      , "value"),  
-    Output("ambiguity_warning"     , "children"),
-    Output("en_fb_avg_check"       , "options"),
-    Input("placeholder_update_freq", "children"),    
-    Input("en_doa_check"           , "value"),
-    Input("doa_method"             , "value"),    
-    Input("en_fb_avg_check"        , "value"),
-    Input("ant_spacing_wavelength" , "value"),
-    Input("ant_spacing_meter"      , "value"),
-    Input("ant_spacing_feet"       , "value"),
-    Input("ant_spacing_inch"       , "value"),
-    Input("radio_ant_arrangement"  , "value"),
-    Input('doa_fig_type'           , 'value'),
-    Input('compass_ofset'          , 'value'),    
-    prevent_initial_call=True
-)
-def update_dsp_params(freq_update, en_doa, doa_method,
-                      en_fb_avg, spacing_wavlength, spacing_meter, spacing_feet, spacing_inch,
-                      ant_arrangement, doa_fig_type, compass_ofset):
-    ctx = dash.callback_context
-    
+    return Output("placeholder_recofnig_daq", "children", '0')
+#    return [0]
 
-    if ctx.triggered:
-        component_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        wavelength= 300 / webInterface_inst.daq_center_freq
-        ant_spacing_meter = spacing_meter
-
-        if component_id == "ant_spacing_wavelength":
-            ant_spacing_meter = wavelength*spacing_wavlength
-        elif component_id == "ant_spacing_feet":
-            ant_spacing_meter = spacing_feet/3.2808399
-        elif component_id == "ant_spacing_inch":
-            ant_spacing_meter = spacing_inch/39.3700787
-        
-        
-        ant_spacing_meter = round(ant_spacing_meter, 3)
-        webInterface_inst.module_signal_processor.DOA_inter_elem_space = ant_spacing_meter / wavelength
-        ant_spacing_feet = round(ant_spacing_meter * 3.2808399,3)
-        ant_spacing_inch = round(ant_spacing_meter * 39.3700787,3)
-        ant_spacing_wavlength = round(ant_spacing_meter / wavelength,3)        
-
-    # Max phase diff and ambiguity warning and Spatial smoothing control    
-    if ant_arrangement == "ULA":
-        max_phase_diff = ant_spacing_meter / wavelength
-        smoothing_possibility = [{"label":"", "value": 1, "disabled": False}] # Disables the checkbox
-    elif ant_arrangement == "UCA":
-        UCA_ant_spacing = (np.sqrt(2)*ant_spacing_meter*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
-        max_phase_diff = UCA_ant_spacing/wavelength
-        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Enables the checkbox
-    if max_phase_diff > 0.5:
-        ambiguity_warning= "Warning: DoA estimation is ambiguous, max phase difference:{:.1f}°".format(np.rad2deg(2*np.pi*max_phase_diff))
-    else:      
-        ambiguity_warning= ""
-
-    if en_doa is not None and len(en_doa):
-        webInterface_inst.logger.debug("DoA estimation enabled")
-        webInterface_inst.module_signal_processor.en_DOA_estimation = True
-    else:
-        webInterface_inst.module_signal_processor.en_DOA_estimation = False       
-    
-    webInterface_inst._doa_method=doa_method
-    webInterface_inst.config_doa_in_signal_processor()
-
-    if en_fb_avg is not None and len(en_fb_avg):
-        webInterface_inst.logger.debug("FB averaging enabled")
-        webInterface_inst.module_signal_processor.en_DOA_FB_avg   = True
-    else:
-        webInterface_inst.module_signal_processor.en_DOA_FB_avg   = False
-    
-    webInterface_inst.module_signal_processor.DOA_ant_alignment=ant_arrangement
-    webInterface_inst._doa_fig_type = doa_fig_type
-    webInterface_inst.compass_ofset = compass_ofset
-
-    return "", ant_spacing_wavlength, ant_spacing_meter, ant_spacing_feet, ant_spacing_inch, ambiguity_warning, smoothing_possibility
-
-@app.callback(Output("url"                     , "pathname"),
-              Input("en_advanced_daq_cfg"      , "value"),
-              Input("daq_cfg_files"            , "value"),
-              Input("placeholder_recofnig_daq" , "children"),
-              prevent_initial_call = True
-)
-def reload_cfg_page(en_advanced_daq_cfg, config_fname, dummy_0):    
-    ctx = dash.callback_context
-    if ctx.triggered:
-        component_id = ctx.triggered[0]['prop_id'].split('.')[0]        
-        if component_id   == "daq_cfg_files" and config_fname is not None:
-            webInterface_inst.daq_ini_cfg_params = read_config_file(config_fname)
-            webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0]            
-        elif component_id == "en_advanced_daq_cfg":
-            if en_advanced_daq_cfg is not None and len(en_advanced_daq_cfg):    
-                webInterface_inst.en_advanced_daq_cfg = True
-            else:
-                webInterface_inst.en_advanced_daq_cfg = False
-    return "/config"
-
-@app.callback(Output("page-content"   , "children"),
-              Output("header_config"  ,"className"),  
-              Output("header_spectrum","className"),
-              Output("header_doa"     ,"className"),
-              [Input("url"            , "pathname")])
-def display_page(pathname):    
-    if pathname == "/":
-        webInterface_inst.module_signal_processor.en_spectrum = False
-        return generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"
-    elif pathname == "/config":
-        webInterface_inst.module_signal_processor.en_spectrum = False
-        return generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive" 
-    elif pathname == "/spectrum":        
-        webInterface_inst.module_signal_processor.en_spectrum = True
-        return spectrum_page_layout, "header_inactive", "header_active", "header_inactive"
-    elif pathname == "/doa":
-        webInterface_inst.module_signal_processor.en_spectrum = False
-        return generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"
 
 if __name__ == "__main__":    
     # For Development only, otherwise use gunicorn    
     # Debug mode does not work when the data interface is set to shared-memory "shmem"! 
-    #app.run_server(debug=False, host="0.0.0.0")
-    serve(app.server, host="0.0.0.0", port=8050)
+    app.run_server(debug=False, host="0.0.0.0")
+    #waitress #serve(app.server, host="0.0.0.0", port=8050)
 
 """
 html.Div([

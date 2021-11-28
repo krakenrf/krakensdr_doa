@@ -29,7 +29,7 @@ import math
 
 # Math support
 import numpy as np
-from numba import jit
+#from numba import jit
 
 # Signal processing support
 from scipy import fft
@@ -95,7 +95,7 @@ class SignalProcessor(threading.Thread):
         self.DOA_ant_alignment    = "ULA"
             
         # Processing parameters        
-        self.spectrum_window_size = 1024
+        self.spectrum_window_size = 512
         self.spectrum_window = "blackmanharris"
         self.run_processing = False
         
@@ -133,17 +133,17 @@ class SignalProcessor(threading.Thread):
                     You can enable here to process other frame types (such as call type frames)
                 """
                 max_amplitude = -100
-                max_amplitude_2 = -100
-                max_amplitude_3 = -100
-                max_amplitude_4 = -100
-                max_amplitude_5 = -100
+                #max_amplitude_2 = -100
+                #max_amplitude_3 = -100
+                #max_amplitude_4 = -100
+                #max_amplitude_5 = -100
                 avg_powers    = [0]
                 if en_proc:
                     max_amplitude = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[0, :])))
-                    max_amplitude_2 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[1, :])))
-                    max_amplitude_3 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[2, :])))
-                    max_amplitude_4 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[3, :])))
-                    max_amplitude_5 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[4, :])))
+                   # max_amplitude_2 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[1, :])))
+                   # max_amplitude_3 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[2, :])))
+                   # max_amplitude_4 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[3, :])))
+                   # max_amplitude_5 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[4, :])))
 
                     avg_powers = []
                     for m in range(self.module_receiver.iq_header.active_ant_chs):
@@ -190,15 +190,15 @@ class SignalProcessor(threading.Thread):
                         N = self.spectrum_window_size
 
                         N_perseg = 0
-                        if len(self.processed_signal[0,:]) > self.spectrum_window_size:
-                            N_perseg = N
-                        else:
-                            N_perseg = len(self.processed_signal[0,:])
+                        #if len(self.processed_signal[0,:]) > self.spectrum_window_size:
+                        N_perseg = N
+                        #else:
+                        #    N_perseg = len(self.processed_signal[0,:])
 
 
                         # Get power spectrum
                         f, Pxx_den = signal.welch(self.processed_signal[0, :], self.module_receiver.iq_header.sampling_freq, 
-                                                nperseg=N_perseg//4,
+                                                nperseg=N_perseg,
                                                 nfft=N,
                                                 noverlap=0,
                                                 return_onesided=False, 
@@ -314,7 +314,7 @@ class SignalProcessor(threading.Thread):
                     
                     if self.en_spectrum and self.data_ready:
                     #if True and self.data_ready:
-                        self.logger.info("UPDATING SPECTRUM")
+                        #self.logger.info("UPDATING SPECTRUM")
 
                         #if len(self.processed_signal[0,:]) > self.spectrum_window_size:
                         N = self.spectrum_window_size
@@ -335,7 +335,7 @@ class SignalProcessor(threading.Thread):
                             N_perseg = len(self.module_receiver.iq_samples[0,:])
 
 
-                        self.logger.info("N VAL {:d}".format(N))
+                        #self.logger.info("N VAL {:d}".format(N))
 
 
 
@@ -363,7 +363,7 @@ class SignalProcessor(threading.Thread):
 
                             #f, Pxx_den = signal.welch(self.processed_signal[m, :], self.module_receiver.iq_header.sampling_freq//decimation_factor, 
                             f, Pxx_den = signal.welch(self.module_receiver.iq_samples[m, :], self.module_receiver.iq_header.sampling_freq, 
-                                                    nperseg=N_perseg//4,
+                                                    nperseg=N_perseg,
                                                     nfft=N,
                                                     noverlap=0,
                                                     return_onesided=False, 
@@ -437,13 +437,14 @@ class SignalProcessor(threading.Thread):
                 que_data_packet.append(['latency', int(stop_time*10**3)-self.module_receiver.iq_header.time_stamp])
 
                 # If the que is full, and data is ready (from squelching), clear the buffer immediately so that useful data has the priority
-                if self.data_que.full() and self.data_ready:
-                    try:
-                        self.logger.info("BUFFER WAS NOT EMPTY, EMPTYING NOW")                
-                        self.data_que.get(False) #empty que if not taken yet so fresh data is put in
-                    except queue.Empty:
-                        self.logger.info("DIDNT EMPTY")                
-                        pass
+                
+                #if self.data_que.full() and self.data_ready:
+                #    try:
+                #        self.logger.info("BUFFER WAS NOT EMPTY, EMPTYING NOW")                
+                #        self.data_que.get(False) #empty que if not taken yet so fresh data is put in
+                #    except queue.Empty:
+                #        self.logger.info("DIDNT EMPTY")                
+                #        pass
 
                 # Put data into buffer, but if there is no data because its a cal/trig wait frame etc, then only write if the buffer is empty
                 # Otherwise just discard the data so that we don't overwrite good DATA frames.
