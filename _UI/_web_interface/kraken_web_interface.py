@@ -460,8 +460,8 @@ doa_trace_colors =	{
 }
 figure_font_size = 20
 
-y=np.random.normal(0,1,2**10)
-x=np.arange(2**10)
+y=np.random.normal(0,1,2**3)
+x=np.arange(2**3)
 
 fig_layout = go.Layout(
         paper_bgcolor='rgba(0,0,0,0)',
@@ -1133,7 +1133,7 @@ def fetch_dsp_data():
         update_daq_status()
     elif webInterface_inst.pathname == "/spectrum" and spectrum_update_flag:
         plot_spectrum()
-    elif webInterface_inst.pathname == "/doa" and doa_update_flag:
+    elif (webInterface_inst.pathname == "/doa" and doa_update_flag): #or (webInterface_inst.pathname == "/doa" and webInterface_inst.reset_doa_graph_flag):
         plot_doa()
 
     #if (pathname == "/config" or pathname=="/") and daq_status_update_flag:        
@@ -1322,9 +1322,9 @@ def display_page(pathname):
         return [spectrum_page_layout, "header_inactive", "header_active", "header_inactive"]
     elif pathname == "/doa":
         webInterface_inst.module_signal_processor.en_spectrum = False
-        #webInterface_inst.reset_doa_graph_flag = True
-        doa_fig = None
-        #while webInterface_inst.reset_doa_graph_flag: time.sleep(1) # Wait until the graph is reset
+        webInterface_inst.reset_doa_graph_flag = True
+        #doa_fig = {}
+        #while webInterface_inst.reset_doa_graph_flag: time.sleep(0.1) # Wait until the graph is reset
         #while doa_fig == None : time.sleep(0.1) # Wait for doa_fig to reconfigure in timer callback
         time.sleep(1)
         return [generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"]
@@ -1359,9 +1359,9 @@ def save_config_btn(input_value):
 def plot_doa():
     global doa_fig
 
-    #if webInterface_inst.reset_doa_graph_flag == True:
+    if webInterface_inst.reset_doa_graph_flag == True:
     #    doa_fig = []
-    if doa_fig == None:
+    #if doa_fig == {}:
         doa_fig = go.Figure(layout=fig_layout)
 
         if webInterface_inst.doa_thetas is not None:
@@ -1462,7 +1462,7 @@ def plot_doa():
         #app.push_mods({ 
         #   'doa-graph': {'figure': doa_fig},
         #})
-        #webInterface_inst.reset_doa_graph_flag = False
+        webInterface_inst.reset_doa_graph_flag = False
     else:
         update_data = []
         fig_type = []
@@ -1477,6 +1477,8 @@ def plot_doa():
                 update_data = [dict(x=(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360, y=webInterface_inst.doa_results[0])]
                 fig_type = webInterface_inst._doa_fig_type
 
+            # If we're suddenly updating the graph, STOP the push otherwise javascript will throw an exception
+            #if webInterface_inst.reset_doa_graph_flag == False:
             app.push_mods({ 
                 'doa-graph-type-store': {'data': fig_type},
                 'doa-store': {'data': update_data},
@@ -1485,17 +1487,20 @@ def plot_doa():
 
 
 
-
-
 # DOA Graph Clientside Callback
 app.clientside_callback(
     """
     function (data, graph_type) {
+        console.log("In clientside");
+        console.log(data.length);
+        console.log(data[0].x.length);
+
         if(graph_type == 0) {
             return [[{x: data.map(i => i.x), y: data.map(i => i.y)}, [0], data[0].x.length]];
         } else {
             return [[{theta: data.map(i => i.x), r: data.map(i => i.y)}, [0], data[0].x.length]];
         }
+
     }
     """,
     [Output('doa-graph', 'extendData')],
@@ -1510,7 +1515,6 @@ app.clientside_callback(
         /*return [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length]*/
 
         const every_nth = (arr, nth) => arr.filter((e, i) => i % nth === (nth | 0) - 1);
-
 
         return [
                 [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length],
