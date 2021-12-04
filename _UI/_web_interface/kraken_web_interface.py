@@ -151,7 +151,7 @@ class webInterface():
         self.daq_fs                = "-"
         self.daq_cpi               = "-"
         self.daq_if_gains          ="[,,,,]"
-        self.en_advanced_daq_cfg   = settings.en_advanced_daq_cfg 
+        self.en_advanced_daq_cfg   = False #settings.en_advanced_daq_cfg 
         self.daq_ini_cfg_params    = read_config_file()
         self.active_daq_ini_cfg    = self.daq_ini_cfg_params[0] #"Default" # Holds the string identifier of the actively loaded DAQ ini configuration
         self.tmp_daq_ini_cfg       = "Default"
@@ -171,9 +171,13 @@ class webInterface():
         self.logger.info("Web interface object initialized")        
 
         self.dsp_timer = None
-        
+        self.update_time = 9999
+
         self.pathname = ""
         self.reset_doa_graph_flag = False
+        self.reset_spectrum_graph_flag = False
+        # Basic DAQ Config
+        self.decimated_bandwidth = 12.5
 
 
         # TODO: Delete this
@@ -334,6 +338,9 @@ class webInterface():
         webInterface_inst.logger.info("Center frequency: {:f} MHz".format(f0))
         webInterface_inst.logger.info("Gain: {:f} dB".format(gain))
 
+
+
+
 def read_config_file(config_fname=daq_config_filename):    
     parser = ConfigParser()
     found = parser.read([config_fname])
@@ -435,6 +442,7 @@ def get_preconfigs(config_files_path):
             parameters = parser._sections
             preconfigs.append([config_file_path, parameters['meta']['config_name']])
     return preconfigs
+
 
 #############################################
 #          Prepare Dash application         #
@@ -602,7 +610,14 @@ def generate_config_page_layout(webInterface_inst):
     ant_spacing_meter = round(wavelength * ant_spacing_wavelength, 3)
     ant_spacing_feet  = ant_spacing_meter*3.2808399
     ant_spacing_inch  = ant_spacing_meter*39.3700787
-    
+
+    cfg_decimated_bw = ((daq_cfg_params[3]) / daq_cfg_params[8]) / 10**3
+    cfg_data_block_len = ( daq_cfg_params[7] / (cfg_decimated_bw) )
+    cfg_recal_interval =  (daq_cfg_params[20] * (cfg_data_block_len/10**3)) / 60 
+
+    if daq_cfg_params[18] == 0: #If set to no tracking
+        cfg_recal_interval = 1
+
     #-----------------------------
     #   DAQ Configuration Card
     #-----------------------------
@@ -648,25 +663,25 @@ def generate_config_page_layout(webInterface_inst):
                             {'label': '48.0 dB', 'value': 48.0},
                             {'label': '49.6 dB', 'value': 49.6},
                             ],
-                    value=webInterface_inst.module_receiver.daq_rx_gain, className="field-body")
+                    value=webInterface_inst.module_receiver.daq_rx_gain, clearable=False, className="field-body"),
                 ], className="field"),
         html.Div([
             html.Button('Update Receiver Parameters', id='btn-update_rx_param', className="btn"),
         ], className="field"),
         html.Div([
-            html.Div("Preconfiguration:", className="field-label"), 
+            html.Div("Preconfigured DAQ Settings:", className="field-label"), 
             dcc.Dropdown(id='daq_cfg_files',
                     options=[
                         {'label': str(i[1]), 'value': i[0]} for i in preconfigs
-                    ],            
-            clearable=False, 
+                    ],
+            clearable=False,
             placeholder="Select configuration file",
             persistence=True,
             style={"display":"inline-block", "width": "400px"},
             className="field-body"),
         ], className="field"),
         html.Div([
-            html.Div("Active configuration: "+webInterface_inst.active_daq_ini_cfg, id="active_daq_ini_cfg", className="field-label"),
+            html.Div("Active Configuration: " + webInterface_inst.active_daq_ini_cfg, id="active_daq_ini_cfg", className="field-label"),
         ], className="field"),
         html.Div([
             html.Button('Reconfigure & Restart DAQ chain', id='btn_reconfig_daq_chain', className="btn"),
@@ -674,146 +689,165 @@ def generate_config_page_layout(webInterface_inst):
         html.Div([
                 html.Div(webInterface_inst.daq_cfg_ini_error , id="daq_ini_check", className="field-label", style={"color":"red"}),
         ], className="field"),
+
+        html.Div([html.Div("Basic DAQ Configuration", id="label_en_basic_daq_cfg"     , className="field-label")]),
+            html.Div([
+                html.Div("Data Block Length (ms):", className="field-label"),                                         
+                dcc.Input(id='cfg_data_block_len', value=cfg_data_block_len, type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                html.Div("Decimated Bandwidth (kHz):", className="field-label"),                                         
+                dcc.Input(id='cfg_decimated_bw', value=cfg_decimated_bw, type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                html.Div("Recalibration Interval (mins):", className="field-label"),                                         
+                dcc.Input(id='cfg_recal_interval', value=cfg_recal_interval, type='number', debounce=False, className="field-body")
+            ], className="field"),
+
+
         html.Div([html.Div("Advanced DAQ Configuration", id="label_en_advanced_daq_cfg"     , className="field-label"),
-                dcc.Checklist(options=option     , id="en_advanced_daq_cfg"     , className="field-body", value=en_advanced_daq_cfg),
+                dcc.Checklist(options=option     , id="en_advanced_daq_cfg"     ,  className="field-body", value=en_advanced_daq_cfg),
         ], className="field"),        
     ]
     
     # --> Optional DAQ Subsystem reconfiguration fields <--   
-    if len(en_advanced_daq_cfg):
-        if daq_cfg_params is not None:
-            daq_subsystem_reconfiguration_options = [ \
-                html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"),
-                html.H3("HW", id="cfg_group_hw"),
-                html.Div([
-                        html.Div("Rx channels:", className="field-label"),                                         
-                        dcc.Input(id='cfg_rx_channels', value=daq_cfg_params[1], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.H3("DAQ", id="cfg_group_daq"),
-                html.Div([
-                        html.Div("DAQ buffer size:", className="field-label", id="label_daq_buffer_size"),                                                                 
-                        dcc.Dropdown(id='cfg_daq_buffer_size',
-                                    options=[
-                                            {'label': i, 'value': i} for i in valid_daq_buffer_sizes
-                                    ],
-                                    value=daq_cfg_params[2], style={"display":"inline-block"},className="field-body"),
-                ], className="field"),
-                html.Div([
-                    html.Div("Sample rate [MHz]:", className="field-label", id="label_sample_rate"),
-                    dcc.Dropdown(id='cfg_sample_rate',
-                            options=[
-                                {'label': i, 'value': i} for i in valid_sample_rates                                
+    #if len(en_advanced_daq_cfg):
+    #    if daq_cfg_params is not None:
+    daq_subsystem_reconfiguration_options = [ \
+        html.Div([
+
+            html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"),
+            html.H3("HW", id="cfg_group_hw"),
+            html.Div([
+                    html.Div("Rx channels:", className="field-label"),                                         
+                    dcc.Input(id='cfg_rx_channels', value=daq_cfg_params[1], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.H3("DAQ", id="cfg_group_daq"),
+            html.Div([
+                    html.Div("DAQ buffer size:", className="field-label", id="label_daq_buffer_size"),                                                                 
+                    dcc.Dropdown(id='cfg_daq_buffer_size',
+                                options=[
+                                        {'label': i, 'value': i} for i in valid_daq_buffer_sizes
                                 ],
-                        value=daq_cfg_params[3]/10**6, style={"display":"inline-block"},className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("Enable noise source control:", className="field-label", id="label_en_noise_source_ctr"),                                         
-                        dcc.Checklist(options=option     , id="en_noise_source_ctr"   , className="field-body", value=en_noise_src_values),
-                ], className="field"),
-                html.H3("Squelch"),
-                html.Div([
-                        html.Div("Enable Squelch mode:", className="field-label", id="label_en_squelch"),                                                                 
-                        dcc.Checklist(options=option     , id="en_squelch_mode"   , className="field-body", value=en_squelch_values),
-                ], className="field"),
-                html.Div([
-                        html.Div("Initial threshold:", className="field-label", id="label_squelch_init_threshold"),                                         
-                        dcc.Input(id='cfg_squelch_init_th', value=daq_cfg_params[6], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.H3("Pre Processing"),
-                html.Div([
-                        html.Div("CPI size [sample]:", className="field-label", id="label_cpi_size"),                                         
-                        dcc.Input(id='cfg_cpi_size', value=daq_cfg_params[7], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("Decimation ratio:", className="field-label", id="label_decimation_ratio"),                                         
-                        dcc.Input(id='cfg_decimation_ratio', value=daq_cfg_params[8], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("FIR relative bandwidth:", className="field-label", id="label_fir_relative_bw"),                                         
-                        dcc.Input(id='cfg_fir_bw', value=daq_cfg_params[9], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("FIR tap size:", className="field-label", id="label_fir_tap_size"),                                         
-                        dcc.Input(id='cfg_fir_tap_size', value=daq_cfg_params[10], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.Div([
-                    html.Div("FIR window:", className="field-label", id="label_fir_window"),
-                    dcc.Dropdown(id='cfg_fir_window',
-                            options=[
-                                {'label': i, 'value': i} for i in valid_fir_windows                                
+                                value=daq_cfg_params[2], style={"display":"inline-block"},className="field-body"),
+            ], className="field"),
+            html.Div([
+                html.Div("Sample rate [MHz]:", className="field-label", id="label_sample_rate"),
+                dcc.Dropdown(id='cfg_sample_rate',
+                        options=[
+                            {'label': i, 'value': i} for i in valid_sample_rates                                
+                            ],
+                    value=daq_cfg_params[3]/10**6, style={"display":"inline-block"},className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("Enable noise source control:", className="field-label", id="label_en_noise_source_ctr"),                                         
+                    dcc.Checklist(options=option     , id="en_noise_source_ctr"   , className="field-body", value=en_noise_src_values),
+            ], className="field"),
+            html.H3("Squelch"),
+            html.Div([
+                    html.Div("Enable DAQ Squelch:", className="field-label", id="label_en_squelch"),                                                                 
+                    dcc.Checklist(options=option     , id="en_squelch_mode"   , className="field-body", value=en_squelch_values),
+            ], className="field"),
+            html.Div([
+                    html.Div("Initial threshold:", className="field-label", id="label_squelch_init_threshold"),                                         
+                    dcc.Input(id='cfg_squelch_init_th', value=daq_cfg_params[6], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.H3("Pre Processing"),
+            html.Div([
+                    html.Div("CPI size [sample]:", className="field-label", id="label_cpi_size"),                                         
+                    dcc.Input(id='cfg_cpi_size', value=daq_cfg_params[7], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("Decimation ratio:", className="field-label", id="label_decimation_ratio"),                                         
+                    dcc.Input(id='cfg_decimation_ratio', value=daq_cfg_params[8], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("FIR relative bandwidth:", className="field-label", id="label_fir_relative_bw"),                                         
+                    dcc.Input(id='cfg_fir_bw', value=daq_cfg_params[9], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("FIR tap size:", className="field-label", id="label_fir_tap_size"),                                         
+                    dcc.Input(id='cfg_fir_tap_size', value=daq_cfg_params[10], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                html.Div("FIR window:", className="field-label", id="label_fir_window"),
+                dcc.Dropdown(id='cfg_fir_window',
+                        options=[
+                            {'label': i, 'value': i} for i in valid_fir_windows                                
+                            ],
+                    value=daq_cfg_params[11], style={"display":"inline-block"},className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("Enable filter reset:", className="field-label", id="label_en_filter_reset"),                                         
+                    dcc.Checklist(options=option     , id="en_filter_reset"   , className="field-body", value=en_filter_rst_values),
+            ], className="field"),
+            html.H3("Calibration"),
+            html.Div([
+                    html.Div("Correlation size [sample]:", className="field-label", id="label_correlation_size"),
+                    dcc.Input(id='cfg_corr_size', value=daq_cfg_params[13], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("Standard channel index:", className="field-label", id="label_std_ch_index"),                                         
+                    dcc.Input(id='cfg_std_ch_ind', value=daq_cfg_params[14], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("Enable IQ calibration:", className="field-label", id="label_en_iq_calibration"),                                         
+                    dcc.Checklist(options=option     , id="en_iq_cal"   , className="field-body", value=en_iq_cal_values),
+            ], className="field"),
+            html.Div([
+                    html.Div("Gain lock interval [frame]:", className="field-label", id="label_gain_lock_interval"),                                         
+                    dcc.Input(id='cfg_gain_lock', value=daq_cfg_params[16], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("Require track lock intervention:", className="field-label", id="label_require_track_lock"),                                         
+                    dcc.Checklist(options=option     , id="en_req_track_lock_intervention"   , className="field-body", value=en_req_track_lock_values),
+            ], className="field"),
+            html.Div([
+                    html.Div("Calibration track mode:", className="field-label", id="label_calibration_track_mode"),                  
+                    dcc.Dropdown(id='cfg_cal_track_mode',
+                                options=[
+                                        {'label': i[0], 'value': i[1]} for i in calibration_tack_modes
                                 ],
-                        value=daq_cfg_params[11], style={"display":"inline-block"},className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("Enable filter reset:", className="field-label", id="label_en_filter_reset"),                                         
-                        dcc.Checklist(options=option     , id="en_filter_reset"   , className="field-body", value=en_filter_rst_values),
-                ], className="field"),
-                html.H3("Calibration"),
-                html.Div([
-                        html.Div("Correlation size [sample]:", className="field-label", id="label_correlation_size"),
-                        dcc.Input(id='cfg_corr_size', value=daq_cfg_params[13], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("Standard channel index:", className="field-label", id="label_std_ch_index"),                                         
-                        dcc.Input(id='cfg_std_ch_ind', value=daq_cfg_params[14], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("Enable IQ calibration:", className="field-label", id="label_en_iq_calibration"),                                         
-                        dcc.Checklist(options=option     , id="en_iq_cal"   , className="field-body", value=en_iq_cal_values),
-                ], className="field"),
-                html.Div([
-                        html.Div("Gain lock interval [frame]:", className="field-label", id="label_gain_lock_interval"),                                         
-                        dcc.Input(id='cfg_gain_lock', value=daq_cfg_params[16], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("Require track lock intervention:", className="field-label", id="label_require_track_lock"),                                         
-                        dcc.Checklist(options=option     , id="en_req_track_lock_intervention"   , className="field-body", value=en_req_track_lock_values),
-                ], className="field"),
-                html.Div([
-                        html.Div("Calibration track mode:", className="field-label", id="label_calibration_track_mode"),                  
-                        dcc.Dropdown(id='cfg_cal_track_mode',
-                                    options=[
-                                            {'label': i[0], 'value': i[1]} for i in calibration_tack_modes
-                                    ],
-                                    value=daq_cfg_params[18], style={"display":"inline-block"},className="field-body"),                                        
-                ], className="field"),
-                html.Div([
-                        html.Div("Amplitude calibration mode :", className="field-label", id="label_amplitude_calibration_mode"),                  
-                        dcc.Dropdown(id='cfg_amplitude_cal_mode',
-                                    options=[
-                                            {'label': 'default', 'value': 'default'},
-                                            {'label': 'disabled', 'value': 'disabled'},
-                                            {'label': 'channel_power', 'value': 'channel_power'}
-                                    ],
-                                    value=daq_cfg_params[19], style={"display":"inline-block"},className="field-body"),                                        
-                ], className="field"),
-                html.Div([
-                        html.Div("Calibration frame interval:", className="field-label", id="label_calibration_frame_interval"),                                         
-                        dcc.Input(id='cfg_cal_frame_interval', value=daq_cfg_params[20], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("Calibration frame burst size:", className="field-label", id="label_calibration_frame_burst_size"),                                         
-                        dcc.Input(id='cfg_cal_frame_burst_size', value=daq_cfg_params[21], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("Amplitude tolerance [dB]:", className="field-label", id="label_amplitude_tolerance"),                                         
-                        dcc.Input(id='cfg_amplitude_tolerance', value=daq_cfg_params[22], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("Phase tolerance [deg]:", className="field-label", id="label_phase_tolerance"),                                         
-                        dcc.Input(id='cfg_phase_tolerance', value=daq_cfg_params[23], type='number', debounce=False, className="field-body")
-                ], className="field"),
-                html.Div([
-                        html.Div("Maximum sync fails:", className="field-label", id="label_max_sync_fails"),                                         
-                        dcc.Input(id='cfg_max_sync_fails', value=daq_cfg_params[24], type='number', debounce=False, className="field-body")
-                ], className="field"),
-            ]
-            for i in range(len(daq_subsystem_reconfiguration_options)):
-                daq_config_card_list.append(daq_subsystem_reconfiguration_options[i])
-        else:
-            daq_config_card_list.append(html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"))
-            daq_config_card_list.append(html.Div("Config file not found! Reconfiguration is not possible !", id="daq_reconfig_note", className="field", style={"color":"red"}))
-    
+                                value=daq_cfg_params[18], style={"display":"inline-block"},className="field-body"),                                        
+            ], className="field"),
+            html.Div([
+                    html.Div("Amplitude calibration mode :", className="field-label", id="label_amplitude_calibration_mode"),                  
+                    dcc.Dropdown(id='cfg_amplitude_cal_mode',
+                                options=[
+                                        {'label': 'default', 'value': 'default'},
+                                        {'label': 'disabled', 'value': 'disabled'},
+                                        {'label': 'channel_power', 'value': 'channel_power'}
+                                ],
+                                value=daq_cfg_params[19], style={"display":"inline-block"},className="field-body"),                                        
+            ], className="field"),
+            html.Div([
+                    html.Div("Calibration frame interval:", className="field-label", id="label_calibration_frame_interval"),                                         
+                    dcc.Input(id='cfg_cal_frame_interval', value=daq_cfg_params[20], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("Calibration frame burst size:", className="field-label", id="label_calibration_frame_burst_size"),                                         
+                    dcc.Input(id='cfg_cal_frame_burst_size', value=daq_cfg_params[21], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("Amplitude tolerance [dB]:", className="field-label", id="label_amplitude_tolerance"),                                         
+                    dcc.Input(id='cfg_amplitude_tolerance', value=daq_cfg_params[22], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("Phase tolerance [deg]:", className="field-label", id="label_phase_tolerance"),                                         
+                    dcc.Input(id='cfg_phase_tolerance', value=daq_cfg_params[23], type='number', debounce=False, className="field-body")
+            ], className="field"),
+            html.Div([
+                    html.Div("Maximum sync fails:", className="field-label", id="label_max_sync_fails"),                                         
+                    dcc.Input(id='cfg_max_sync_fails', value=daq_cfg_params[24], type='number', debounce=False, className="field-body")
+            ], className="field"),
+        ], style={'width': '100%'}, id='adv-cfg-container')
+    ]
+    for i in range(len(daq_subsystem_reconfiguration_options)):
+        daq_config_card_list.append(daq_subsystem_reconfiguration_options[i])
+        #else:
+        #    daq_config_card_list.append(html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"))
+        #    daq_config_card_list.append(html.Div("Config file not found! Reconfiguration is not possible !", id="daq_reconfig_note", className="field", style={"color":"red"}))
+
     daq_config_card = html.Div(daq_config_card_list, className="card")
     #-----------------------------
     #       DAQ Status Card
@@ -912,7 +946,7 @@ def generate_config_page_layout(webInterface_inst):
     reconfig_note = ""
     squelch_card = \
     html.Div([
-        html.H2("Squelch configuration", id="init_title_sq"),
+        html.H2("Squelch Configuration", id="init_title_sq"),
         html.Div([html.Div("Enable squelch (DOA-DSP Subsystem)", id="label_en_dsp_squelch" , className="field-label"),
                 dcc.Checklist(options=option , id="en_dsp_squelch_check" , className="field-body", value=en_dsp_squelch_values),
             ], className="field"),
@@ -939,7 +973,7 @@ spectrum_page_layout = html.Div([
     dcc.Store(id="spectrum-store"),
     dcc.Graph(
         id="spectrum-graph",
-        figure=fig_dummy #spectrum_fig #fig_dummy
+        figure=fig_dummy #spectrum_fig #fig_dummy #spectrum_fig #fig_dummy
     ),
     dcc.Graph(
         id="waterfall-graph",
@@ -975,7 +1009,7 @@ def generate_doa_page_layout(webInterface_inst):
         dcc.Graph(
             style={"height": "inherit"},
             id="doa-graph",
-            figure=doa_fig #fig_dummy #doa_fig #fig_dummy
+            figure=doa_fig, #fig_dummy #doa_fig #fig_dummy
         )], className="monitor_card"),
     ])
     return doa_page_layout
@@ -1128,6 +1162,10 @@ def fetch_dsp_data():
     else:
         pass
         # Handle task here and call q.task_done()
+
+    #current_time = time.time()
+    #time_elapsed = current_time - webInterface_inst.update_time
+    #webInterface_inst.update_time = current_time
 
     if (webInterface_inst.pathname == "/config" or webInterface_inst.pathname == "/") and daq_status_update_flag:
         update_daq_status()
@@ -1317,16 +1355,22 @@ def display_page(pathname):
         return [generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"]
     elif pathname == "/spectrum":        
         webInterface_inst.module_signal_processor.en_spectrum = True
+        #webInterface_inst.reset_spectrum_graph_flag = True
+        #plot_spectrum()
+        #while webInterface_inst.reset_spectrum_graph_flag: time.sleep(1)
         spectrum_fig = None # Force reload of graphs as axes may change etc
         time.sleep(1)
         return [spectrum_page_layout, "header_inactive", "header_active", "header_inactive"]
     elif pathname == "/doa":
         webInterface_inst.module_signal_processor.en_spectrum = False
+        #webInterface_inst.module_signal_processor.en_DOA_estimation = False 
         webInterface_inst.reset_doa_graph_flag = True
+        plot_doa()
         #doa_fig = {}
-        #while webInterface_inst.reset_doa_graph_flag: time.sleep(0.1) # Wait until the graph is reset
+        while webInterface_inst.reset_doa_graph_flag: time.sleep(1) # Wait until the graph is reset
         #while doa_fig == None : time.sleep(0.1) # Wait for doa_fig to reconfigure in timer callback
-        time.sleep(1)
+        #time.sleep(1)
+        #webInterface_inst.module_signal_processor.en_DOA_estimation = True
         return [generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"]
     return [no_update, no_update, no_update, no_update]
 
@@ -1360,22 +1404,26 @@ def plot_doa():
     global doa_fig
 
     if webInterface_inst.reset_doa_graph_flag == True:
-    #    doa_fig = []
-    #if doa_fig == {}:
         doa_fig = go.Figure(layout=fig_layout)
 
-        if webInterface_inst.doa_thetas is not None:
+        # Push the fig type early, so that the data store is updated and ready for the extended traces update which cares about the difference between x and theta dict vals etc.
+        app.push_mods({ 
+            'doa-graph-type-store': {'data': webInterface_inst._doa_fig_type}
+        })
+
+        #Just generate with junk data initially, as the spectrum array may not be ready yet if we have sqeulching active etc.
+        if True: #webInterface_inst.doa_thetas is not None:
             # --- Linear plot ---
             if webInterface_inst._doa_fig_type == 0 :
                 # Plot traces
-                for i, doa_result in enumerate(webInterface_inst.doa_results):
-                    label = webInterface_inst.doa_labels[i]
-                    doa_fig.add_trace(go.Scatter(x=webInterface_inst.doa_thetas,
-                                        y=doa_result,
-                                        name=label,
-                                        line = dict(
-                                                    color = doa_trace_colors[webInterface_inst.doa_labels[i]],
-                                                    width = 3)
+                #for i, doa_result in enumerate(y):
+                #    label = webInterface_inst.doa_labels[i]
+                doa_fig.add_trace(go.Scatter(x=x, #webInterface_inst.doa_thetas,
+                                  y=y, #doa_result,
+                                       # name=label,
+                                       # line = dict(
+                                       #             color = doa_trace_colors[webInterface_inst.doa_labels[i]],
+                                       #             width = 3)
                             ))
 
                 doa_fig.update_xaxes(title_text="Incident angle [deg]",
@@ -1395,73 +1443,46 @@ def plot_doa():
                             showline=True)
 # --- Polar plot ---
             elif webInterface_inst._doa_fig_type == 1:
-            #if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":
-            #    fig.update_layout(polar = dict(sector = [0, 180],
-            #                                   radialaxis_tickfont_size = figure_font_size,
-            #                                   angularaxis = dict(rotation=90,
-            #                                                      tickfont_size = figure_font_size
-            #                                                      )
-            #                                    )
-            #                     )
-            #else: #UCA
+
+                #for i, doa_result in enumerate(y):
+                label = "DOA Angle" #webInterface_inst.doa_labels[i]
+                doa_fig.add_trace(go.Scatterpolar(theta=x, #webInterface_inst.doa_thetas,
+                                             r=y, #doa_result,
+                                             name=label,
+                                             #line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
+                                             fill= 'toself'
+                                             ))
+
+
                 doa_fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
                                            angularaxis = dict(rotation=90,
                                                               tickfont_size = figure_font_size)
-                                           )
-                             )
+                                                             )
+                                      )
 
-                for i, doa_result in enumerate(webInterface_inst.doa_results):
-                    label = webInterface_inst.doa_labels[i]
-                    doa_fig.add_trace(go.Scatterpolar(theta=webInterface_inst.doa_thetas,
-                                             r=doa_result,
-                                             name=label,
-                                             line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
-                                             fill= 'toself'
-                                             ))
             # --- Compass  ---
             elif webInterface_inst._doa_fig_type == 2 :
-            #thetas_compass = webInterface_inst.doa_thetas[::-1]
-            #thetas_compass += webInterface_inst.compass_ofset
-            #if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":
-            #    fig.update_layout(polar = dict(sector = [0, 180],
-            #                                radialaxis_tickfont_size = figure_font_size,
-            #                                angularaxis = dict(rotation=90+webInterface_inst.compass_ofset,
-            #                                                    direction="clockwise",
-            #                                                    tickfont_size = figure_font_size
-            #                                                    )
-            #                                    )
-            #                    )
-            #else: #UCA
                 doa_fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
                                         angularaxis = dict(rotation=90+webInterface_inst.compass_ofset,
                                                             direction="clockwise",
                                                             tickfont_size = figure_font_size)
-                                        )
-                            )
+                                                          )
+                                     )
 
-                for i, doa_result in enumerate(webInterface_inst.doa_results):
-                    if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":
-                        doa_compass = 0-webInterface_inst.doas[i]+webInterface_inst.compass_ofset
-                    else:
-                        doa_compass = (360-webInterface_inst.doas[i]+webInterface_inst.compass_ofset)%360
-                    label = webInterface_inst.doa_labels[i]
+                #for i, doa_result in enumerate(y):
+                #if webInterface_inst.module_signal_processor.DOA_ant_alignment == "ULA":
+                #    doa_compass = 0-webInterface_inst.doas[i]+webInterface_inst.compass_ofset
+                #else:
+                #    doa_compass = (360-webInterface_inst.doas[i]+webInterface_inst.compass_ofset)%360
+                label = "DOA Angle" #webInterface_inst.doa_labels[i]
 
-                    doa_fig.add_trace(go.Scatterpolar(theta=(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360,
-                                                r=doa_result,
+                doa_fig.add_trace(go.Scatterpolar(theta=x, #(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360,
+                                                r=y, #doa_result,
                                                 name= label,
-                                                line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
+                                               # line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
                                                 fill= 'toself'
                                                 ))
-                                                #mode = 'lines',
-                                                #name = label,
-                                                #showlegend=True,
-                                                #line = dict(
-                                                #    color = doa_trace_colors[webInterface_inst.doa_labels[i]],
-                                                #    dash='dash'
-                                                #)))
-        #app.push_mods({ 
-        #   'doa-graph': {'figure': doa_fig},
-        #})
+
         webInterface_inst.reset_doa_graph_flag = False
     else:
         update_data = []
@@ -1477,8 +1498,6 @@ def plot_doa():
                 update_data = [dict(x=(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360, y=webInterface_inst.doa_results[0])]
                 fig_type = webInterface_inst._doa_fig_type
 
-            # If we're suddenly updating the graph, STOP the push otherwise javascript will throw an exception
-            #if webInterface_inst.reset_doa_graph_flag == False:
             app.push_mods({ 
                 'doa-graph-type-store': {'data': fig_type},
                 'doa-store': {'data': update_data},
@@ -1486,14 +1505,10 @@ def plot_doa():
             })
 
 
-
 # DOA Graph Clientside Callback
 app.clientside_callback(
     """
     function (data, graph_type) {
-        console.log("In clientside");
-        console.log(data.length);
-        console.log(data[0].x.length);
 
         if(graph_type == 0) {
             return [[{x: data.map(i => i.x), y: data.map(i => i.y)}, [0], data[0].x.length]];
@@ -1531,6 +1546,7 @@ def plot_spectrum():
     global spectrum_fig
     global waterfall_fig
     if spectrum_fig == None:
+    #if webInterface_inst.reset_spectrum_graph_flag:
         spectrum_fig = go.Figure(layout=fig_layout)
         freq_label="Frequency [MHz]"
 
@@ -1539,7 +1555,7 @@ def plot_spectrum():
         # Plot traces
         for m in range(np.size(webInterface_inst.spectrum, 0)-2):
             spectrum_fig.add_trace(go.Scatter(x=x,
-                                     y=webInterface_inst.spectrum[m+1, :],
+                                     y=y, #webInterface_inst.spectrum[m+1, :],
                                      name="Channel {:d}".format(m),
                                      line = dict(color = trace_colors[m],
                                                  width = 1)
@@ -1550,7 +1566,7 @@ def plot_spectrum():
         # Add selected window plot
         m = np.size(webInterface_inst.spectrum,0)-1
         spectrum_fig.add_trace(go.Scatter(x=x,
-                             y=webInterface_inst.spectrum[m, :],
+                             y=y, #webInterface_inst.spectrum[m, :],
                              name="Selected Signal Window",
                              line = dict(color = trace_colors[m],
                                          width = 3)
@@ -1574,30 +1590,7 @@ def plot_spectrum():
                     ticks='outside',
                     showline=True)
 
-        """
-        waterfall_init = [[-80] * len(webInterface_inst.spectrum[1, :])] * 100
-
-        waterfall_fig = go.Figure(layout=fig_layout)
-        waterfall_fig.add_trace(go.Heatmapgl(
-                         z=waterfall_init,
-                         zsmooth=False,
-                         hoverinfo='skip',
-                         colorscale=[[0.0, '#000020'],
-                         [0.0714, '#000030'],
-                         [0.1428, '#000050'],
-                         [0.2142, '#000091'],
-                         [0.2856, '#1E90FF'],
-                         [0.357, '#FFFFFF'],
-                         [0.4284, '#FFFF00'],
-                         [0.4998, '#FE6D16'],
-                         [0.5712, '#FE6D16'],
-                         [0.6426, '#FF0000'],
-                         [0.714, '#FF0000'],
-                         [0.7854, '#C60000'],
-                         [0.8568, '#9F0000'],
-                         [0.9282, '#750000'],
-                         [1.0, '#4A0000']]))
-        """
+        webInterface_inst.reset_spectrum_graph_flag = False
         app.push_mods({
                'spectrum-graph': {'figure': spectrum_fig},
         #       'waterfall-graph': {'figure': waterfall_fig}
@@ -1628,34 +1621,23 @@ def update_dsp_timer(freq_update, pathname):
         return 1 
     return Output('dummy_output', 'children', '')
 
+# TODO: change this to callbacks only, no polling
 @app.callback(
     [Output(component_id="body_ant_spacing_wavelength",  component_property='children'),
     Output(component_id="label_ant_spacing_meter",  component_property='children'),
     Output(component_id="ambiguity_warning",  component_property='children'),
     Output(component_id="en_fb_avg_check",  component_property="options")],
-    [Input(component_id ="placeholder_update_dsp"       , component_property='children')],
-    [State(component_id ="en_doa_check"       , component_property='value'),
-    State(component_id ="en_fb_avg_check"           , component_property='value'),
-    State(component_id ="ant_spacing_meter"           , component_property='value'),
-    State(component_id ="radio_ant_arrangement"           , component_property='value'),
-    State(component_id ="doa_fig_type"           , component_property='value'),
-    State(component_id ="doa_method"           , component_property='value'),
-    State(component_id ="compass_ofset"           , component_property='value')],
+    #[Input(component_id ="placeholder_update_dsp"       , component_property='children')],
+    [Input(component_id ="en_doa_check"       , component_property='value'),
+    Input(component_id ="en_fb_avg_check"           , component_property='value'),
+    Input(component_id ="ant_spacing_meter"           , component_property='value'),
+    Input(component_id ="radio_ant_arrangement"           , component_property='value'),
+    Input(component_id ="doa_fig_type"           , component_property='value'),
+    Input(component_id ="doa_method"           , component_property='value'),
+    Input(component_id ="compass_ofset"           , component_property='value')],
 )
-#def update_dsp_params(pathname, en_doa, doa_method,
-#                      en_fb_avg, spacing_wavlength, spacing_meter, spacing_feet, spacing_inch,
-#                      ant_arrangement, doa_fig_type, compass_ofset, update_btn):
-#def update_dsp_params(n_intervals, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset):
-def update_dsp_params(freq_update, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset): #, input_value):
-
-    #if input_value is None:
-    #    raise PreventUpdate
-
-    #ctx = dash.callback_context
-    #if ctx.triggered:
-    #    component_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    #    if component_id == "btn-update_rx_param":
-    #        wavelength= 300 / webInterface_inst.daq_center_freq
+#def update_dsp_params(freq_update, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset): #, input_value):
+def update_dsp_params(en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset): #, input_value):
 
     ant_spacing_meter = spacing_meter
     wavelength= 300 / webInterface_inst.daq_center_freq
@@ -1664,14 +1646,6 @@ def update_dsp_params(freq_update, en_doa, en_fb_avg, spacing_meter, ant_arrange
     ant_spacing_inch = round(ant_spacing_meter * 39.3700787,3)
     ant_spacing_wavelength = round(ant_spacing_meter / wavelength,3)
 
-    #app.push_mods({
-          # 'ant_spacing_wavelength': {'value': ant_spacing_wavelength},
-    #       'body_ant_spacing_wavelength' : {'children': str(ant_spacing_wavelength)}
-    #       'ant_spacing_meter': {'value': ant_spacing_meter},
-    #       'ant_spacing_feet': {'value': ant_spacing_feet},
-    #       'ant_spacing_inch': {'value': ant_spacing_inch}
-    #})
-
     spacing_label = ""
 
     # Max phase diff and ambiguity warning and Spatial smoothing control
@@ -1679,9 +1653,6 @@ def update_dsp_params(freq_update, en_doa, en_fb_avg, spacing_meter, ant_arrange
         max_phase_diff = ant_spacing_meter / wavelength 
         smoothing_possibility = [{"label":"", "value": 1, "disabled": False}] # Disables the checkbox 
         spacing_label = "Interelement Spacing (meters)"
-        #app.push_mods({
-        #   'label_ant_spacing_meter': {'children': "Interelement Spacing (meters)"}
-        #})
     elif ant_arrangement == "UCA":
         UCA_ant_spacing = (np.sqrt(2)*ant_spacing_meter*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
         max_phase_diff = UCA_ant_spacing/wavelength
@@ -1716,51 +1687,111 @@ def update_dsp_params(freq_update, en_doa, en_fb_avg, spacing_meter, ant_arrange
     webInterface_inst._doa_fig_type = doa_fig_type
     webInterface_inst.compass_ofset = compass_ofset
 
-    #app.push_mods({
-    #   'ambiguity_warning': {'children': ambiguity_warning},
-    #   'en_fb_avg_check': {'options': smoothing_possibility}
-    #})
     return [str(ant_spacing_wavelength), spacing_label, ambiguity_warning, smoothing_possibility]
 
-
-
 @app.callback(
-    [Output(component_id='placeholder_update_daq_ini_params', component_property="children")],
-    [Input(component_id='cfg_rx_channels'          , component_property="value"),
-    Input(component_id='cfg_daq_buffer_size'      , component_property="value"),
-    Input(component_id='cfg_sample_rate'          , component_property="value"),
-    Input(component_id="en_noise_source_ctr"      , component_property="value"),
-    Input(component_id="en_squelch_mode"          , component_property="value"),
-    Input(component_id='cfg_squelch_init_th'      , component_property="value"),
-    Input(component_id='cfg_cpi_size'             , component_property="value"),
-    Input(component_id='cfg_decimation_ratio'     , component_property="value"),
-    Input(component_id='cfg_fir_bw'               , component_property="value"),
-    Input(component_id='cfg_fir_tap_size'         , component_property="value"),
-    Input(component_id='cfg_fir_window'           , component_property="value"),
-    Input(component_id="en_filter_reset"          , component_property="value"),
-    Input(component_id='cfg_corr_size'            , component_property="value"),
-    Input(component_id='cfg_std_ch_ind'           , component_property="value"),
-    Input(component_id="en_iq_cal"                , component_property="value"),
-    Input(component_id='cfg_gain_lock'            , component_property="value"),
-    Input(component_id="en_req_track_lock_intervention", component_property="value"),
-    Input(component_id='cfg_cal_track_mode'       , component_property="value"),
-    Input(component_id='cfg_amplitude_cal_mode'   , component_property="value"),
-    Input(component_id='cfg_cal_frame_interval'   , component_property="value"),
-    Input(component_id='cfg_cal_frame_burst_size' , component_property="value"),
-    Input(component_id='cfg_amplitude_tolerance'  , component_property="value"),
-    Input(component_id='cfg_phase_tolerance'      , component_property="value"),
-    Input(component_id='cfg_max_sync_fails'       , component_property="value")],
-    #prevent_initial_call=True
+    None,
+    [Input('cfg_rx_channels'         ,'value'),
+    Input('cfg_daq_buffer_size'      ,'value'),
+    Input('cfg_sample_rate'          ,'value'),
+    Input('en_noise_source_ctr'      ,'value'),
+    Input('en_squelch_mode'          ,'value'),
+    Input('cfg_squelch_init_th'      ,'value'),
+    Input('cfg_cpi_size'             ,'value'),
+    Input('cfg_decimation_ratio'     ,'value'),
+    Input('cfg_fir_bw'               ,'value'),
+    Input('cfg_fir_tap_size'         ,'value'),
+    Input('cfg_fir_window'           ,'value'),
+    Input('en_filter_reset'          ,'value'),
+    Input('cfg_corr_size'            ,'value'),
+    Input('cfg_std_ch_ind'           ,'value'),
+    Input('en_iq_cal'                ,'value'),
+    Input('cfg_gain_lock'            ,'value'),
+    Input('en_req_track_lock_intervention','value'),
+    Input('cfg_cal_track_mode'       ,'value'),
+    Input('cfg_amplitude_cal_mode'   ,'value'),
+    Input('cfg_cal_frame_interval'   ,'value'),
+    Input('cfg_cal_frame_burst_size' ,'value'),
+    Input('cfg_amplitude_tolerance'  ,'value'),
+    Input('cfg_phase_tolerance'      ,'value'),
+    Input('cfg_max_sync_fails'       ,'value'),
+    Input('cfg_data_block_len'       ,'value'),
+    Input('cfg_decimated_bw'         ,'value'),
+    Input('cfg_recal_interval'       ,'value')]
 )
 def update_daq_ini_params(
-                    cfg_rx_channels,cfg_daq_buffer_size,cfg_sample_rate,en_noise_source_ctr,
-                    en_squelch_mode,cfg_squelch_init_th,cfg_cpi_size,cfg_decimation_ratio,
-                    cfg_fir_bw,cfg_fir_tap_size,cfg_fir_window,en_filter_reset,cfg_corr_size,
-                    cfg_std_ch_ind,en_iq_cal,cfg_gain_lock,en_req_track_lock_intervention,
-                    cfg_cal_track_mode,cfg_amplitude_cal_mode,cfg_cal_frame_interval,
-                    cfg_cal_frame_burst_size, cfg_amplitude_tolerance,cfg_phase_tolerance,
-                    cfg_max_sync_fails):
-    # TODO: Use disctionarry instead of parameter list
+                    cfg_rx_channels,cfg_daq_buffer_size,cfg_sample_rate,en_noise_source_ctr, \
+                    en_squelch_mode,cfg_squelch_init_th,cfg_cpi_size,cfg_decimation_ratio, \
+                    cfg_fir_bw,cfg_fir_tap_size,cfg_fir_window,en_filter_reset,cfg_corr_size, \
+                    cfg_std_ch_ind,en_iq_cal,cfg_gain_lock,en_req_track_lock_intervention, \
+                    cfg_cal_track_mode,cfg_amplitude_cal_mode,cfg_cal_frame_interval, \
+                    cfg_cal_frame_burst_size, cfg_amplitude_tolerance,cfg_phase_tolerance, \
+                    cfg_max_sync_fails, cfg_data_block_len, cfg_decimated_bw, cfg_recal_interval):
+    # TODO: Use disctionarry instead of parameter list 
+
+    ctx = dash.callback_context
+    component_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if ctx.triggered:
+        if len(ctx.triggered) == 1: # User manually changed one parameter
+            webInterface_inst.tmp_daq_ini_cfg = "Custom"
+
+        # If the input was from basic DAQ config, update the actual DAQ params
+        if component_id == "cfg_data_block_len" or component_id == "cfg_decimated_bw" or component_id == "cfg_recal_interval":
+            if not cfg_data_block_len or not cfg_decimated_bw or not cfg_recal_interval:
+                return Output('dummy_output', 'children', '') #[no_update, no_update, no_update, no_update]
+
+            cfg_daq_buffer_size = 262144 # This is a reasonable DAQ buffer size to use
+            cfg_corr_size = 32768 # Reasonable value that never has problems calibrating
+            en_noise_source_ctr = [1]
+            en_squelch_mode = [] # NOTE: For checkboxes, zero is defined by an empty array
+            cfg_fir_bw = 1
+            cfg_fir_window = 'hann'
+            en_filter_reset = []
+            cfg_std_ch_ind = 0
+            en_iq_cal = [1]
+            en_req_track_lock_intervention = []
+            cfg_amplitude_cal_mode = 'channel_power'
+            cfg_cal_frame_burst_size = 10
+            cfg_amplitude_tolerance = 2
+            cfg_phase_tolerance = 2
+            cfg_max_sync_fails = 10
+
+            # Set sample rate to something sensible for the desired decimated_bw
+            """
+            if cfg_decimated_bw < 3:
+                cfg_sample_rate = 0.25
+                cfg_corr_size = 4096
+                cfg_daq_buffer_size = 16384
+            elif cfg_decimated_bw < 10:
+                cfg_sample_rate = 1.024
+                cfg_corr_size = 16384
+            else:
+                cfg_sample_rate = 2.4
+            """
+
+            cfg_decimation_ratio = round( (cfg_sample_rate*10**6) / (cfg_decimated_bw*10**3) )
+
+            cfg_cpi_size = round( (cfg_data_block_len / 10**3) * cfg_decimated_bw*10**3 )
+            cfg_cal_frame_interval = round((cfg_recal_interval*60) / (cfg_data_block_len/10**3))
+
+            while cfg_decimation_ratio * cfg_cpi_size < cfg_daq_buffer_size:
+                cfg_daq_buffer_size = (int) (cfg_daq_buffer_size / 2)
+
+            cfg_corr_size = (int) (cfg_daq_buffer_size / 2)
+
+            # Choose a tap size larger than the decimation ratio
+            cfg_fir_tap_size = (int)(cfg_decimation_ratio * 1.2) + 8
+
+            if cfg_decimation_ratio == 1:
+                cfg_fir_tap_size = 1
+
+            cfg_cal_track_mode = 0
+            if cfg_cal_frame_interval > 1:
+                cfg_cal_track_mode = 2 #[{'label': calibration_tack_modes[1], 'value': calibration_tack_modes[1]}]
+            else:
+                cfg_cal_track_mode = 0 
+
+
     param_list = []
     param_list.append("Custom")
     param_list.append(cfg_rx_channels)
@@ -1804,40 +1835,86 @@ def update_daq_ini_params(
     param_list.append(cfg_max_sync_fails)
     param_list.append(webInterface_inst.daq_ini_cfg_params[25]) # Preserve data interface information
     webInterface_inst.daq_ini_cfg_params = param_list
-
-    ctx = dash.callback_context
+    
     if ctx.triggered:
-        if len(ctx.triggered) ==1: # User manually changed one parameter
-            webInterface_inst.tmp_daq_ini_cfg = "Custom"
-    return [0]
+        # If we updated advanced daq, update basic DAQ params
+        if component_id  == "cfg_sample_rate" or component_id == "cfg_decimation_ratio" or component_id == "cfg_cpi_size" or component_id == "cfg_cal_frame_interval":
+            if not cfg_sample_rate or not cfg_decimation_ratio or not cfg_cpi_size:
+                return Output('dummy_output', 'children', '') #[no_update, no_update, no_update, no_update]
 
+            cfg_decimated_bw = ((int(cfg_sample_rate*10**6)) / cfg_decimation_ratio) / 10**3
+            cfg_data_block_len = ( cfg_cpi_size  / (cfg_decimated_bw) )
+            cfg_recal_interval =  (cfg_cal_frame_interval * (cfg_data_block_len/10**3)) / 60
+
+            app.push_mods({
+               'cfg_data_block_len': {'value': cfg_data_block_len},
+               'cfg_decimated_bw': {'value': cfg_decimated_bw},
+               'cfg_recal_interval': {'value': cfg_recal_interval},
+            })
+        # If we updated basic DAQ, update advanced DAQ
+        elif component_id == "cfg_data_block_len" or component_id == "cfg_decimated_bw" or component_id == "cfg_recal_interval":
+            app.push_mods({
+               'cfg_decimation_ratio': {'value': cfg_decimation_ratio},
+               'cfg_cpi_size': {'value': cfg_cpi_size},
+               'cfg_cal_frame_interval': {'value': cfg_cal_frame_interval},
+               'cfg_fir_tap_size': {'value': cfg_fir_tap_size},
+               'cfg_sample_rate': {'value': cfg_sample_rate},
+               'cfg_daq_buffer_size': {'value': cfg_daq_buffer_size},
+               'cfg_corr_size': {'value': cfg_corr_size},
+               'en_noise_source_ctr': {'value': en_noise_source_ctr},
+               'en_squelch_mode': {'value': en_squelch_mode},
+               'cfg_fir_bw': {'value': cfg_fir_bw},
+               'cfg_fir_window': {'value': cfg_fir_window},
+               'en_filter_reset': {'value': en_filter_reset},
+               'cfg_std_ch_ind': {'value': cfg_std_ch_ind},
+               'en_iq_cal': {'value': en_iq_cal},
+               'en_req_track_lock_intervention': {'value': en_req_track_lock_intervention},
+               'cfg_amplitude_cal_mode': {'value': cfg_amplitude_cal_mode},
+               'cfg_cal_frame_burst_size': {'value': cfg_cal_frame_burst_size},
+               'cfg_amplitude_tolerance': {'value': cfg_amplitude_tolerance},
+               'cfg_phase_tolerance': {'value': cfg_phase_tolerance},
+               'cfg_max_sync_fails': {'value': cfg_max_sync_fails},
+            })
+
+
+
+@app.callback(Output('adv-cfg-container', 'style'),
+             [Input("en_advanced_daq_cfg", "value")]
+)
+def toggle_adv_daq(toggle_value):
+    webInterface_inst.en_advanced_daq_cfg = toggle_value
+    if toggle_value:
+        return {'display': 'block'}
+    else:
+        return {'display': 'none'}
 
 @app.callback([Output("url"                     , "pathname")],
-              [Input("en_advanced_daq_cfg"      , "value"),
+              [ #Input("en_advanced_daq_cfg"      , "value"),
               Input("daq_cfg_files"            , "value"),
               Input("placeholder_recofnig_daq" , "children"),
               Input("placeholder_update_rx" , "children")]
-              #prevent_initial_call = True
 )
-def reload_cfg_page(en_advanced_daq_cfg, config_fname, dummy_0, dummy_1):
-    ctx = dash.callback_context
-    if ctx.triggered:
-        component_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        if component_id   == "daq_cfg_files" and config_fname is not None:
-            webInterface_inst.daq_ini_cfg_params = read_config_file(config_fname)
-            webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0]
-        elif component_id == "en_advanced_daq_cfg":
-            if en_advanced_daq_cfg is not None and len(en_advanced_daq_cfg):
-                webInterface_inst.en_advanced_daq_cfg = True
-            else:
-                webInterface_inst.en_advanced_daq_cfg = False
+def reload_cfg_page(config_fname, dummy_0, dummy_1):
+    #ctx = dash.callback_context
+    webInterface_inst.daq_ini_cfg_params = read_config_file(config_fname)
+    webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0]
+
+    #if ctx.triggered:
+    #    component_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        #if component_id  == "daq_cfg_files" and config_fname is not None:
+        #    webInterface_inst.daq_ini_cfg_params = read_config_file(config_fname)
+        #    webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0]
+        #elif component_id == "en_advanced_daq_cfg":
+        #if component_id == "en_advanced_daq_cfg":
+        #    if en_advanced_daq_cfg is not None and len(en_advanced_daq_cfg):
+        #        webInterface_inst.en_advanced_daq_cfg = True
+        #    else:
+        #        webInterface_inst.en_advanced_daq_cfg = False
     return ["/config"]
 
 @app.callback(
-    #[Output(component_id="placeholder_recofnig_daq" , component_property="children")],\
     None,
     [Input(component_id="btn_reconfig_daq_chain"    , component_property="n_clicks")]
-    #prevent_initial_call=True
 )
 def reconfig_daq_chain(input_value):
 
@@ -1846,7 +1923,6 @@ def reconfig_daq_chain(input_value):
 #        raise PreventUpdate
 
     # TODO: Check data interface mode here !
-
     #    Update DAQ Subsystem config file
 
     config_res, config_err = write_config_file(webInterface_inst.daq_ini_cfg_params)
@@ -1906,11 +1982,13 @@ def reconfig_daq_chain(input_value):
     webInterface_inst.module_signal_processor.first_frame = 1
     #webInterface_inst.module_signal_processor.channel_number = webInterface_inst.daq_ini_cfg_params[1]
 
-
     webInterface_inst.daq_cfg_ini_error = ""
-    webInterface_inst.active_daq_ini_cfg = webInterface_inst.tmp_daq_ini_cfg
+    webInterface_inst.active_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0] #webInterface_inst.tmp_daq_ini_cfg
 
-    return Output("placeholder_recofnig_daq", "children", '0')
+    return Output("daq_cfg_files", "value", daq_config_filename), Output("active_daq_ini_cfg", "children", "Active Configuration: " + webInterface_inst.active_daq_ini_cfg)
+
+
+    #return Output("placeholder_recofnig_daq", "children", '1')
 #    return [0]
 
 

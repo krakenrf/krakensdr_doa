@@ -132,26 +132,8 @@ class SignalProcessor(threading.Thread):
                 """
                     You can enable here to process other frame types (such as call type frames)
                 """
-                max_amplitude = -100
-                #max_amplitude_2 = -100
-                #max_amplitude_3 = -100
-                #max_amplitude_4 = -100
-                #max_amplitude_5 = -100
-                avg_powers    = [0]
-                if en_proc:
-                    max_amplitude = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[0, :])))
-                   # max_amplitude_2 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[1, :])))
-                   # max_amplitude_3 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[2, :])))
-                   # max_amplitude_4 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[3, :])))
-                   # max_amplitude_5 = 20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[4, :])))
-
-                    avg_powers = []
-                    for m in range(self.module_receiver.iq_header.active_ant_chs):
-                        avg_powers.append(10*np.log10(np.average(np.abs(self.module_receiver.iq_samples[m, :])**2)))
 
                 que_data_packet.append(['iq_header',self.module_receiver.iq_header])
-                que_data_packet.append(['max_amplitude',max_amplitude])
-                que_data_packet.append(['avg_powers',avg_powers])
                 self.logger.debug("IQ header has been put into the data que entity")
 
                 # Configure processing parameteres based on the settings of the DAQ chain
@@ -167,58 +149,63 @@ class SignalProcessor(threading.Thread):
                     self.processed_signal = self.module_receiver.iq_samples
                     self.data_ready = True
 
+                    max_amplitude = -100
+                    avg_powers    = [0]
+
+                    N = self.spectrum_window_size
+
+                    N_perseg = 0
+                    if len(self.processed_signal[0,:]) > self.spectrum_window_size:
+                        N_perseg = N
+                    else:
+                        N_perseg = len(self.processed_signal[0,:])
+
+                    N_perseg = N_perseg // 4
+
+                    # Get power spectrum
+                    f, Pxx_den = signal.welch(self.processed_signal[0, :], self.module_receiver.iq_header.sampling_freq, 
+                                                nperseg=N_perseg,
+                                                nfft=N,
+                                                noverlap=int(N_perseg*0.67),
+                                                detrend=False,
+                                                return_onesided=False,
+                                                window= ('tukey', 0.25), #tukey window gives better time resolution for squelching #self.spectrum_window, #('tukey', 0.25), #self.spectrum_window, 
+                                                #window=self.spectrum_window,
+                                                scaling="spectrum")
+
+                    fft_spectrum = np.fft.fftshift(10*np.log10(Pxx_den))
+                    #frequency = np.fft.fftshift(f)
+
+                    max_amplitude = np.max(fft_spectrum) #20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[0, :])))
+
+                    # TODO: We're going to remove the avg power display, it's useless
+                    avg_powers = []
+                    for m in range(self.module_receiver.iq_header.active_ant_chs):
+                        avg_powers.append(0) #10*np.log10(np.average(np.abs(self.module_receiver.iq_samples[m, :])**2)))
+
+                    que_data_packet.append(['max_amplitude',max_amplitude])
+                    que_data_packet.append(['avg_powers',avg_powers])
+
+
+                    #self.spectrum_window = 'blackman'
+                    #num_overlaps = 0
+
                     #-----> SQUELCH PROCESSING <-----
 
                     if self.en_squelch:                    
                         self.data_ready = False
+                        #self.spectrum_window = ('tukey', 0.25)
+                        #num_overlaps = int(N_perseg*0.67)
 
-                        #self.logger.info("Payload I zero {:f}".format( self.module_receiver.iq_samples[0, 0].real) )
-                        #self.logger.info("Payload Q zero {:f}".format( self.module_receiver.iq_samples[0, 0].imag) )
-
-                        #self.logger.info("Max Amplitude RAW: {:f}".format( np.max(np.abs(self.module_receiver.iq_samples[0, :]))  ))
-
-                        #self.logger.info("Max Amplitude RAW: {:f}".format( np.max(np.abs(self.module_receiver.iq_samples[0, :]))  ))
-                        #self.logger.info("Max Amplitude 1 (dB): {:f}".format(max_amplitude))
-                        #self.logger.info("Max Amplitude 2 (dB): {:f}".format(max_amplitude_2))
-                        #self.logger.info("Max Amplitude 3 (dB): {:f}".format(max_amplitude_3))
-                        #self.logger.info("Max Amplitude 4 (dB): {:f}".format(max_amplitude_4))
-                        #self.logger.info("Max Amplitude 5 (dB): {:f}".format(max_amplitude_5))
-                        #self.logger.info("Threshold Value: {:f}".format(self.squelch_threshold))
-                        #self.logger.info("Threshold Value dB: {:f}".format(20 * np.log10(self.squelch_threshold)))
-
-
-                        N = self.spectrum_window_size
-
-                        N_perseg = 0
-                        #if len(self.processed_signal[0,:]) > self.spectrum_window_size:
-                        N_perseg = N
-                        #else:
-                        #    N_perseg = len(self.processed_signal[0,:])
-
-
-                        # Get power spectrum
-                        f, Pxx_den = signal.welch(self.processed_signal[0, :], self.module_receiver.iq_header.sampling_freq, 
-                                                nperseg=N_perseg,
-                                                nfft=N,
-                                                noverlap=0,
-                                                return_onesided=False, 
-                                                window=self.spectrum_window,
-                                                scaling="spectrum")
-                        fft_spectrum = np.fft.fftshift(10*np.log10(Pxx_den))
                         frequency = np.fft.fftshift(f)
 
                         # Where is the max frequency? e.g. where is the signal?
                         self.max_index = np.argmax(fft_spectrum)
                         self.max_frequency = frequency[self.max_index]
-                        self.logger.info("Peak Freq: {:f}".format(self.max_frequency))
-
 
                         # Auto decimate down to exactly the max signal width
-                        self.fft_signal_width = np.sum(fft_spectrum > self.module_receiver.daq_squelch_th_dB) + 50
-                        self.logger.info("Signal Width {:d}".format(self.fft_signal_width))
-                        decimation_factor = max((self.module_receiver.iq_header.sampling_freq // self.fft_signal_width) // 4, 1)
-                        self.logger.info("Decimation Factor {:d}".format(decimation_factor))
-                        #decimation_factor = 2
+                        self.fft_signal_width = np.sum(fft_spectrum > self.module_receiver.daq_squelch_th_dB) + 25
+                        decimation_factor = max((self.module_receiver.iq_header.sampling_freq // self.fft_signal_width) // 2, 1)
 
                         # Auto shift peak frequency center of spectrum, this frequency will be decimated:
                         # https://pysdr.org/content/filters.html
@@ -233,30 +220,13 @@ class SignalProcessor(threading.Thread):
                             decimated_signal = np.zeros((self.channel_number, math.ceil(len(self.processed_signal[0,:])/decimation_factor)), dtype=np.complex64)
 
                             for m in range(self.channel_number):
-                                decimated_signal[m,:] = signal.decimate(self.processed_signal[m,:], decimation_factor, ftype='fir')
+                                decimated_signal[m,:] = signal.decimate(self.processed_signal[m,:], decimation_factor, n = decimation_factor * 2, ftype='fir')
 
-                            self.processed_signal = decimated_signal.copy()
-
-
-                        self.logger.info("FFT Spectrum Max VAL: {:f}".format(np.max(fft_spectrum)))
-
-                        self.logger.info("Squelch Threshold: {:f}".format(self.module_receiver.daq_squelch_th_dB))
+                            self.processed_signal = decimated_signal #.copy()
 
                         #Only update if we're above the threshold
                         if np.max(fft_spectrum) > self.module_receiver.daq_squelch_th_dB:
                             self.data_ready = True
-
-
-                        # Get trigger channel signal absolutate value
-                        #self.raw_signal_amplitude = np.abs(self.module_receiver.iq_samples[0, :])
-                        #threshold_array = self.raw_signal_amplitude > self.squelch_threshold
-
-                        #self.processed_signal = self.module_receiver.iq_samples[:, threshold_array]
-                        #data_length = len(self.processed_signal[0,:])
-                        #self.logger.info("Data Length: {:d}".format(data_length))
-
-                        #if data_length > 10:
-                        #    self.data_ready = True
 
                         """
                         K = 10
@@ -313,66 +283,39 @@ class SignalProcessor(threading.Thread):
                     #-----> SPECTRUM PROCESSING <----- 
                     
                     if self.en_spectrum and self.data_ready:
-                    #if True and self.data_ready:
-                        #self.logger.info("UPDATING SPECTRUM")
 
-                        #if len(self.processed_signal[0,:]) > self.spectrum_window_size:
+                        spectrum_samples = self.module_receiver.iq_samples #self.processed_signal #self.module_receiver.iq_samples #self.processed_signal
+
                         N = self.spectrum_window_size
-                       # else:
-                       #     N = len(self.processed_signal[0,:])
-
-                        #N_perseg = 0
-                        #if len(self.processed_signal[0,:]) > self.spectrum_window_size:
-                        #    N_perseg = N
-                        #else:
-                        #    N_perseg = len(self.processed_signal[0,:])
-
-
                         N_perseg = 0
-                        if len(self.module_receiver.iq_samples[0,:]) > self.spectrum_window_size:
+                        if len(spectrum_samples[0,:]) > self.spectrum_window_size:
                             N_perseg = N
                         else:
-                            N_perseg = len(self.module_receiver.iq_samples[0,:])
-
-
-                        #self.logger.info("N VAL {:d}".format(N))
-
-
-
-
-                           ######################################
-
-                        #spectrum = np.ones((self.channel_number+1,N), dtype=np.float32)
-
-                        #spectrum[0, :] = np.fft.fftshift(np.fft.fftfreq(N, 1/self.module_receiver.iq_header.sampling_freq))/10**6
-
-                        #m = self.channel_number
-                        #spectrum[1:m+1,:] = 10*np.log10(np.fft.fftshift(np.abs(np.fft.fft(self.processed_signal[0:m, :]))))
-
-                        #for m in range(self.channel_number):
-                        #    spectrum[m+1,:] = 10*np.log10(np.fft.fftshift(np.abs(np.fft.fft(self.processed_signal[m, :]))))
-
-
-                          ########################################
+                            N_perseg = len(spectrum_samples[0,:])
 
 
                         #-> Spectral estimation with the Welch method
                         spectrum = np.ones((self.channel_number+2,N), dtype=np.float32)
-                        for m in range(self.channel_number):
-                           # self.processed_signal[m, :] = self.processed_signal[m, :] * exponential
+                        N_perseg = N_perseg // 4
 
+                        for m in range(self.channel_number):
                             #f, Pxx_den = signal.welch(self.processed_signal[m, :], self.module_receiver.iq_header.sampling_freq//decimation_factor, 
-                            f, Pxx_den = signal.welch(self.module_receiver.iq_samples[m, :], self.module_receiver.iq_header.sampling_freq, 
+                            f, Pxx_den = signal.welch(spectrum_samples[m, :], self.module_receiver.iq_header.sampling_freq, 
                                                     nperseg=N_perseg,
                                                     nfft=N,
-                                                    noverlap=0,
+                                                    noverlap=int(N_perseg*0.67),
+                                                    detrend=False,
                                                     return_onesided=False, 
-                                                    window=self.spectrum_window,
+                                                    window=self.spectrum_window, #Using a tukey window for better time resolution
                                                     scaling="spectrum")
 
                             spectrum[1+m,:] = np.fft.fftshift(10*np.log10(Pxx_den))
                         spectrum[0,:] = np.fft.fftshift(f)
 
+
+
+
+                        # Create signal window for plot
                         signal_window = np.ones(len(spectrum[1,:])) * -100
                         signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(spectrum[1,:]))] = max(spectrum[1,:])
 
@@ -383,7 +326,7 @@ class SignalProcessor(threading.Thread):
                     #-----> DoA ESIMATION <----- 
                     conf_val = 0
                     theta_0 = 0
-                    if self.en_DOA_estimation and self.data_ready:
+                    if self.en_DOA_estimation and self.data_ready and self.channel_number > 1:
                         self.estimate_DOA()                        
                         que_data_packet.append(['doa_thetas', self.DOA_theta])
                         if self.en_DOA_Bartlett:
@@ -438,13 +381,13 @@ class SignalProcessor(threading.Thread):
 
                 # If the que is full, and data is ready (from squelching), clear the buffer immediately so that useful data has the priority
                 
-                #if self.data_que.full() and self.data_ready:
-                #    try:
-                #        self.logger.info("BUFFER WAS NOT EMPTY, EMPTYING NOW")                
-                #        self.data_que.get(False) #empty que if not taken yet so fresh data is put in
-                #    except queue.Empty:
-                #        self.logger.info("DIDNT EMPTY")                
-                #        pass
+                if self.data_que.full() and self.data_ready:
+                    try:
+                        self.logger.info("BUFFER WAS NOT EMPTY, EMPTYING NOW")                
+                        self.data_que.get(False) #empty que if not taken yet so fresh data is put in
+                    except queue.Empty:
+                        self.logger.info("DIDNT EMPTY")                
+                        pass
 
                 # Put data into buffer, but if there is no data because its a cal/trig wait frame etc, then only write if the buffer is empty
                 # Otherwise just discard the data so that we don't overwrite good DATA frames.
