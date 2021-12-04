@@ -227,13 +227,13 @@ class webInterface():
             self.module_receiver.M = self.daq_ini_cfg_params[1]
 
             # Set initial Squelch parameters based on the content of the active config file
-            if self.daq_ini_cfg_params[5]: # Squelch is enabled
-                self.module_signal_processor.en_squelch = True                
-                self.module_receiver.daq_squelch_th_dB = round(20*np.log10(self.daq_ini_cfg_params[6]),1)
-                self.module_signal_processor.squelch_threshold = self.daq_ini_cfg_params[6]
+            #if self.daq_ini_cfg_params[5]: # Squelch is enabled
+            #    self.module_signal_processor.en_squelch = True                
+            #    self.module_receiver.daq_squelch_th_dB = -80 #round(20*np.log10(self.daq_ini_cfg_params[6]),1)
+                #self.module_signal_processor.squelch_threshold = self.daq_ini_cfg_params[6]
                 # Note: There is no need to set the thresold in the DAQ Subsystem as it is configured from the ini-file.
-            else:  # Squelch is disabled
-                self.module_signal_processor.en_squelch = False         
+            #else:  # Squelch is disabled
+            #    self.module_signal_processor.en_squelch = False         
 
 
 
@@ -270,7 +270,7 @@ class webInterface():
 
         # Web Interface
         data["en_hw_check"]         = settings.en_hw_check
-        data["en_advanced_daq_cfg"] = int(self.en_advanced_daq_cfg)
+        data["en_advanced_daq_cfg"] = self.en_advanced_daq_cfg
         data["logging_level"]       = settings.logging_level
         data["disable_tooltips"]    = settings.disable_tooltips
 
@@ -321,11 +321,12 @@ class webInterface():
             Configures the squelch thresold both on the DAQ side and 
             on the local DoA DSP side.
         """        
+        #NOT USING THIS ANYMORE
         self.daq_cfg_iface_status = 1
-        self.module_signal_processor.squelch_threshold = 10**(squelch_threshold_dB/20)
-        self.module_receiver.set_squelch_threshold(squelch_threshold_dB)
-        webInterface_inst.logger.info("Updating receiver parameters")
-        webInterface_inst.logger.info("Squelch threshold : {:f} dB".format(squelch_threshold_dB))
+        #self.module_signal_processor.squelch_threshold = 10**(squelch_threshold_dB/20)
+        #self.module_receiver.set_squelch_threshold(squelch_threshold_dB)
+        #webInterface_inst.logger.info("Updating receiver parameters")
+        #webInterface_inst.logger.info("Squelch threshold : {:f} dB".format(squelch_threshold_dB))
     def config_daq_rf(self, f0, gain):
         """
             Configures the RF parameters in the DAQ module
@@ -745,7 +746,7 @@ def generate_config_page_layout(webInterface_inst):
             ], className="field"),
             html.H3("Squelch"),
             html.Div([
-                    html.Div("Enable DAQ Squelch:", className="field-label", id="label_en_squelch"),                                                                 
+                    html.Div("Enable DAQ Squelch (NOT ACTIVE):", className="field-label", id="label_en_squelch"),                                                                 
                     dcc.Checklist(options=option     , id="en_squelch_mode"   , className="field-body", value=en_squelch_values),
             ], className="field"),
             html.Div([
@@ -870,7 +871,7 @@ def generate_config_page_layout(webInterface_inst):
         html.Div([html.Div("Data block length [ms]:"   , id="label_daq_cpi"           , className="field-label"), html.Div("- ms"        , id="body_daq_cpi"           , className="field-body")], className="field"),
         html.Div([html.Div("IF gains [dB]:"            , id="label_daq_if_gain"       , className="field-label"), html.Div("[,] dB"      , id="body_daq_if_gain"       , className="field-body")], className="field"),
         html.Div([html.Div("Max amplitude-CH0 [dB]:"   , id="label_max_amp"           , className="field-label"), html.Div("-"           , id="body_max_amp"           , className="field-body")], className="field"),
-        html.Div([html.Div("Avg. powers [dB]:"         , id="label_avg_powers"        , className="field-label"), html.Div("[,] dB"      , id="body_avg_powers"        , className="field-body")], className="field"),
+        #html.Div([html.Div("Avg. powers [dB]:"         , id="label_avg_powers"        , className="field-label"), html.Div("[,] dB"      , id="body_avg_powers"        , className="field-body")], className="field"),
     ], className="card")
 
     #-----------------------------
@@ -1131,7 +1132,7 @@ def fetch_dsp_data():
                 webInterface_inst.doa_labels.append(data_entry[0])
             elif data_entry[0] == "DoA Bartlett Max":
                 webInterface_inst.doas.append(data_entry[1])
-            elif data_entry[0] == "DoA Barlett confidence":
+            elif data_entry[0] == "DoA Bartlett confidence":
                 webInterface_inst.doa_confidences.append(data_entry[1])
             elif data_entry[0] == "DoA Capon":
                 webInterface_inst.doa_results.append(data_entry[1])
@@ -1327,12 +1328,13 @@ def update_daq_params(input_value, f0, gain):
     Input(component_id ="squelch_th"                , component_property="value")],
 )
 def update_squelch_params(en_dsp_squelch, squelch_threshold):
+    webInterface_inst.module_receiver.daq_squelch_th_dB = squelch_threshold
     if en_dsp_squelch is not None and len(en_dsp_squelch):
         webInterface_inst.module_signal_processor.en_squelch = True
     else:
         webInterface_inst.module_signal_processor.en_squelch = False
 
-    webInterface_inst.config_squelch_value(squelch_threshold)
+    #webInterface_inst.config_squelch_value(squelch_threshold)
 
 
 
@@ -1561,7 +1563,7 @@ def plot_spectrum():
                                                  width = 1)
                                     ))
 
-        spectrum_fig.add_hline(y=webInterface_inst.module_receiver.daq_squelch_th_dB)
+        #spectrum_fig.add_hline(y=webInterface_inst.module_receiver.daq_squelch_th_dB)
 
         # Add selected window plot
         m = np.size(webInterface_inst.spectrum,0)-1
@@ -1970,13 +1972,14 @@ def reconfig_daq_chain(input_value):
     webInterface_inst.daq_restart = 0
 
     # Set local Squelch-DSP parameters
-    if webInterface_inst.daq_ini_cfg_params[5]: # Squelch is enabled
-        webInterface_inst.module_signal_processor.en_squelch = True
-        webInterface_inst.module_receiver.daq_squelch_th_dB = round(20*np.log10(webInterface_inst.daq_ini_cfg_params[6]),1)
-        webInterface_inst.module_signal_processor.squelch_threshold = webInterface_inst.daq_ini_cfg_params[6]
+    #if webInterface_inst.daq_ini_cfg_params[5]: # Squelch is enabled
+    #    webInterface_inst.module_signal_processor.en_squelch = True
+    #    webInterface_inst.module_receiver.daq_squelch_th_dB = -80 #round(20*np.log10(webInterface_inst.daq_ini_cfg_params[6]),1)
+
+        #webInterface_inst.module_signal_processor.squelch_threshold = webInterface_inst.daq_ini_cfg_params[6]
         # Note: There is no need to set the thresold in the DAQ Subsystem as it is configured from the ini-file.
-    else:  # Squelch is disabled
-        webInterface_inst.module_signal_processor.en_squelch = False
+    #else:  # Squelch is disabled
+    #    webInterface_inst.module_signal_processor.en_squelch = False
 
     # Set number of channels
     webInterface_inst.module_signal_processor.first_frame = 1
