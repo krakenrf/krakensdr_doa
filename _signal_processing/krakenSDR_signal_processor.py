@@ -26,9 +26,13 @@ import logging
 import threading
 import queue 
 import math
+import numba as nb
+from numba import jit, njit
+from functools import lru_cache
 
 # Math support
 import numpy as np
+import numpy.linalg as lin
 #from numba import jit
 
 # Signal processing support
@@ -93,9 +97,11 @@ class SignalProcessor(threading.Thread):
         self.DOA_offset      = 0
         self.DOA_inter_elem_space = 0.5
         self.DOA_ant_alignment    = "ULA"
+        self.DOA_theta =  np.linspace(0,359,360)
+
             
         # Processing parameters        
-        self.spectrum_window_size = 512
+        self.spectrum_window_size = 1024 #512
         self.spectrum_window = "blackmanharris"
         self.run_processing = False
         
@@ -111,6 +117,10 @@ class SignalProcessor(threading.Thread):
         self.max_index = 0
         self.max_frequency = 0
         self.fft_signal_width = 0
+
+        self.DOA_theta =  np.linspace(0,359,360)
+
+
 
     def run(self):
         """
@@ -162,6 +172,7 @@ class SignalProcessor(threading.Thread):
 
                     N_perseg = N_perseg // 4
 
+
                     # Get power spectrum
                     f, Pxx_den = signal.welch(self.processed_signal[0, :], self.module_receiver.iq_header.sampling_freq, 
                                                 nperseg=N_perseg,
@@ -173,10 +184,13 @@ class SignalProcessor(threading.Thread):
                                                 #window=self.spectrum_window,
                                                 scaling="spectrum")
 
+
+
                     fft_spectrum = np.fft.fftshift(10*np.log10(Pxx_den))
                     #frequency = np.fft.fftshift(f)
-
                     max_amplitude = np.max(fft_spectrum) #20*np.log10(np.max(np.abs(self.module_receiver.iq_samples[0, :])))
+
+
 
                     # TODO: We're going to remove the avg power display, it's useless
                     avg_powers = []
@@ -197,6 +211,8 @@ class SignalProcessor(threading.Thread):
                         #self.spectrum_window = ('tukey', 0.25)
                         #num_overlaps = int(N_perseg*0.67)
 
+                        start = time.time()
+
                         frequency = np.fft.fftshift(f)
 
                         # Where is the max frequency? e.g. where is the signal?
@@ -214,6 +230,13 @@ class SignalProcessor(threading.Thread):
                         t = np.arange(0.0, Ts*len(self.processed_signal[0, :]), Ts)
                         exponential = np.exp(2j*np.pi*f0*t) # this is essentially a complex sine wave
                         self.processed_signal = self.processed_signal * exponential
+
+
+                        end = time.time()
+                        thetime = ((end - start) * 1000)
+                        print ("Time elapsed: ", thetime)
+
+
 
                         decimated_signal = []
                         if(decimation_factor > 1):
@@ -313,8 +336,6 @@ class SignalProcessor(threading.Thread):
                         spectrum[0,:] = np.fft.fftshift(f)
 
 
-
-
                         # Create signal window for plot
                         signal_window = np.ones(len(spectrum[1,:])) * -100
                         signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(spectrum[1,:]))] = max(spectrum[1,:])
@@ -383,10 +404,10 @@ class SignalProcessor(threading.Thread):
                 
                 if self.data_que.full() and self.data_ready:
                     try:
-                        self.logger.info("BUFFER WAS NOT EMPTY, EMPTYING NOW")                
+                        #self.logger.info("BUFFER WAS NOT EMPTY, EMPTYING NOW")                
                         self.data_que.get(False) #empty que if not taken yet so fresh data is put in
                     except queue.Empty:
-                        self.logger.info("DIDNT EMPTY")                
+                        #self.logger.info("DIDNT EMPTY")                
                         pass
 
                 # Put data into buffer, but if there is no data because its a cal/trig wait frame etc, then only write if the buffer is empty
@@ -403,7 +424,8 @@ class SignalProcessor(threading.Thread):
         """
                 
         # Calculating spatial correlation matrix
-        R = de.corr_matrix_estimate(self.processed_signal.T, imp="fast")
+        R = corr_matrix(self.processed_signal) #de.corr_matrix_estimate(self.processed_signal.T, imp="fast")
+        #R = de.corr_matrix_estimate(self.processed_signal.T, imp="fast")
 
         if self.en_DOA_FB_avg:
             R=de.forward_backward_avg(R)
@@ -411,11 +433,13 @@ class SignalProcessor(threading.Thread):
         M = self.channel_number        
 
         if self.DOA_ant_alignment == "UCA":
-            self.DOA_theta =  np.linspace(0,359,360)
 
-            x = self.DOA_inter_elem_space * np.cos(2*np.pi/M * np.arange(M))
-            y = -self.DOA_inter_elem_space * np.sin(2*np.pi/M * np.arange(M)) # For this specific array only
-            scanning_vectors = de.gen_scanning_vectors(M, x, y, self.DOA_theta)
+            #scanning_vectors = uca_scanning_vectors(M, self.DOA_inter_elem_space, self.DOA_theta)
+            scanning_vectors = uca_scanning_vectors(M, self.DOA_inter_elem_space)
+            #x = self.DOA_inter_elem_space * np.cos(2*np.pi/M * np.arange(M))
+            #y = -self.DOA_inter_elem_space * np.sin(2*np.pi/M * np.arange(M)) # For this specific array only
+            #scanning_vectors = de.gen_scanning_vectors(M, x, y, self.DOA_theta)
+
 
              # DOA estimation
             if self.en_DOA_Bartlett:
@@ -428,11 +452,14 @@ class SignalProcessor(threading.Thread):
                 DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)
                 self.DOA_MEM_res = DOA_MEM_res
             if self.en_DOA_MUSIC:
-                DOA_MUSIC_res = de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
+                DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1) #de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
                 self.DOA_MUSIC_res = DOA_MUSIC_res
 
+
+
+
+
         elif self.DOA_ant_alignment == "ULA":
-            self.DOA_theta =  np.linspace(0,359,360)
 
             x = np.zeros(M)
             y = -np.arange(M) * self.DOA_inter_elem_space            
@@ -452,6 +479,81 @@ class SignalProcessor(threading.Thread):
                 DOA_MUSIC_res = de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
                 self.DOA_MUSIC_res = DOA_MUSIC_res        
 
+
+# NUMBA optimized MUSIC function. About 100x faster on the Pi 4
+@njit(fastmath=True)
+def DOA_MUSIC(R, scanning_vectors, signal_dimension, angle_resolution=1):
+    # --> Input check
+    if R[:,0].size != R[0,:].size:
+        print("ERROR: Correlation matrix is not quadratic")
+        return np.ones(1, dtype=nb.c16)*-1 #[(-1, -1j)]
+
+    if R[:,0].size != scanning_vectors[:,0].size:
+        print("ERROR: Correlation matrix dimension does not match with the antenna array dimension")
+        return np.ones(1, dtype=nb.c16)*-2
+
+    #ADORT = np.zeros(scanning_vectors[0,:].size, dtype=np.complex) #CHANGE TO nb.c8 for NUMBA
+    ADORT = np.zeros(scanning_vectors[0,:].size, dtype=nb.c16) #CHANGE TO nb.c8 for NUMBA
+    M = R[:,0].size #np.size(R, 0)
+
+    # --- Calculation ---
+    # Determine eigenvectors and eigenvalues
+    sigmai, vi = lin.eig(R)
+    sigmai = np.abs(sigmai)
+
+    idx = sigmai.argsort()[::1] # Sort eigenvectors by eigenvalues, smallest to largest
+    sigmai = sigmai[idx]
+    vi = vi[:,idx]
+
+    # Generate noise subspace matrix
+    noise_dimension = M - signal_dimension
+    #E = np.zeros((M, noise_dimension),dtype=np.complex)
+    E = np.zeros((M, noise_dimension),dtype=nb.c16)
+    for i in range(noise_dimension):
+        E[:,i] = vi[:,i]
+
+    theta_index=0
+    for i in range(scanning_vectors[0,:].size):
+        S_theta_ = scanning_vectors[:, i]
+        S_theta_  = S_theta_.T
+        ADORT[theta_index] = 1/np.abs(S_theta_.conj().T @ (E @ E.conj().T) @ S_theta_)
+        theta_index += 1
+
+    return ADORT
+
+
+
+# Numba optimized version of pyArgus corr_matrix_estimate with "fast". About 2x faster on Pi4
+@njit(fastmath=True) #(nb.c8[:,:](nb.c16[:,:]))
+def corr_matrix(X):
+    M = X[:,0].size
+    N = X[0,:].size
+    #R = np.zeros((M, M), dtype=nb.c8)
+    R = np.dot(X, X.conj().T)
+    R = np.divide(R, N)
+    return R
+
+# Numba optimized scanning vectors generation for UCA arrays. About 10x faster on Pi4
+# LRU cache memoize about 1000x faster.
+@lru_cache(maxsize=8)
+def uca_scanning_vectors(M, DOA_inter_elem_space):
+
+    thetas =  np.linspace(0,359,360) # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
+
+    x = DOA_inter_elem_space * np.cos(2*np.pi/M * np.arange(M))
+    y = -DOA_inter_elem_space * np.sin(2*np.pi/M * np.arange(M)) # For this specific array only
+
+    #scanning_vectors = np.zeros((M, thetas.size), dtype=nb.c8)
+    scanning_vectors = np.zeros((M, thetas.size), dtype=np.complex)
+    for i in range(thetas.size):
+        scanning_vectors[:,i] = np.exp(1j*2*np.pi* (x*np.cos(np.deg2rad(thetas[i])) + y*np.sin(np.deg2rad(thetas[i]))))
+
+    return scanning_vectors
+   # scanning_vectors = de.gen_scanning_vectors(M, x, y, self.DOA_theta)
+
+
+
+@njit
 def DOA_plot_util(DOA_data, log_scale_min=-100):
     """
         This function prepares the calulcated DoA estimation results for plotting. 
@@ -469,5 +571,6 @@ def DOA_plot_util(DOA_data, log_scale_min=-100):
     
     return DOA_data
 
+@njit
 def calculate_doa_papr(DOA_data):
-    return 10*np.log10(np.max(np.abs(DOA_data))/np.average(np.abs(DOA_data)))
+    return 10*np.log10(np.max(np.abs(DOA_data))/np.mean(np.abs(DOA_data)))

@@ -123,25 +123,25 @@ class ReceiverRTLSDR():
                 self.set_squelch_threshold(self.daq_squelch_th_dB)
         except:
             errorMsg = sys.exc_info()[0]
-            self.logger.error("Error message: "+str(errorMsg))            
+            self.logger.error("Error message: "+str(errorMsg))
             self.receiver_connection_status = False
             self.logger.error("Unexpected error: {0}".format(sys.exc_info()[0]))
-            
+
             # Re-instantiating sockets
             self.socket_inst = socket.socket()
             self.ctr_iface_socket = socket.socket()
-            return -1            
+            return -1
 
         self.logger.info("Connection established")
         que_data_packet = []
         que_data_packet.append(['conn-ok',])
         self.data_que.put(que_data_packet)
-        
-    def eth_close(self):    
+
+    def eth_close(self):
         """
             Close Ethernet conenctions including the IQ data and the control interfaces
-        """                
-        try:            
+        """
+        try:
             if self.receiver_connection_status:
                 if self.data_interface == "eth":
                     self.socket_inst.sendall(str.encode('q')) # Send exit message
@@ -162,10 +162,10 @@ class ReceiverRTLSDR():
             errorMsg = sys.exc_info()[0]
             self.logger.error("Error message: {0}".format(errorMsg))
             return -1
-        
+
         if self.data_interface == "shmem":
-            self.in_shmem_iface.destory_sm_buffer()     
-        
+            self.in_shmem_iface.destory_sm_buffer()
+
         return 0
 
     def get_iq_online(self):   
@@ -177,16 +177,16 @@ class ReceiverRTLSDR():
             fail = self.eth_connect()
             if fail:
                 return -1
-        
+
         if self.data_interface == "eth":
             self.socket_inst.sendall(str.encode("IQDownload")) # Send iq request command
-            self.iq_samples = self.receive_iq_frame()      
-                
+            self.iq_samples = self.receive_iq_frame()
+
         elif self.data_interface == "shmem":
-            active_buff_index = self.in_shmem_iface.wait_buff_free()            
+            active_buff_index = self.in_shmem_iface.wait_buff_free()
             if active_buff_index < 0 or active_buff_index > 1:
-                self.logger.info("Terminating.., signal: {:d}".format(active_buff_index))                
-                return -1       
+                self.logger.info("Terminating.., signal: {:d}".format(active_buff_index))
+                return -1
             buffer = self.in_shmem_iface.buffers[active_buff_index]
             iq_header_bytes = buffer[0:1024].tobytes()
             self.iq_header.decode_header(iq_header_bytes)

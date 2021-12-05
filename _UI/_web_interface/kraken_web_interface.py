@@ -1374,7 +1374,9 @@ def display_page(pathname):
         #time.sleep(1)
         #webInterface_inst.module_signal_processor.en_DOA_estimation = True
         return [generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"]
-    return [no_update, no_update, no_update, no_update]
+    return Output('dummy_output', 'children', '') #[no_update, no_update, no_update, no_update]
+
+    #return [no_update, no_update, no_update, no_update]
 
 
 @app.callback_shared(
@@ -1921,7 +1923,9 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
 def reconfig_daq_chain(input_value):
 
     if input_value is None:
-        return [no_update]
+        return Output('dummy_output', 'children', '') #[no_update, no_update, no_update, no_update]
+
+        #return [no_update]
 #        raise PreventUpdate
 
     # TODO: Check data interface mode here !
