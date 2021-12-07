@@ -29,6 +29,7 @@ import _thread
 from threading import Lock
 import queue 
 import logging
+#import copy
 
 # Import third party modules
 import numpy as np
@@ -187,21 +188,26 @@ class ReceiverRTLSDR():
             if active_buff_index < 0 or active_buff_index > 1:
                 self.logger.info("Terminating.., signal: {:d}".format(active_buff_index))
                 return -1
+
             buffer = self.in_shmem_iface.buffers[active_buff_index]
+
             iq_header_bytes = buffer[0:1024].tobytes()
+
             self.iq_header.decode_header(iq_header_bytes)
 
             # Inititalization from header - Set channel numbers    
             if self.M == 0:
                 self.M = self.iq_header.active_ant_chs
-            
+
             incoming_payload_size = self.iq_header.cpi_length*self.iq_header.active_ant_chs*2*int(self.iq_header.sample_bit_depth/8)
             if incoming_payload_size > 0:
                 iq_samples_in = (buffer[1024:1024 + incoming_payload_size].view(dtype=np.complex64))\
                                 .reshape(self.iq_header.active_ant_chs, self.iq_header.cpi_length)
-                self.iq_samples = iq_samples_in.copy()
+                self.iq_samples = iq_samples_in.copy() # Must be .copy
+                #self.iq_samples = copy.deepcopy(iq_samples_in) # Must be .copy
+
             self.in_shmem_iface.send_ctr_buff_ready(active_buff_index)
-            
+
     def receive_iq_frame(self):
         """
             Called by the get_iq_online function. Receives IQ samples over the establed Ethernet connection
@@ -210,43 +216,43 @@ class ReceiverRTLSDR():
         recv_bytes_count = 0
         iq_header_bytes = bytearray(self.iq_header.header_size)  # allocate array
         view = memoryview(iq_header_bytes)  # Get buffer
-        
+
         self.logger.debug("Starting IQ header reception")
-        
+
         while total_received_bytes < self.iq_header.header_size:
             # Receive into buffer
-            recv_bytes_count = self.socket_inst.recv_into(view, self.iq_header.header_size-total_received_bytes)            
+            recv_bytes_count = self.socket_inst.recv_into(view, self.iq_header.header_size-total_received_bytes)
             view = view[recv_bytes_count:]  # reset memory region
             total_received_bytes += recv_bytes_count
-        
+
         self.iq_header.decode_header(iq_header_bytes)
         # Uncomment to check the content of the IQ header
         #self.iq_header.dump_header()
-        
+
         incoming_payload_size = self.iq_header.cpi_length*self.iq_header.active_ant_chs*2*int(self.iq_header.sample_bit_depth/8)
         if incoming_payload_size > 0:
-            # Calculate total bytes to receive from the iq header data        
+            # Calculate total bytes to receive from the iq header data
             total_bytes_to_receive = incoming_payload_size
             receiver_buffer_size = 2**18
-            
+
             self.logger.debug("Total bytes to receive: {:d}".format(total_bytes_to_receive))
-            
+
             total_received_bytes = 0
             recv_bytes_count = 0
             iq_data_bytes = bytearray(total_bytes_to_receive + receiver_buffer_size)  # allocate array
             view = memoryview(iq_data_bytes)  # Get buffer
-            
+
             while total_received_bytes < total_bytes_to_receive:
                 # Receive into buffer
                 recv_bytes_count = self.socket_inst.recv_into(view, receiver_buffer_size)
                 view = view[recv_bytes_count:]  # reset memory region
                 total_received_bytes += recv_bytes_count
-            
+
             self.logger.debug(" IQ data succesfully received")
-            
+
             # Convert raw bytes to Complex float64 IQ samples
             self.iq_samples = np.frombuffer(iq_data_bytes[0:total_bytes_to_receive], dtype=np.complex64).reshape(self.iq_header.active_ant_chs, self.iq_header.cpi_length)
-            
+
             self.iq_frame_bytes =  bytearray()+iq_header_bytes+iq_data_bytes
             return self.iq_samples
         else:
