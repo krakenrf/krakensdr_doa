@@ -48,7 +48,7 @@ class ReceiverRTLSDR():
                                     "eth"  : The module will receiver IQ frames through an Ethernet connection
                                     "shmem": The module will receiver IQ frames through a shared memory interface
             :type : data_interface: string
-        """       
+        """
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging_level)
 
@@ -62,32 +62,32 @@ class ReceiverRTLSDR():
         # UI interface
         self.data_que = data_que
 
-        # IQ data interface 
+        # IQ data interface
         self.data_interface = data_interface
-        
+
         # -> Ethernet
         self.receiver_connection_status = False
         self.port = 5000
         self.rec_ip_addr = "127.0.0.1" # Configured by the GUI prior to connection request
         self.socket_inst = socket.socket()
-        self.receiverBufferSize = 2 ** 18  # Size of the Ethernet receiver buffer measured in bytes     
-            
-        # -> Shared memory        
+        self.receiverBufferSize = 2 ** 18  # Size of the Ethernet receiver buffer measured in bytes
+
+        # -> Shared memory
         root_path          = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-        daq_path           = os.path.join(os.path.dirname(root_path),"heimdall_daq_fw")        
-        self.daq_shmem_control_path = os.path.join(os.path.join(daq_path,"Firmware"),"_data_control/")        
+        daq_path           = os.path.join(os.path.dirname(root_path),"heimdall_daq_fw")
+        self.daq_shmem_control_path = os.path.join(os.path.join(daq_path,"Firmware"),"_data_control/")
         self.init_data_iface()
 
         # Control interface
         self.ctr_iface_socket = socket.socket()
         self.ctr_iface_port = 5001
         self.ctr_iface_thread_lock = Lock() # Used to synchronize the operation of the ctr_iface thread
-        
+
         self.iq_frame_bytes = None
         self.iq_samples = None
         self.iq_header = IQHeader()
         self.M = 0 # Number of receiver channels, updated after establishing connection
-    
+
     def init_data_iface(self):
         if self.data_interface == "shmem":
             # Open shared memory interface to capture the DAQ firmware output
@@ -98,20 +98,20 @@ class ReceiverRTLSDR():
                 return -1
         return 0
 
-            
-    def eth_connect(self):        
+
+    def eth_connect(self):
         """
-            Compatible only with DAQ firmwares that has the IQ streaming mode. 
+            Compatible only with DAQ firmwares that has the IQ streaming mode.
             HeIMDALL DAQ Firmware version: 1.0 or later
         """
         try:
             if not self.receiver_connection_status:
                 if self.data_interface == "eth":
                     # Establlish IQ data interface connection
-                    self.socket_inst.connect((self.rec_ip_addr, self.port))            
-                    self.socket_inst.sendall(str.encode('streaming'))                                
+                    self.socket_inst.connect((self.rec_ip_addr, self.port))
+                    self.socket_inst.sendall(str.encode('streaming'))
                     test_iq = self.receive_iq_frame()
-                    
+
                     self.M = self.iq_header.active_ant_chs
 
                 # Establish control interface connection
@@ -146,12 +146,12 @@ class ReceiverRTLSDR():
             if self.receiver_connection_status:
                 if self.data_interface == "eth":
                     self.socket_inst.sendall(str.encode('q')) # Send exit message
-                    self.socket_inst.close()                
+                    self.socket_inst.close()
                     self.socket_inst = socket.socket() # Re-instantiating socket
 
                 # Close control interface connection
                 exit_message_bytes=("EXIT".encode()+bytearray(124))
-                self.ctr_iface_socket.send(exit_message_bytes)  
+                self.ctr_iface_socket.send(exit_message_bytes)
                 self.ctr_iface_socket.close()
                 self.ctr_iface_socket = socket.socket()
 
@@ -169,10 +169,11 @@ class ReceiverRTLSDR():
 
         return 0
 
-    def get_iq_online(self):   
+    def get_iq_online(self):
         """
             This function obtains a new IQ data frame through the Ethernet IQ data or the shared memory interface
-        """     
+        """
+
         # Check connection
         if not self.receiver_connection_status:
             fail = self.eth_connect()
@@ -195,7 +196,7 @@ class ReceiverRTLSDR():
 
             self.iq_header.decode_header(iq_header_bytes)
 
-            # Inititalization from header - Set channel numbers    
+            # Inititalization from header - Set channel numbers
             if self.M == 0:
                 self.M = self.iq_header.active_ant_chs
 
@@ -204,7 +205,6 @@ class ReceiverRTLSDR():
                 iq_samples_in = (buffer[1024:1024 + incoming_payload_size].view(dtype=np.complex64))\
                                 .reshape(self.iq_header.active_ant_chs, self.iq_header.cpi_length)
                 self.iq_samples = iq_samples_in.copy() # Must be .copy
-                #self.iq_samples = copy.deepcopy(iq_samples_in) # Must be .copy
 
             self.in_shmem_iface.send_ctr_buff_ready(active_buff_index)
 
@@ -262,19 +262,19 @@ class ReceiverRTLSDR():
         """
             Configures the threshold level of the squelch module in the DAQ FW through the control interface
         """
-        if self.receiver_connection_status: # Check connection                        
+        if self.receiver_connection_status: # Check connection
             self.daq_squelch_th_dB      = threshold_dB
             if threshold_dB == -80: threshold = 0
             else: threshold = 10**(threshold_dB/20)
-                
-            # Assembling message            
+
+            # Assembling message
             cmd="STHU"
             th_bytes=pack("f",threshold)
-            msg_bytes=(cmd.encode()+th_bytes+bytearray(120))           
-            try:                
-                _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))            
-            except:                
-                errorMsg = sys.exc_info()[0]        
+            msg_bytes=(cmd.encode()+th_bytes+bytearray(120))
+            try:
+                _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))
+            except:
+                errorMsg = sys.exc_info()[0]
                 self.logger.error("Unable to start communication thread")
                 self.logger.error("Error message: {:s}".format(errorMsg))
 

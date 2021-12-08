@@ -504,7 +504,7 @@ doa_fig = go.Figure(layout=fig_layout)
 
 
 #app = dash.Dash(__name__, suppress_callback_exceptions=True, compress=True, update_title="") # cannot use update_title with dash_devices
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app = dash.Dash(__name__, suppress_callback_exceptions=True, compress=False)
 
 # app_log = logger.getLogger('werkzeug')
 # app_log.setLevel(settings.logging_level*10)
@@ -1390,7 +1390,7 @@ def plot_doa():
                 # Plot traces
                 #for i, doa_result in enumerate(y):
                 #    label = webInterface_inst.doa_labels[i]
-                doa_fig.add_trace(go.Scatter(x=x, #webInterface_inst.doa_thetas,
+                doa_fig.add_trace(go.Scattergl(x=x, #webInterface_inst.doa_thetas,
                                   y=y, #doa_result,
                                        # name=label,
                                        # line = dict(
@@ -1418,7 +1418,7 @@ def plot_doa():
 
                 #for i, doa_result in enumerate(y):
                 label = "DOA Angle" #webInterface_inst.doa_labels[i]
-                doa_fig.add_trace(go.Scatterpolar(theta=x, #webInterface_inst.doa_thetas,
+                doa_fig.add_trace(go.Scatterpolargl(theta=x, #webInterface_inst.doa_thetas,
                                              r=y, #doa_result,
                                              name=label,
                                              #line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
@@ -1448,7 +1448,7 @@ def plot_doa():
                 #    doa_compass = (360-webInterface_inst.doas[i]+webInterface_inst.compass_ofset)%360
                 label = "DOA Angle" #webInterface_inst.doa_labels[i]
 
-                doa_fig.add_trace(go.Scatterpolar(theta=x, #(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360,
+                doa_fig.add_trace(go.Scatterpolargl(theta=x, #(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360,
                                                 r=y, #doa_result,
                                                 name= label,
                                                # line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
