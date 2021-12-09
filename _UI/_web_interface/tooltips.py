@@ -13,13 +13,13 @@ dsp_config_tooltips = html.Div([
         className="tooltip"
         ),
     # Antenna Spacing
-    dbc.Tooltip([
-        html.P("When ULA is selected: Spacing between antenna elements"),
-        html.P("When UCA is selected: Radius of the circle on which the elements are placed")],
-        target="label_ant_spacing",
-        placement="bottom",
-        className="tooltip"
-        ),
+#    dbc.Tooltip([
+#        html.P("When ULA is selected: Spacing between antenna elements"),
+#        html.P("When UCA is selected: Radius of the circle on which the elements are placed")],
+#        target="label_ant_spacing",
+#        placement="bottom",
+#        className="tooltip"
+#        ),
     # Enable F-B averaging
     dbc.Tooltip([
         html.P("Forward-backward averegaing improves the performance of DoA estimation in multipath environment"),

@@ -7,6 +7,32 @@ The complete application is broken down into two main modules in terms of implem
 Running these two subsystems on separate processing units can grant higher throughput and stability, while running on the same processing unit makes the entire system more compact.
 
 <h3>Installation</h3>
+Install Notes:
+
+Install miniconda first:
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+
+chmod ug+x Miniforge3-Linux-aarch64.sh
+./Miniforge3-Linux-aarch64.sh
+conda config --set auto_activate_base false
+
+Logout, then logon again
+
+conda create -n kraken python=3.9.7
+conda activate kraken
+
+conda install werkzeug==2.0
+conda install dash==1.20.0
+conda install quart
+conda install pandas
+conda install dash_bootstrap_components
+conda install orjson
+conda install scipy
+conda install numba
+pip3 install quart_compress
+pip3 install dash_devices
+pip3 install pyargus
+
 <h4> Remote operation </h4>
 To install the DoA DSP software for remote operation you can simply use the prepared install script after cloning the repository.
 

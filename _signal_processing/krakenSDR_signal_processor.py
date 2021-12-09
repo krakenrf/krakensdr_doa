@@ -109,7 +109,9 @@ class SignalProcessor(threading.Thread):
         self.spectrum_window_size = 2048 #1024
         self.spectrum_window = "hann"
         self.run_processing = False
-        
+        self.is_running = False 
+
+
         self.channel_number = 4  # Update from header
         
         # Result vectors
@@ -134,8 +136,11 @@ class SignalProcessor(threading.Thread):
             Main processing thread        
         """
         while True:
+            self.is_running = False
             time.sleep(1)
             while self.run_processing:  
+                self.is_running = True
+
                 que_data_packet = []
                 start_time = time.time()
 
@@ -345,7 +350,6 @@ class SignalProcessor(threading.Thread):
                 thetime = ((end - start) * 1000)
                 print ("Time elapsed: ", thetime)
                 """
-
 
     def estimate_DOA(self):
         """
