@@ -54,7 +54,7 @@ daq_ini_config_tooltips = html.Div([
         ),
     # Enable squelch mode
     dbc.Tooltip([
-        html.P("Enable squelch to capture burst like signals")],
+        html.P("Enable DAQ-side squelch to capture burst like signals - NOTE DISABLED IN THIS VERSION, THIS VERSION USES DSP SIDE SQUELCH ONLY")],
         target="label_en_squelch",
         placement="bottom",
         className="tooltip"
@@ -70,14 +70,14 @@ daq_ini_config_tooltips = html.Div([
         ),
     # CPI size
     dbc.Tooltip([
-        html.P("Length of the Coherent Processing Interval after decimation")],
+        html.P("Length of the Coherent Processing Interval (CPI) after decimation")],
         target="label_cpi_size",
         placement="bottom",
         className="tooltip"
         ),
     # Decimation raito
     dbc.Tooltip([
-        html.P("Raw sampling frequency is decreased with the decimation ratio")],
+        html.P("Decimation factor")],
         target="label_decimation_ratio",
         placement="bottom",
         className="tooltip"
@@ -94,7 +94,7 @@ daq_ini_config_tooltips = html.Div([
         ),
     # FIR tap size
     dbc.Tooltip([
-        html.P("Anti-aliasing FIR filter tap size"),
+        html.P("Anti-aliasing FIR filter tap size - Do not set too large, or CPU utilization will be 100%"),
         html.P("Should be greater than the decimation ratio")],
         target="label_fir_tap_size",
         placement="bottom",
@@ -200,7 +200,7 @@ daq_ini_config_tooltips = html.Div([
         ),
     # Maximum sync fails
     dbc.Tooltip([
-        html.P("Maximum allowed consecutive IQ difference check failes before initiating a recalibraiton")],
+        html.P("Maximum allowed consecutive IQ difference check failures before initiating a recalibration")],
         target="label_max_sync_fails",
         placement="bottom",
         className="tooltip"

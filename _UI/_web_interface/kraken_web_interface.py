@@ -33,8 +33,8 @@ import orjson
 #import dash
 #from dash.dependencies import Input, Output, State
 
-import plotly.io as pio
-pio.renderers.default = 'iframe'
+#import plotly.io as pio
+#pio.renderers.default = 'iframe'
 
 import dash_core_components as dcc
 import dash_html_components as html
@@ -449,7 +449,7 @@ fig_dummy = go.Figure(layout=fig_layout)
 
 for m in range(0, webInterface_inst.module_receiver.M+1): #+1 for the auto decimation window selection
     fig_dummy.add_trace(go.Scatter(x=x,
-                             y=y, 
+                             y=y,
                              name="Channel {:d}".format(m),
                              line = dict(color = trace_colors[m],
                                          width = 2)
@@ -484,6 +484,7 @@ waterfall_fig = go.Figure(layout=fig_layout)
 waterfall_fig.add_trace(go.Heatmapgl(
                          z=waterfall_init,
                          zsmooth=False,
+                         showscale=False,
                          hoverinfo='skip',
                          colorscale=[[0.0, '#000020'],
                          [0.0714, '#000030'],
@@ -500,6 +501,12 @@ waterfall_fig.add_trace(go.Heatmapgl(
                          [0.8568, '#9F0000'],
                          [0.9282, '#750000'],
                          [1.0, '#4A0000']]))
+
+
+waterfall_fig.update_xaxes(tickfont_size=1)
+waterfall_fig.update_yaxes(tickfont_size=1)
+waterfall_fig.update_layout(margin=go.layout.Margin(t=5))
+
 
 doa_fig = go.Figure(layout=fig_layout)
 
@@ -685,7 +692,7 @@ def generate_config_page_layout(webInterface_inst):
             html.H3("HW", id="cfg_group_hw"),
             html.Div([
                     html.Div("# RX Channels:", className="field-label"),                                         
-                    dcc.Input(id='cfg_rx_channels', value=daq_cfg_params[1], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_rx_channels', value=daq_cfg_params[1], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.H3("DAQ", id="cfg_group_daq"),
             html.Div([
@@ -715,30 +722,30 @@ def generate_config_page_layout(webInterface_inst):
             ], className="field"),
             html.Div([
                     html.Div("Initial Threshold:", className="field-label", id="label_squelch_init_threshold"),                                         
-                    dcc.Input(id='cfg_squelch_init_th', value=daq_cfg_params[6], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_squelch_init_th', value=daq_cfg_params[6], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.H3("Pre Processing"),
             html.Div([
                     html.Div("CPI Size [sample]:", className="field-label", id="label_cpi_size"),                                         
-                    dcc.Input(id='cfg_cpi_size', value=daq_cfg_params[7], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_cpi_size', value=daq_cfg_params[7], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.Div([
                     html.Div("Decimation Ratio:", className="field-label", id="label_decimation_ratio"),                                         
-                    dcc.Input(id='cfg_decimation_ratio', value=daq_cfg_params[8], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_decimation_ratio', value=daq_cfg_params[8], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.Div([
                     html.Div("FIR Relative Bandwidth:", className="field-label", id="label_fir_relative_bw"),                                         
-                    dcc.Input(id='cfg_fir_bw', value=daq_cfg_params[9], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_fir_bw', value=daq_cfg_params[9], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.Div([
                     html.Div("FIR Tap Size:", className="field-label", id="label_fir_tap_size"),                                         
-                    dcc.Input(id='cfg_fir_tap_size', value=daq_cfg_params[10], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_fir_tap_size', value=daq_cfg_params[10], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.Div([
                 html.Div("FIR Window:", className="field-label", id="label_fir_window"),
                 dcc.Dropdown(id='cfg_fir_window',
                         options=[
-                            {'label': i, 'value': i} for i in valid_fir_windows                                
+                            {'label': i, 'value': i} for i in valid_fir_windows
                             ],
                     value=daq_cfg_params[11], style={"display":"inline-block"},className="field-body")
             ], className="field"),
@@ -749,11 +756,11 @@ def generate_config_page_layout(webInterface_inst):
             html.H3("Calibration"),
             html.Div([
                     html.Div("Correlation Size [sample]:", className="field-label", id="label_correlation_size"),
-                    dcc.Input(id='cfg_corr_size', value=daq_cfg_params[13], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_corr_size', value=daq_cfg_params[13], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.Div([
                     html.Div("Standard Channel Index:", className="field-label", id="label_std_ch_index"),                                         
-                    dcc.Input(id='cfg_std_ch_ind', value=daq_cfg_params[14], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_std_ch_ind', value=daq_cfg_params[14], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.Div([
                     html.Div("Enable IQ Calibration:", className="field-label", id="label_en_iq_calibration"),                                         
@@ -761,7 +768,7 @@ def generate_config_page_layout(webInterface_inst):
             ], className="field"),
             html.Div([
                     html.Div("Gain Lock Interval [frame]:", className="field-label", id="label_gain_lock_interval"),                                         
-                    dcc.Input(id='cfg_gain_lock', value=daq_cfg_params[16], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_gain_lock', value=daq_cfg_params[16], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.Div([
                     html.Div("Require Track Lock Intervention (For Kerberos):", className="field-label", id="label_require_track_lock"),                                         
@@ -787,23 +794,23 @@ def generate_config_page_layout(webInterface_inst):
             ], className="field"),
             html.Div([
                     html.Div("Calibration Frame Interval:", className="field-label", id="label_calibration_frame_interval"),                                         
-                    dcc.Input(id='cfg_cal_frame_interval', value=daq_cfg_params[20], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_cal_frame_interval', value=daq_cfg_params[20], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.Div([
                     html.Div("Calibration Frame Burst Size:", className="field-label", id="label_calibration_frame_burst_size"),                                         
-                    dcc.Input(id='cfg_cal_frame_burst_size', value=daq_cfg_params[21], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_cal_frame_burst_size', value=daq_cfg_params[21], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.Div([
                     html.Div("Amplitude Tolerance [dB]:", className="field-label", id="label_amplitude_tolerance"),                                         
-                    dcc.Input(id='cfg_amplitude_tolerance', value=daq_cfg_params[22], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_amplitude_tolerance', value=daq_cfg_params[22], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.Div([
                     html.Div("Phase Tolerance [deg]:", className="field-label", id="label_phase_tolerance"),                                         
-                    dcc.Input(id='cfg_phase_tolerance', value=daq_cfg_params[23], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_phase_tolerance', value=daq_cfg_params[23], type='number', debounce=True, className="field-body")
             ], className="field"),
             html.Div([
                     html.Div("Maximum Sync Fails:", className="field-label", id="label_max_sync_fails"),                                         
-                    dcc.Input(id='cfg_max_sync_fails', value=daq_cfg_params[24], type='number', debounce=False, className="field-body")
+                    dcc.Input(id='cfg_max_sync_fails', value=daq_cfg_params[24], type='number', debounce=True, className="field-body")
             ], className="field"),
         ], style={'width': '100%'}, id='adv-cfg-container'),
 
@@ -860,7 +867,7 @@ def generate_config_page_layout(webInterface_inst):
         #html.Div("Spacing:"              , id="label_ant_spacing"   , className="field-label"),
                     #dcc.Input(id="ant_spacing_wavelength", value=ant_spacing_wavelength, type='number', debounce=False, className="field-body")]),
         html.Div([html.Div("[meter]:"             , id="label_ant_spacing_meter"  , className="field-label"), 
-                    dcc.Input(id="ant_spacing_meter", value=ant_spacing_meter, type='number', debounce=False, className="field-body")]),
+                    dcc.Input(id="ant_spacing_meter", value=ant_spacing_meter, type='number', debounce=True, className="field-body")]),
         html.Div([html.Div("Wavelength Multiplier"         , id="label_ant_spacing_wavelength"        , className="field-label"), html.Div("1"      , id="body_ant_spacing_wavelength"        , className="field-body")], className="field"),
 
         #html.Div([html.Div("[feet]:"              , id="label_ant_spacing_feet"   , className="field-label"), 
@@ -906,7 +913,7 @@ def generate_config_page_layout(webInterface_inst):
                     ],
             value=webInterface_inst._doa_fig_type, style={"display":"inline-block"},className="field-body"),
         html.Div("Compass Offset [deg]:", className="field-label"), 
-        dcc.Input(id="compass_ofset", value=webInterface_inst.compass_ofset, type='number', debounce=False, className="field-body"),
+        dcc.Input(id="compass_ofset", value=webInterface_inst.compass_ofset, type='number', debounce=True, className="field-body"),
 
     ], className="card")
     
@@ -922,7 +929,7 @@ def generate_config_page_layout(webInterface_inst):
             ], className="field"),
         html.Div([
                 html.Div("Squelch threshold [dB] (<0):", className="field-label"),                                         
-                dcc.Input(id='squelch_th', value=webInterface_inst.module_receiver.daq_squelch_th_dB, type='number', debounce=False, className="field-body")
+                dcc.Input(id='squelch_th', value=webInterface_inst.module_receiver.daq_squelch_th_dB, type='number', debounce=True, className="field-body")
             ], className="field"),
         html.Div(reconfig_note, id="squelch_reconfig_note", className="field", style={"color":"red"}),
     ], className="card")
@@ -948,7 +955,7 @@ spectrum_page_layout = html.Div([
     ),
     dcc.Graph(
         id="waterfall-graph",
-        style={'width': '94%', 'height': '60%'},
+        style={'width': '93.5%', 'height': '60%'},
         figure=waterfall_fig #waterfall fig remains unchanged always due to slow speed to update entire graph #fig_dummy #spectrum_fig #fig_dummy
     ),
 ], className="monitor_card"),
@@ -1499,11 +1506,12 @@ app.clientside_callback(
     function (data) {
         /*return [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length]*/
 
-        const every_nth = (arr, nth) => arr.filter((e, i) => i % nth === (nth | 0) - 1);
+        /*const every_nth = (arr, nth) => arr.filter((e, i) => i % nth === (nth | 0) - 1);*/
 
         return [
                 [{x: data.map(i => i.x), y: data.map(i => i.y)}, [...Array(data.length).keys()], data[0].x.length],
-                [{z: [[every_nth(data[0].y, 1)]]}, [0], 50]
+                /*[{z: [[every_nth(data[0].y, 1)]]}, [0], 50]*/
+                [{z: [[data[0].y]]}, [0], 50]
                ]
     }
     """,
@@ -1560,6 +1568,9 @@ def plot_spectrum():
                     ticks='outside',
                     showline=True)
 
+
+        spectrum_fig.update_layout(margin=go.layout.Margin(b=5, t=0))
+
         webInterface_inst.reset_spectrum_graph_flag = False
         app.push_mods({
                'spectrum-graph': {'figure': spectrum_fig},
@@ -1579,19 +1590,6 @@ def plot_spectrum():
         })
 
 
-"""
-@app.callback(
-    Output("placeholder_update_dsp", "children"),
-    #None,
-    [Input(component_id ="interval-component"           , component_property='n_intervals')],
-    [State(component_id ="url"                          , component_property='pathname')]
-)
-def update_dsp_timer(freq_update, pathname):
-    if pathname == "/config":
-        return 1 
-    return Output('dummy_output', 'children', '')
-"""
-# TODO: change this to callbacks only, no polling
 @app.callback(
     [Output(component_id="body_ant_spacing_wavelength",  component_property='children'),
     Output(component_id="label_ant_spacing_meter",  component_property='children'),
