@@ -14,12 +14,14 @@ Start with the a fresh install of Raspbian 64-bit Lite from https://downloads.ra
 Burn to SD Card and login with pi/raspberry. Set up WiFi, enable SSH and change the hostname to "krakensdr" if desired via raspi-config.
 
 <h4>Install pre-reqs</h4>
+
 ``` bash
 sudo apt update
 sudo apt install git cmake libusb-1.0-0-dev lsof
 ```
 
 <h4>Install RTL-SDR Kerberos Driver (Also used for KrakenSDR)</h4>
+
 ``` bash
 git clone https://github.com/rtlsdrblog/rtl-sdr-kerberos
 
