@@ -11,9 +11,35 @@ Install Notes (Tested on RaspiOS Lite 64-bit Beta 2021-10-30-raspios-bullseye-ar
 
 Start with the a fresh install of Raspbian 64-bit Lite from https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2021-11-08/
 
-Burn to SD Card and login with pi/raspberry. Set up WiFi and enable SSH if desired via raspi-config.
+Burn to SD Card and login with pi/raspberry. Set up WiFi, enable SSH and change the hostname to "krakensdr" if desired via raspi-config.
 
-Install Miniconda:
+<h4>Install pre-reqs</h4>
+``` bash
+sudo apt update
+sudo apt install git cmake libusb-1.0-0-dev lsof
+```
+
+<h4>Install RTL-SDR Kerberos Driver (Also used for KrakenSDR)</h4>
+``` bash
+git clone https://github.com/rtlsdrblog/rtl-sdr-kerberos
+
+cd rtl-sdr-kerberos
+mkdir build
+cd build
+cmake ../ -DINSTALL_UDEV_RULES=ON
+make
+sudo make install
+sudo ldconfig
+
+echo 'blacklist dvb_usb_rtl28xxu' | sudo tee – append /etc/modprobe.d/blacklist-dvb_usb_rtl28xxu.conf
+```
+
+Reboot Pi4
+
+<h4>Install Miniconda</h4>
+
+The instructions below are so aarch64 ARM systems. If you're install to another system, please download the appropriate miniconda installer.
+
 ``` bash
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
 chmod ug+x Miniforge3-Linux-aarch64.sh
@@ -21,9 +47,9 @@ chmod ug+x Miniforge3-Linux-aarch64.sh
 conda config --set auto_activate_base false
 ```
 
-Restart the Pi, or logout, then logon again.
+Restart the Pi, or logout, then log on again.
 
-Set up Miniconda Environment
+<h4>Set up Miniconda environment</h4>
 
 ``` bash
 conda create -n kraken python=3.9.7
@@ -89,7 +115,7 @@ You can run the complete application on a single host either by using Ethernet i
 4. To stop the full systems run the following script:
 `./kraken_doa_stop.sh`
 
-<p1> After starting the script a web based server opens at port number 8051, which then can be accessed by typing "KRAKEN_IP:8050/" in the address bar of any web browser. </p1>
+<p1> After starting the script a web based server opens at port number 8051, which then can be accessed by typing "KRAKEN_IP:8050/" in the address bar of any web browser. You can find the IP address of the KrakenSDR Pi4 wither via your routers WiFi management page, or by typing "ip addr" into the terminal. You can also use the hostname of the Pi4 in place of the IP address, but this only works on local networks, and not the internet, or mobile hotspot networks. </p1>
 
   ![image info](./doc/kraken_doadsp_main.png)
 
