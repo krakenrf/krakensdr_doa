@@ -113,8 +113,8 @@ You can run the complete application on a single host either by using Ethernet i
 (See:https://github.com/krakenrf/heimdall_daq_fw/Documentation)
 2. Set *data_interface="shmem"* in the settings.json
 3. Start the full systems by typing:
-`conda activate kraken
-./kraken_doa_start.sh`
+`conda activate kraken`
+`./kraken_doa_start.sh`
 4. To stop the full systems run the following script:
 `./kraken_doa_stop.sh`
 
