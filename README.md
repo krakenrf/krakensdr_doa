@@ -81,7 +81,7 @@ Please be patient on the first run, at it can take 1-2 minutes for the JIT numba
 
   ![image info](./doc/kraken_doadsp_main.png)
 
-<h3>Upcoming Features and Known Bugs</h3>
+## Upcoming Features and Known Bugs
 
 1. [FEATURE] Currently squelch works by selecting the strongest signal that is active and above the set threshold within the active bandwidth. The next steps will be to allow users to create multiple channels within the active bandwidth, each with their own squelch. This will allow users to track multiple signals at once, and ignore unwated signals within the bandwidth at the same time.
 
