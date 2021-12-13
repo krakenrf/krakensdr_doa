@@ -17,7 +17,7 @@ Burn to SD Card and login with pi/raspberry. Set up WiFi, enable SSH and change 
 
 ``` bash
 sudo apt update
-sudo apt install build-essential git cmake libusb-1.0-0-dev lsof
+sudo apt install build-essential git cmake libusb-1.0-0-dev lsof php-cli
 ```
 
 <h4>Install librtlsdr Drivers</h4>
