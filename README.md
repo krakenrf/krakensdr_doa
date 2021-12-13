@@ -72,8 +72,6 @@ Please run the installs in this order as we need to ensure a specific version of
 conda create -n kraken python=3.9.7
 conda activate kraken
 
-
-#conda install werkzeug==2.0
 conda install quart
 conda install pandas
 conda install orjson
@@ -91,11 +89,6 @@ conda install dash==1.20.0
 ```
 
 Install the KrakenSDR software:
-
-
-
-
-
 
 
 Clone the repository of the HeIMDALL DAQ Firmware to the krakensdr folder and follow the install instructions from the readme. (https://github.com/krakenrf/heimdall_daq_fw)
@@ -168,17 +161,13 @@ You can run the complete application on a single host either by using Ethernet i
 
 <h4>Local operation</h4>
 
+```bash
 conda activate kraken
 ./kraken_doa_start.sh
+```
 
-1. Make sure that the *daq_chain_config.ini* contains the proper configuration
-(See:https://github.com/krakenrf/heimdall_daq_fw/Documentation)
-2. Set *data_interface="shmem"* in the settings.json
-3. Start the full systems by typing:
-`conda activate kraken`
-`./kraken_doa_start.sh`
-4. To stop the full systems run the following script:
-`./kraken_doa_stop.sh`
+Please be patient on the first run, at it can take 1-2 minutes for the JIT numba compiler to compile the functions. On subsqeuent runs this will be faster and read from cache.
+
 
 <h4>Remote operation</h4>
 
