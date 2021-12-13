@@ -81,8 +81,11 @@ Please be patient on the first run, at it can take 1-2 minutes for the JIT numba
 
 <h3>Upcoming Features and Known Bugs</h3>
 1. [FEATURE] Currently squelch works by selecting the strongest signal that is active and above the set threshold within the active bandwidth. The next steps will be to allow users to create multiple channels within the active bandwidth, each with their own squelch. This will allow users to track multiple signals at once, and ignore unwated signals within the bandwidth at the same time.
+
 2. [FEATURE] It would be better if the KrakenSDR controls, spectrum and/or DOA graphs could be accessible from the same page. Future work will look to integrate the controls in a sidebar.
+
 3. [FEATURE] Some users would like to monitor the spectrum, and manually click on an active signal to DF that particular signal. We will be looking at a way to implement this.  
+
 4. [BUG] Sometimes the DOA graphs will not load properly and refreshing the page is required. A fix is being investigated.
 
 
