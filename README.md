@@ -1,4 +1,4 @@
-<h2>Kraken SDR DoA DSP</h2>
+# Kraken SDR DoA DSP
 This software is intended to demonstrate the direction of arrival (DoA) estimation capabilities of the KrakenSDR and other RTL-SDR based coherent receiver systems which use the compatible data acquisition system - HeIMDALL DAQ Firmware.
 <br>
 <br>
@@ -6,18 +6,22 @@ The complete application is broken down into two main modules in terms of implem
 
 Running these two subsystems on separate processing units can grant higher throughput and stability, while running on the same processing unit makes the entire system more compact.
 
-<h4>Install pre-reqs</h4>
+## Installation
+
+1. Install the prerequisites
 
 ``` bash
 sudo apt update
 sudo apt install php-cli
 ```
 
-<h4>Install Heimdall DAQ</h4>
+2. Install Heimdall DAQ
 
-First, follow the instructions at https://github.com/krakenrf/heimdall_daq_fw/tree/development to install the Heimdall DAQ Firmware.
+If not done already, first, follow the instructions at https://github.com/krakenrf/heimdall_daq_fw/tree/development to install the Heimdall DAQ Firmware.
 
-<h4>Set up Miniconda environment</h4>
+3. Set up Miniconda environment
+
+You will have created a Miniconda environment during the Heimdall DAQ install phase.
 
 Please run the installs in this order as we need to ensure a specific version of dash is installed.
 
@@ -37,7 +41,7 @@ pip3 install pyargus
 conda install dash==1.20.0
 ```
 
-<h4>Install the krakensdr_doa software</h4>
+4. Install the krakensdr_doa software
 
 ```bash
 cd ~/krakensdr
@@ -53,19 +57,17 @@ cp krakensdr_doa/util/kraken_doa_start.sh .
 cp krakensdr_doa/util/kraken_doa_stop.sh .
 ```
 
-<h3>Running</h3>
+## Running
 
-<h4>Local operation (Recommended)</h4>
-
-You can run the complete application on a single host either by using Ethernet interface between the two subsystems or by using a shared-memory interface. Using shared-memory is the recommended in this situation. 
+### Local operation (Recommended)
 
 ```bash
 ./kraken_doa_start.sh
 ```
 
-Please be patient on the first run, at it can take 1-2 minutes for the JIT numba compiler to compile the optimized functions. On subsqeuent runs this will be faster and read from cache.
+Please be patient on the first run, at it can take 1-2 minutes for the JIT numba compiler to compile the numba optimized functions, and during this compilation time it may appear that the software has gotten stuck. On subsqeuent runs this loading time will be much faster as it will read from cache.
 
-<h4>Remote operation</h4>
+### Remote operation
 
 1. Start the DAQ Subsystem either remotely. (Make sure that the *daq_chain_config.ini* contains the proper configuration) 
     (See:https://github.com/krakenrf/heimdall_daq_fw/Documentation)
