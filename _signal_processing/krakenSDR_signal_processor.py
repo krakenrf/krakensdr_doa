@@ -31,7 +31,6 @@ import math
 import numba as nb
 from numba import jit, njit
 from functools import lru_cache
-import numba_scipy
 
 # Math support
 import numpy as np
