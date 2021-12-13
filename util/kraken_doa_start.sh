@@ -1,3 +1,6 @@
+eval "$(conda shell.bash hook)"
+conda activate kraken
+
 ./kraken_doa_stop.sh
 
 cd heimdall_daq_fw/Firmware
