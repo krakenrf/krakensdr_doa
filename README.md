@@ -23,7 +23,7 @@ sudo apt install build-essential git cmake libusb-1.0-0-dev lsof php-cli
 <h4>Install librtlsdr Drivers</h4>
 
 ``` bash
-git clone https://github.com/librtlsdr/librtlsdr
+git clone https://github.com/krakenrf/librtlsdr
 
 cd rtl-sdr-kerberos
 mkdir build
