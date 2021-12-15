@@ -8,7 +8,7 @@ Running these two subsystems on separate processing units can grant higher throu
 
 ## Pi 4 Image QUICKSTART (For Interested KerberosSDR Owners, or beta KrakenSDR Testers)
 
-We have a beta Pi 4 SD card image available here **https://drive.google.com/file/d/1TTb9UOu3nuPCiMQWc4DCdKDlWTDBfN00/view?usp=sharing**. As this is a beta, the code will not autostart on boot. For efficiency, the image is terminal only, with no desktop GUI. You can access the terminal either via SSH or by plugging in a HDMI monitor.
+We have a beta Pi 4 SD card image available here **https://drive.google.com/file/d/1TTb9UOu3nuPCiMQWc4DCdKDlWTDBfN00/view?usp=sharing**. As this is a beta, the code will not autostart on boot and it is intended to be used by those familiar with Linux. For efficiency, the image is terminal only, with no desktop GUI. You can access the terminal either via SSH or by plugging in a HDMI monitor.
 
 To run this code flash the image file to an 8GB or larger SD Card, and login to the terminal via username: pi, password: krakensdr.
 
@@ -69,6 +69,8 @@ Ctrl+X, Y to save
 Then run 'make' to recompile heimdall.
 
 Now you can run the code as normal on the Pi 3.
+
+As the Pi 3 very quickly thermal throttles, we recommend adding a fan and installing cpufrequtils "sudo apt install cpufrequtils", and in ~/krakensdr/heimdall_daq_fw/Firmware/daq_start_sm.sh uncomment #sudo cpufreq-set -g performance
 
 ## Manual Installation from a fresh OS
 
