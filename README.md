@@ -6,7 +6,35 @@ The complete application is broken down into two main modules in terms of implem
 
 Running these two subsystems on separate processing units can grant higher throughput and stability, while running on the same processing unit makes the entire system more compact.
 
-## Installation
+## Pi 4 Image QUICKSTART (For Interested KerberosSDR Owners, or beta KrakenSDR Testers)
+
+We have a beta Pi 4 SD card image available here **https://drive.google.com/file/d/1TTb9UOu3nuPCiMQWc4DCdKDlWTDBfN00/view?usp=sharing**. As this is a beta, the code will not autostart on boot. For efficiency, the image is terminal only, with no desktop GUI. You can access the terminal either via SSH or by plugging in a HDMI monitor.
+
+To run this code flash the image file to an 8GB or larger SD Card, and login to the terminal via username: pi, password: krakensdr.
+
+Then run sudo raspi-config to set up your WiFi connection if not using Ethernet. Alternatively, you could connect headlessly by using the wpa_supplicant method. Once you're connected, you can login via SSH (or you can use a physical HDMI screen if preferred). You can try using the hostname 'krakensdr', or if that is not supported by your network you will need to determine the IP address of the Pi 4 either by running the 'ip addr' command on the Pi 4, or using your WiFi routers configuration page to find the 'krakensdr' device IP.
+
+KerberosSDR BOOTING NOTE: The Pi 4 hardware has a problem where it will not boot if a powered USB hub drawing current from the Pi 4 is plugged in. Inside the KerberosSDR is a powered USB hub and hence the Pi 4 will not boot if the KerberosSDR is plugged in. So please plug the KerberosSDR in after booting. For the KrakenSDR the hardware implementation forces external power only, so this problem does not occurr. If this is a problem for your particular KerberosSDR setup, you can force external power only on the KerberosSDR by opening the enclosure and removing the JP2 jumper
+
+For KerberosSDR users you will need to initially flash the EEPROM to use the new serial numbering scheme. There is a script in krakensdr/heimdall_daq_fw/util/eeprom_init.sh that can guide your through this. Just plug in your KerberosSDR (ensuring it is powered from the power port), and run the script ./eeprom_init.sh. The script will guide you to use the DIP switches to turn all units off, except the currently requested tuner. It will then flash the realtek_oem firmware, then the serial number, before asking you to turn off that tuner, and turn on the next one. Answer 'Y' each time it asks to flash.
+
+Once the EEPROM is flashed you can run the code.
+
+Go into the ~/krakensdr folder and run the ./kraken_doa_start.sh script. This will automatically start the DAQ and DoA DSP software. After a minute or so you should be able to go to a device on your network, and using a browser browse to the web interface at PI4IP_ADDR:8050.
+
+The image is currently set up for the KerberosSDR, but you may wish to double check the "Advanced DAQ Settings" by clicking on that checkbox. Ensure that the # RX channels is set to 4, and the "Calibration Track Mode" is set to "No Tracking". For the first run we don't recommend making any changes, but if you do, or use one of the preconfig files, ensure that you set these settings back for the KerberosSDR. Clicking on "Reconfigure & Restart DAQ Chain" will restart the system with the changes.
+
+If there is nothing to change on the DAQ, just click the 'Start Processing' button on the top. You should see the update rate start to work. You can set the frequency and gain using the boxes in the top left, making sure to click on 'Update Receiver Parameters' after every change.
+
+The KrakenSDR code base is designed to autocalibrate phase on each retune. Unfortunately this feature is not available on the KerberosSDR due to the lack of a noise source switching circuit. So with the KerberosSDR every time you change the frequency or DAQ settings, make sure that you have the antennas disconnected. Also ensure that "Calibration Track Mode" is set to "No Tracking" otherwise the software will attempt to recalibrate every X-minutes.
+
+Once you've set the frequency, you can connect your antennas. Then click on the spectrum tab. Ensure that the signal is there, and is not overloading. If it looks like the spectrum is overloaded, reduce the gain. Take note of an appropriate squelching threshold for the signal.
+
+Go back to the main configuration page, and set the squelch threshold and click enable squelch. The system will now automatically tune and lock to the strongest signal that is above the threshold in the current spectrum. You can tell which signal the software is tuned to by the red rectangle that will highlight it. If no signal is above the threshold the spectrum and DOA graphs will not update.
+
+The default active bandwidth in the image is set to 300 kHz. If you need to reduce the active bandwidth because there are unwanted strong signals in the active bandwidth, you can do so by changing the "Decimated Bandwidth" setting in the configuration page. The default bandwidth of 300 kHz may be too large for a single signal of interest in there are several signals close to one another. After changing the value, disconnect your antennas, and click "Reconfigure & Restart DAQ Chain" as before.
+
+## Manual Installation from a fresh OS
 
 1. Install the prerequisites
 
