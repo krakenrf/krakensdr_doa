@@ -12,7 +12,7 @@ We have a beta Pi 4 SD card image available here **https://drive.google.com/file
 
 To run this code flash the image file to an 8GB or larger SD Card, and login to the terminal via username: pi, password: krakensdr.
 
-Then run sudo raspi-config to set up your WiFi connection if not using Ethernet. Alternatively, you could connect headlessly by using the wpa_supplicant method. Once you're connected, you can login via SSH if desired (or you can continue to use a physical HDMI screen if preferred). You can try connecting to SSH via the hostname 'krakensdr', or if hostnames are not supported by your network you will need to determine the IP address of the Pi 4 either by running the 'ip addr' command on the Pi 4, or using your WiFi routers configuration page to find the 'krakensdr' device IP.
+Then run sudo raspi-config to set up your WiFi connection and WiFi country if not using Ethernet. Alternatively, you could connect headlessly by using the wpa_supplicant method. Once you're connected, you can login via SSH if desired (or you can continue to use a physical HDMI screen if preferred). You can try connecting to SSH via the hostname 'krakensdr', or if hostnames are not supported by your network you will need to determine the IP address of the Pi 4 either by running the 'ip addr' command on the Pi 4, or using your WiFi routers configuration page to find the 'krakensdr' device IP.
 
 KerberosSDR BOOTING NOTE: The Pi 4 hardware has a problem where it will not boot if a powered USB hub drawing current from the Pi 4 is plugged in. Inside the KerberosSDR is a powered USB hub and hence the Pi 4 will not boot if the KerberosSDR is plugged in. So please plug the KerberosSDR in after booting. For the KrakenSDR the hardware implementation forces external power only, so this problem does not occurr. If this is a problem for your particular KerberosSDR setup, you can force external power only on the KerberosSDR by opening the enclosure and removing the JP2 jumper
 
@@ -33,6 +33,42 @@ Once you've set the frequency, you can connect your antennas. Then click on the 
 Go back to the main configuration page, and set the squelch threshold and click enable squelch. The system will now automatically tune and lock to the strongest signal that is above the threshold in the current spectrum. You can tell which signal the software is tuned to by the red rectangle that will highlight it. If no signal is above the threshold the spectrum and DOA graphs will not update.
 
 The default active bandwidth in the image is set to 300 kHz. If you need to reduce the active bandwidth because there are unwanted strong signals in the active bandwidth, you can do so by changing the "Decimated Bandwidth" setting in the configuration page. The default bandwidth of 300 kHz may be too large for a single signal of interest in there are several signals close to one another. After changing the value, disconnect your antennas, and click "Reconfigure & Restart DAQ Chain" as before.
+
+## Pi 3 Users
+
+The image recommended for use and is tested for the Pi 4 only. Te Pi 3 can also be used in a pinch, though it will run the code much slower and it may not be fast enough to process fast bursty signals. The initial code run numba JIT compiles will take several minutes as well (first time you click start or enable the squelch), and the spectrum display may lag. To convert the Pi 4 image to a Pi 3 install, you will need to recompile the NE10 ARM DSP library and the Heimdall C DAQ files for the Pi 3 CPU first however. 
+
+Follow the steps above, but before you run the code you'll need to follow the steps in the Heimdall README for the NE10 and Heimdall compile, BUT use the following commands instead:
+
+For the NE10 compile, enter the build folder and run:
+
+``` bash
+cmake -DNE10_LINUX_TARGET_ARCH=aarch64 -DGNULINUX_PLATFORM=ON -DCMAKE_C_FLAGS="-mcpu=cortex-a53 -mtune=cortex-a53 -Ofast -funsafe-math-optimizations" ..
+make
+```
+
+Then copy the new libNE10.a library over.
+
+``` bash
+cd ~/krakensdr/heimdall_daq_fw/Firmware/_daq_core/
+cp ~/Ne10/build/modules/libNE10.a .
+```
+
+Next edit the Makefile and optimize it for the Pi 3.
+
+``` bash
+nano Makefile
+```
+
+Change the CFLAGS line to the following:
+
+CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a53 -mtune=cortex-a53 -Ofast -funsafe-math-optimizations -funroll-loops
+
+Ctrl+X, Y to save
+
+Then run 'make' to recompile heimdall.
+
+Now you can run the code as normal on the Pi 3.
 
 ## Manual Installation from a fresh OS
 
