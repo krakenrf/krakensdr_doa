@@ -12,7 +12,7 @@ We have a beta Pi 4 SD card image available here **https://drive.google.com/file
 
 To run this code flash the image file to an 8GB or larger SD Card, and login to the terminal via username: pi, password: krakensdr.
 
-Then run sudo raspi-config to set up your WiFi connection if not using Ethernet. Alternatively, you could connect headlessly by using the wpa_supplicant method. Once you're connected, you can login via SSH (or you can use a physical HDMI screen if preferred). You can try using the hostname 'krakensdr', or if that is not supported by your network you will need to determine the IP address of the Pi 4 either by running the 'ip addr' command on the Pi 4, or using your WiFi routers configuration page to find the 'krakensdr' device IP.
+Then run sudo raspi-config to set up your WiFi connection if not using Ethernet. Alternatively, you could connect headlessly by using the wpa_supplicant method. Once you're connected, you can login via SSH if desired (or you can continue to use a physical HDMI screen if preferred). You can try connecting to SSH via the hostname 'krakensdr', or if hostnames are not supported by your network you will need to determine the IP address of the Pi 4 either by running the 'ip addr' command on the Pi 4, or using your WiFi routers configuration page to find the 'krakensdr' device IP.
 
 KerberosSDR BOOTING NOTE: The Pi 4 hardware has a problem where it will not boot if a powered USB hub drawing current from the Pi 4 is plugged in. Inside the KerberosSDR is a powered USB hub and hence the Pi 4 will not boot if the KerberosSDR is plugged in. So please plug the KerberosSDR in after booting. For the KrakenSDR the hardware implementation forces external power only, so this problem does not occurr. If this is a problem for your particular KerberosSDR setup, you can force external power only on the KerberosSDR by opening the enclosure and removing the JP2 jumper
 
@@ -20,7 +20,7 @@ For KerberosSDR users you will need to initially flash the EEPROM to use the new
 
 Once the EEPROM is flashed you can run the code.
 
-Go into the ~/krakensdr folder and run the ./kraken_doa_start.sh script. This will automatically start the DAQ and DoA DSP software. After a minute or so you should be able to go to a device on your network, and using a browser browse to the web interface at PI4IP_ADDR:8050.
+Go into the ~/krakensdr folder and run the ./kraken_doa_start.sh script. This will automatically start the DAQ and DoA DSP software. After a minute or so you should be able to go to a device on your network, and using a browser browse to the web interface at krakensdr:8050. If hostnames are not supported on your network, you can connect via PI4_IP_ADDRESS:8050.
 
 The image is currently set up for the KerberosSDR, but you may wish to double check the "Advanced DAQ Settings" by clicking on that checkbox. Ensure that the # RX channels is set to 4, and the "Calibration Track Mode" is set to "No Tracking". For the first run we don't recommend making any changes, but if you do, or use one of the preconfig files, ensure that you set these settings back for the KerberosSDR. Clicking on "Reconfigure & Restart DAQ Chain" will restart the system with the changes.
 
