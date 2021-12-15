@@ -38,7 +38,9 @@ The default active bandwidth in the image is set to 300 kHz. If you need to redu
 
 The image recommended for use and is tested for the Pi 4 only. We strongly recommend using a Pi 4. The Pi 3 can also be used in a pinch, though it will run the code much slower and it may not be fast enough to process fast bursty signals. The initial code run numba JIT compiles will take several minutes as well (first time you click start or enable the squelch), and the spectrum display may lag. To convert the Pi 4 image to a Pi 3 install, you will need to recompile the NE10 ARM DSP library and the Heimdall C DAQ files for the Pi 3 CPU first however. 
 
-Follow the steps above, but before you run the code you'll need to follow the steps in the Heimdall README for the NE10 and Heimdall compile, BUT use the following commands instead:
+As the Pi 3 very quickly thermal throttles, we recommend adding a good heatsink and fan and installing cpufrequtils "sudo apt install cpufrequtils", and in ~/krakensdr/heimdall_daq_fw/Firmware/daq_start_sm.sh uncomment #sudo cpufreq-set -g performance
+
+Follow the steps above for the Pi 4, but before you run the code you'll need to recompile for the Pi 3 CPU by following the steps in the Heimdall README for the NE10 and Heimdall manual install compile instructions, BUT use the following commands instead:
 
 For the NE10 compile, enter the build folder and run:
 
@@ -54,7 +56,7 @@ cd ~/krakensdr/heimdall_daq_fw/Firmware/_daq_core/
 cp ~/Ne10/build/modules/libNE10.a .
 ```
 
-Next edit the Makefile and optimize it for the Pi 3.
+Next edit the _daq_core Makefile and optimize it for the Pi 3.
 
 ``` bash
 nano Makefile
@@ -69,8 +71,6 @@ Ctrl+X, Y to save
 Then run 'make' to recompile heimdall.
 
 Now you can run the code as normal on the Pi 3.
-
-As the Pi 3 very quickly thermal throttles, we recommend adding a fan and installing cpufrequtils "sudo apt install cpufrequtils", and in ~/krakensdr/heimdall_daq_fw/Firmware/daq_start_sm.sh uncomment #sudo cpufreq-set -g performance
 
 ## Manual Installation from a fresh OS
 
