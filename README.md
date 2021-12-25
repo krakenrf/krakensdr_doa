@@ -94,6 +94,7 @@ Please run the installs in this order as we need to ensure a specific version of
 ``` bash
 conda activate kraken
 
+conda install pip
 conda install quart
 conda install pandas
 conda install orjson
