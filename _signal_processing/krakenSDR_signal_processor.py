@@ -284,6 +284,10 @@ class SignalProcessor(threading.Thread):
                         
 #################################################### 
                         # KerberosSDR App compatible message output
+    
+                        #confidence_str = "{}".format(np.max(int(conf_val*100)))
+                        #max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude+100)))
+
                         #message = str(int(time.time() * 1000)) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
                         #html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+confidence_str+"</CONF>\n<PWR>"+max_power_level_str+"</PWR>\n</DATA>"
                         #self.DOA_res_fd.seek(0)
