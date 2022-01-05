@@ -28,7 +28,7 @@ For KerberosSDR users you will need to initially flash the EEPROM to use the new
 Once the EEPROM is flashed you can run the code.
 
 ### Running KrakenSDR Software
-Go into the `~/krakensdr` folder and run the `./kraken_doa_start.sh` script. This will automatically start the DAQ and DoA DSP software. After a minute or so you should be able to go to a device on your network, and using a browser browse to the web interface at `krakensdr:8050`. If hostnames are not supported on your network, you can connect via `PI4_IP_ADDRESS:8050`.
+Go into the `~/krakensdr` folder and run the `./kraken_doa_start.sh` script. This will automatically start the DAQ and DoA DSP software. After a minute or so you should be able to go to a device on your network, and using a browser browse to the web interface at `krakensdr:8080`. If hostnames are not supported on your network, you can connect via `PI4_IP_ADDRESS:8080`.
 
 The image is currently set up for the KerberosSDR, but you may wish to double check the `Advanced DAQ Settings` by clicking on that checkbox. Ensure that the `# RX channels` is set to `4`, and the `Calibration Track Mode` is set to `No Tracking`. For the first run we don't recommend making any changes, but if you do, or use one of the preconfig files, ensure that you set these settings back for the KerberosSDR. Clicking on `Reconfigure & Restart DAQ Chain` will restart the system with the changes.
 
@@ -143,6 +143,8 @@ Please be patient on the first run, at it can take 1-2 minutes for the JIT numba
 
 ### Remote operation
 
+*UNTESTED*
+
 1. Start the DAQ Subsystem either remotely. (Make sure that the `daq_chain_config.ini` contains the proper configuration) 
     (See:https://github.com/krakenrf/heimdall_daq_fw/Documentation)
 2. Set the IP address of the DAQ Subsystem in the `settings.json`, `default_ip` field.
@@ -151,7 +153,7 @@ Please be patient on the first run, at it can take 1-2 minutes for the JIT numba
 4. To stop the server and the DSP processing chain run the following script:
 `./kill.sh`
 
-After starting the script a web based server opens at port number `8050`, which then can be accessed by typing `KRAKEN_IP:8050/` in the address bar of any web browser. You can find the IP address of the KrakenSDR Pi4 wither via your routers WiFi management page, or by typing `ip addr` into the terminal. You can also use the hostname of the Pi4 in place of the IP address, but this only works on local networks, and not the internet, or mobile hotspot networks.
+After starting the script a web based server opens at port number `8080`, which then can be accessed by typing `KRAKEN_IP:8080/` in the address bar of any web browser. You can find the IP address of the KrakenSDR Pi4 wither via your routers WiFi management page, or by typing `ip addr` into the terminal. You can also use the hostname of the Pi4 in place of the IP address, but this only works on local networks, and not the internet, or mobile hotspot networks.
 
   ![image info](./doc/kraken_doadsp_main.png)
 
