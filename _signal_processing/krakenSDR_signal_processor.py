@@ -282,8 +282,8 @@ class SignalProcessor(threading.Thread):
                         max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
                         
 #################################################### 
-                        # KerberosSDR App compatible message output
-    
+                        # KerberosSDR App compatible message output, this will be redundant soon once the new app is published
+
                         #confidence_str = "{}".format(np.max(int(conf_val*100)))
                         #max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude+100)))
 
