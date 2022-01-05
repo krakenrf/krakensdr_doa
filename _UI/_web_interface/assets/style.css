@@ -197,6 +197,10 @@ iframe{
   width: 144px;
   display: inline-block;
 }
+.field-body-wide{
+  width: 400px;
+  display: inline-block;
+}
 
 /*Mobile Properties*/
 @media screen and (max-width: 1072px) {

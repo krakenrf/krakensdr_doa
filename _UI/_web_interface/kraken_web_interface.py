@@ -631,8 +631,7 @@ def generate_config_page_layout(webInterface_inst):
             value=preconfigs[0][0],
             placeholder="Select Configuration File",
             persistence=True,
-            style={"display":"inline-block", "width": "400px"},
-            className="field-body"),
+            className="field-body-wide"),
         ], className="field"),
         html.Div([
             html.Div("Active Configuration: " + webInterface_inst.active_daq_ini_cfg, id="active_daq_ini_cfg", className="field-label"),
