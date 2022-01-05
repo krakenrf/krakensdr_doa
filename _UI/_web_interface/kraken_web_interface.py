@@ -461,12 +461,6 @@ for m in range(0, webInterface_inst.module_receiver.M+1): #+1 for the auto decim
                              ))
 
 
-#waterfall_fig = go.Figure(layout=fig_layout)
-#waterfall_fig.add_trace(go.Heatmapgl(
-#                       z=waterfall_init))
-#                       z=[[1,2,3,4,5]]))
-
-
 waterfall_init = [[-80] * webInterface_inst.module_signal_processor.spectrum_window_size] * 50
 
 waterfall_fig = go.Figure(layout=fig_layout)
@@ -667,8 +661,6 @@ def generate_config_page_layout(webInterface_inst):
     ]
     
     # --> Optional DAQ Subsystem reconfiguration fields <--   
-    #if len(en_advanced_daq_cfg):
-    #    if daq_cfg_params is not None:
     daq_subsystem_reconfiguration_options = [ \
         html.Div([
 
@@ -805,9 +797,6 @@ def generate_config_page_layout(webInterface_inst):
     ]
     for i in range(len(daq_subsystem_reconfiguration_options)):
         daq_config_card_list.append(daq_subsystem_reconfiguration_options[i])
-        #else:
-        #    daq_config_card_list.append(html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"))
-        #    daq_config_card_list.append(html.Div("Config file not found! Reconfiguration is not possible !", id="daq_reconfig_note", className="field", style={"color":"red"}))
 
     daq_config_card = html.Div(daq_config_card_list, className="card")
     #-----------------------------
@@ -848,16 +837,10 @@ def generate_config_page_layout(webInterface_inst):
                 {'label': "UCA", 'value': "UCA"},                
             ], value=webInterface_inst.module_signal_processor.DOA_ant_alignment, className="field-body", labelStyle={'display': 'inline-block'}, id="radio_ant_arrangement")
         ], className="field"),        
-        #html.Div("Spacing:"              , id="label_ant_spacing"   , className="field-label"),
-                    #dcc.Input(id="ant_spacing_wavelength", value=ant_spacing_wavelength, type='number', debounce=False, className="field-body")]),
         html.Div([html.Div("[meter]:"             , id="label_ant_spacing_meter"  , className="field-label"), 
                     dcc.Input(id="ant_spacing_meter", value=ant_spacing_meter, type='number', debounce=True, className="field-body")]),
         html.Div([html.Div("Wavelength Multiplier"         , id="label_ant_spacing_wavelength"        , className="field-label"), html.Div("1"      , id="body_ant_spacing_wavelength"        , className="field-body")], className="field"),
 
-        #html.Div([html.Div("[feet]:"              , id="label_ant_spacing_feet"   , className="field-label"), 
-        #            dcc.Input(id="ant_spacing_feet", value=ant_spacing_feet, type='number'  , debounce=False, className="field-body")]),
-        #html.Div([html.Div("[inch]:"              , id="label_ant_spacing_inch"   , className="field-label"), 
-        #            dcc.Input(id="ant_spacing_inch", value=ant_spacing_inch, type='number'  , debounce=False, className="field-body")]),
         html.Div([html.Div("", id="ambiguity_warning" , className="field", style={"color":"orange"})]),                
 
         # --> DoA estimation configuration checkboxes <--  
@@ -954,9 +937,6 @@ def generate_doa_page_layout(webInterface_inst):
                  className="field"),
 
         html.Div([    
-        #dcc.Graph(id='doa-graph-test', figure=doa_fig),
-        #dcc.Store(id='doa-store', data=[dict(x=x, y=y)]),
-        #dcc.Store(id='doa-graph-type-store', data=0),
         dcc.Graph(
             style={"height": "inherit"},
             id="doa-graph",
@@ -1120,15 +1100,6 @@ def fetch_dsp_data():
         plot_spectrum()
     elif (webInterface_inst.pathname == "/doa" and doa_update_flag): #or (webInterface_inst.pathname == "/doa" and webInterface_inst.reset_doa_graph_flag):
         plot_doa()
-
-    #if (pathname == "/config" or pathname=="/") and daq_status_update_flag:        
-    #    pass
-    #elif pathname == "/spectrum" and spectrum_update_flag:
-    #    pass
-    #elif pathname == "/doa" and doa_update_flag:
-    #    pass
-    #else:
-    #    pass
 
     webInterface_inst.dsp_timer = Timer(.01, fetch_dsp_data)
     webInterface_inst.dsp_timer.start()
@@ -1415,8 +1386,6 @@ def plot_spectrum():
     if spectrum_fig == None:
     #if webInterface_inst.reset_spectrum_graph_flag:
         spectrum_fig = go.Figure(layout=fig_layout)
-        #freq_label="Frequency [MHz]"
-
         x=webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6
 
         # Plot traces
@@ -1463,25 +1432,23 @@ def plot_spectrum():
         webInterface_inst.reset_spectrum_graph_flag = False
         app.push_mods({
                'spectrum-graph': {'figure': spectrum_fig},
-        #       'waterfall-graph': {'figure': waterfall_fig}
         })
 
     else:
-        #update_data = []
-        #for m in range(1, np.size(webInterface_inst.spectrum, 0)): #webInterface_inst.module_receiver.M+1):
-        #    update_data.append(dict(x=webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6, y=webInterface_inst.spectrum[m, :]))
-
         x_app = []
         y_app = []
+        num_r =  np.size(webInterface_inst.spectrum, 0)
         for m in range(1, np.size(webInterface_inst.spectrum, 0)): #webInterface_inst.module_receiver.M+1):
             x_app.append(webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6)
             y_app.append(webInterface_inst.spectrum[m, :])
 
         update_data = dict(x=x_app, y=y_app)
 
+
         app.push_mods({
             'spectrum-graph': {'extendData': [update_data, list(range(0,len(webInterface_inst.spectrum)-1)), len(webInterface_inst.spectrum[0,:])]},
-            'waterfall-graph': {'extendData': [dict(z = [[webInterface_inst.spectrum[1, :]]]), [0], 50]},
+            #'waterfall-graph': {'extendData': [dict(z = [[webInterface_inst.spectrum[1, :]]]), [0], 50]},
+            'waterfall-graph': {'extendData': [dict(z = [[np.sum(webInterface_inst.spectrum[1:num_r+1, :], axis=0)]]), [0], 50]}, #Add up spectrum for waterfall
         })
 
 @app.callback(
@@ -1753,21 +1720,8 @@ def toggle_adv_daq(toggle_value):
               Input("placeholder_update_rx" , "children")]
 )
 def reload_cfg_page(config_fname, dummy_0, dummy_1):
-    #ctx = dash.callback_context
     webInterface_inst.daq_ini_cfg_params = read_config_file(config_fname)
     webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0]
-
-    #if ctx.triggered:
-    #    component_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        #if component_id  == "daq_cfg_files" and config_fname is not None:
-        #    webInterface_inst.daq_ini_cfg_params = read_config_file(config_fname)
-        #    webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0]
-        #elif component_id == "en_advanced_daq_cfg":
-        #if component_id == "en_advanced_daq_cfg":
-        #    if en_advanced_daq_cfg is not None and len(en_advanced_daq_cfg):
-        #        webInterface_inst.en_advanced_daq_cfg = True
-        #    else:
-        #        webInterface_inst.en_advanced_daq_cfg = False
     return ["/config"]
 
 @app.callback(
@@ -1780,9 +1734,6 @@ def reconfig_daq_chain(input_value, freq, gain):
 
     if input_value is None:
         return Output('dummy_output', 'children', '') #[no_update, no_update, no_update, no_update]
-
-        #return [no_update]
-#        raise PreventUpdate
 
     # TODO: Check data interface mode here !
     #    Update DAQ Subsystem config file
@@ -1827,33 +1778,12 @@ def reconfig_daq_chain(input_value, freq, gain):
         return [-1]
 
     # Reset channel number count
-#    webInterface_inst.module_receiver.M = 0
     webInterface_inst.module_signal_processor.first_frame = 1
-
 
     # Restart signal processing
     webInterface_inst.start_processing()
     webInterface_inst.logger.debug("Signal processing started")
     webInterface_inst.daq_restart = 0
-
-
-    # Gain is always reset to zero, need to set gains to what is in the web interface
-    #webInterface_inst.config_daq_rf(freq,gain)
-
-
-    # Set local Squelch-DSP parameters
-    #if webInterface_inst.daq_ini_cfg_params[5]: # Squelch is enabled
-    #    webInterface_inst.module_signal_processor.en_squelch = True
-    #    webInterface_inst.module_receiver.daq_squelch_th_dB = -80 #round(20*np.log10(webInterface_inst.daq_ini_cfg_params[6]),1)
-
-        #webInterface_inst.module_signal_processor.squelch_threshold = webInterface_inst.daq_ini_cfg_params[6]
-        # Note: There is no need to set the thresold in the DAQ Subsystem as it is configured from the ini-file.
-    #else:  # Squelch is disabled
-    #    webInterface_inst.module_signal_processor.en_squelch = False
-
-    # Set number of channels
-    # Reset first_frame on signal processor so new channel count is read
-    #webInterface_inst.module_signal_processor.channel_number = webInterface_inst.daq_ini_cfg_params[1]
 
     webInterface_inst.daq_cfg_ini_error = ""
     webInterface_inst.active_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0] #webInterface_inst.tmp_daq_ini_cfg
@@ -1861,15 +1791,10 @@ def reconfig_daq_chain(input_value, freq, gain):
 
     return Output("daq_cfg_files", "value", daq_config_filename), Output("active_daq_ini_cfg", "children", "Active Configuration: " + webInterface_inst.active_daq_ini_cfg)
 
-    #return Output("placeholder_recofnig_daq", "children", '1')
-#    return [0]
-
-
 if __name__ == "__main__":    
     # For Development only, otherwise use gunicorn    
     # Debug mode does not work when the data interface is set to shared-memory "shmem"! 
-    app.run_server(debug=False, host="0.0.0.0")
-    #waitress #serve(app.server, host="0.0.0.0", port=8050)
+    app.run_server(debug=False, host="0.0.0.0", port=8080)
 
 """
 html.Div([
