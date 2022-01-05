@@ -690,15 +690,15 @@ def generate_config_page_layout(webInterface_inst):
                     html.Div("Enable Noise Source Control:", className="field-label", id="label_en_noise_source_ctr"),                                         
                     dcc.Checklist(options=option     , id="en_noise_source_ctr"   , className="field-body", value=en_noise_src_values),
             ], className="field"),
-            html.H3("Squelch"),
-            html.Div([
-                    html.Div("Enable DAQ Squelch (NOT ACTIVE):", className="field-label", id="label_en_squelch"),                                                                 
-                    dcc.Checklist(options=option     , id="en_squelch_mode"   , className="field-body", value=en_squelch_values),
-            ], className="field"),
-            html.Div([
-                    html.Div("Initial Threshold:", className="field-label", id="label_squelch_init_threshold"),                                         
-                    dcc.Input(id='cfg_squelch_init_th', value=daq_cfg_params[6], type='number', debounce=True, className="field-body")
-            ], className="field"),
+            #html.H3("Squelch"),
+            #html.Div([
+            #        html.Div("Enable DAQ Squelch (NOT ACTIVE):", className="field-label", id="label_en_squelch"),                                                                 
+            #        dcc.Checklist(options=option     , id="en_squelch_mode"   , className="field-body", value=en_squelch_values),
+            #], className="field"),
+            #html.Div([
+            #        html.Div("Initial Threshold:", className="field-label", id="label_squelch_init_threshold"),                                         
+            #        dcc.Input(id='cfg_squelch_init_th', value=daq_cfg_params[6], type='number', debounce=True, className="field-body")
+            #], className="field"),
             html.H3("Pre Processing"),
             html.Div([
                     html.Div("CPI Size [sample]:", className="field-label", id="label_cpi_size"),                                         
