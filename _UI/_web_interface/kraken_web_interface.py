@@ -1820,7 +1820,7 @@ def reconfig_daq_chain(input_value, freq, gain):
     
     # Stop signal processing
     webInterface_inst.stop_processing()
-    #time.sleep(2)
+    time.sleep(2)
     webInterface_inst.logger.debug("Signal processing stopped")
 
     # Close control and IQ data interfaces
