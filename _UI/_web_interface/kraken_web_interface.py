@@ -1020,13 +1020,13 @@ def fetch_dsp_data():
                 webInterface_inst.daq_cpi               = int(iq_header.cpi_length*10**3/iq_header.sampling_freq)
                 gain_list_str=""
 
-                print("ACTIVE ANT CHS: " + str(iq_header.active_ant_chs))
+                #print("ACTIVE ANT CHS: " + str(iq_header.active_ant_chs))
 
                 for m in range(iq_header.active_ant_chs):
                     gain_list_str+=str(iq_header.if_gains[m]/10)
                     gain_list_str+=", "
                 
-                print("GAIN LIST STR+ " + gain_list_str)
+                #print("GAIN LIST STR+ " + gain_list_str)
                 webInterface_inst.daq_if_gains          =gain_list_str[:-2]
                 daq_status_update_flag = 1
             elif data_entry[0] == "update_rate":
@@ -1814,18 +1814,22 @@ def reconfig_daq_chain(input_value, freq, gain):
     else:
         webInterface_inst.logger.info("DAQ Subsystem configuration file edited")
 
+    time.sleep(2)
+
     webInterface_inst.daq_restart = 1
     
     #    Restart DAQ Subsystem
     
     # Stop signal processing
     webInterface_inst.stop_processing()
-    time.sleep(2)
     webInterface_inst.logger.debug("Signal processing stopped")
+
+    time.sleep(2)
 
     # Close control and IQ data interfaces
     webInterface_inst.close_data_interfaces()
     webInterface_inst.logger.debug("Data interfaces are closed")
+
 
     os.chdir(daq_subsystem_path)
     # Kill DAQ subsystem
@@ -1837,6 +1841,9 @@ def reconfig_daq_chain(input_value, freq, gain):
     daq_start_script = subprocess.Popen(['bash', daq_start_filename])#, stdout=subprocess.DEVNULL)
     daq_start_script.wait()
     webInterface_inst.logger.debug("DAQ Subsystem restarted")
+
+    #time.sleep(2)
+
 
     os.chdir(root_path)
 
