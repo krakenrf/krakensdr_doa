@@ -1519,8 +1519,8 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
     Input('cfg_daq_buffer_size'      ,'value'),
     Input('cfg_sample_rate'          ,'value'),
     Input('en_noise_source_ctr'      ,'value'),
-    Input('en_squelch_mode'          ,'value'),
-    Input('cfg_squelch_init_th'      ,'value'),
+    #Input('en_squelch_mode'          ,'value'),
+    #Input('cfg_squelch_init_th'      ,'value'),
     Input('cfg_cpi_size'             ,'value'),
     Input('cfg_decimation_ratio'     ,'value'),
     Input('cfg_fir_bw'               ,'value'),
@@ -1545,7 +1545,8 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
 )
 def update_daq_ini_params(
                     cfg_rx_channels,cfg_daq_buffer_size,cfg_sample_rate,en_noise_source_ctr, \
-                    en_squelch_mode,cfg_squelch_init_th,cfg_cpi_size,cfg_decimation_ratio, \
+                    #en_squelch_mode,cfg_squelch_init_th,cfg_cpi_size,cfg_decimation_ratio, \
+                    cfg_cpi_size,cfg_decimation_ratio, \
                     cfg_fir_bw,cfg_fir_tap_size,cfg_fir_window,en_filter_reset,cfg_corr_size, \
                     cfg_std_ch_ind,en_iq_cal,cfg_gain_lock,en_req_track_lock_intervention, \
                     cfg_cal_track_mode,cfg_amplitude_cal_mode,cfg_cal_frame_interval, \
@@ -1558,6 +1559,66 @@ def update_daq_ini_params(
     if ctx.triggered:
         if len(ctx.triggered) == 1: # User manually changed one parameter
             webInterface_inst.tmp_daq_ini_cfg = "Custom"
+
+        # If is was the preconfig changed, just update the preconfig values
+        if component_id == 'daq_cfg_files':
+            webInterface_inst.daq_ini_cfg_params = read_config_file(config_fname)
+            webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0]
+
+            daq_cfg_params = webInterface_inst.daq_ini_cfg_params
+
+            if daq_cfg_params is not None:
+                en_noise_src_values       =[1] if daq_cfg_params[4]  else []
+                en_squelch_values         =[1] if daq_cfg_params[5]  else []
+                en_filter_rst_values      =[1] if daq_cfg_params[12] else []
+                en_iq_cal_values          =[1] if daq_cfg_params[15] else []
+                en_req_track_lock_values  =[1] if daq_cfg_params[17] else []
+
+
+            en_persist_values     =[1] if webInterface_inst.en_persist else []
+            en_pr_values          =[1] if webInterface_inst.module_signal_processor.en_PR else []
+
+            en_advanced_daq_cfg   =[1] if webInterface_inst.en_advanced_daq_cfg                       else []
+
+            cfg_decimated_bw = ((daq_cfg_params[3]) / daq_cfg_params[8]) / 10**3
+            cfg_data_block_len = ( daq_cfg_params[7] / (cfg_decimated_bw) )
+            cfg_recal_interval =  (daq_cfg_params[20] * (cfg_data_block_len/10**3)) / 60
+
+            if daq_cfg_params[18] == 0: #If set to no tracking
+                cfg_recal_interval = 1
+
+            app.push_mods({
+                'cfg_data_block_len': {'value': cfg_data_block_len},
+                'cfg_decimated_bw': {'value': cfg_decimated_bw},
+                'cfg_recal_interval': {'value': cfg_recal_interval},
+
+                'cfg_rx_channels': {'value': daq_cfg_params[1]},
+                'cfg_daq_buffer_size': {'value': daq_cfg_params[2]},
+                'cfg_sample_rate': {'value': daq_cfg_params[3]/10**6},
+                'en_noise_source_ctr': {'value': en_noise_src_values},
+                'cfg_cpi_size': {'value': daq_cfg_params[7]},
+                'cfg_decimation_ratio': {'value': daq_cfg_params[8]},
+                'cfg_fir_bw': {'value': daq_cfg_params[9]},
+                'cfg_fir_tap_size': {'value': daq_cfg_params[10]},
+                'cfg_fir_window': {'value': daq_cfg_params[11]},
+                'en_filter_reset': {'value': en_filter_rst_values},
+                'cfg_cal_frame_interval': {'value': daq_cfg_params[20]},
+                'cfg_corr_size': {'value': daq_cfg_params[13]},
+                'cfg_std_ch_ind': {'value': daq_cfg_params[14]},
+                'en_iq_cal': {'value': en_iq_cal_values},
+                'cfg_gain_lock': {'value': daq_cfg_params[16]},
+                'en_req_track_lock_intervention': {'value': en_req_track_lock_values},
+                'cfg_cal_track_mode': {'value': daq_cfg_params[18]},
+                'cfg_amplitude_cal_mode': {'value': daq_cfg_params[19]},
+                'cfg_cal_frame_interval': {'value': daq_cfg_params[20]},
+                'cfg_cal_frame_burst_size': {'value': daq_cfg_params[21]},
+                'cfg_amplitude_tolerance': {'value': daq_cfg_params[22]},
+                'cfg_phase_tolerance': {'value': daq_cfg_params[23]},
+                'cfg_max_sync_fails': {'value': daq_cfg_params[24]},
+            })
+
+            return Output('dummy_output', 'children', '') #[no_update, no_update, no_update, no_update]
+
 
         # If the input was from basic DAQ config, update the actual DAQ params
         if component_id == "cfg_data_block_len" or component_id == "cfg_decimated_bw" or component_id == "cfg_recal_interval":
@@ -1625,11 +1686,15 @@ def update_daq_ini_params(
         param_list.append(1)
     else:
         param_list.append(0)
-    if en_squelch_mode is not None and len(en_squelch_mode):
-        param_list.append(1)
-    else:
-        param_list.append(0)
-    param_list.append(cfg_squelch_init_th)
+
+    #if en_squelch_mode is not None and len(en_squelch_mode):
+    #    param_list.append(1)
+    #else:
+    param_list.append(0) #en_squelch placeholder
+
+    #param_list.append(cfg_squelch_init_th)
+    param_list.append(0)
+
     param_list.append(cfg_cpi_size)
     param_list.append(cfg_decimation_ratio)
     param_list.append(cfg_fir_bw)
@@ -1686,7 +1751,7 @@ def update_daq_ini_params(
                'cfg_daq_buffer_size': {'value': cfg_daq_buffer_size},
                'cfg_corr_size': {'value': cfg_corr_size},
                'en_noise_source_ctr': {'value': en_noise_source_ctr},
-               'en_squelch_mode': {'value': en_squelch_mode},
+               #'en_squelch_mode': {'value': en_squelch_mode},
                'cfg_fir_bw': {'value': cfg_fir_bw},
                'cfg_fir_window': {'value': cfg_fir_window},
                'en_filter_reset': {'value': en_filter_reset},
