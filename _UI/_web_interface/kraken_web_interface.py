@@ -1019,9 +1019,14 @@ def fetch_dsp_data():
                 webInterface_inst.daq_fs                = iq_header.sampling_freq/10**6
                 webInterface_inst.daq_cpi               = int(iq_header.cpi_length*10**3/iq_header.sampling_freq)
                 gain_list_str=""
+
+                print("ACTIVE ANT CHS: " + str(iq_header.active_ant_chs))
+
                 for m in range(iq_header.active_ant_chs):
                     gain_list_str+=str(iq_header.if_gains[m]/10)
                     gain_list_str+=", "
+                
+                print("GAIN LIST STR+ " + gain_list_str)
                 webInterface_inst.daq_if_gains          =gain_list_str[:-2]
                 daq_status_update_flag = 1
             elif data_entry[0] == "update_rate":
@@ -1839,7 +1844,9 @@ def reconfig_daq_chain(input_value, freq, gain):
     if webInterface_inst.module_receiver.init_data_iface() == -1:
         webInterface_inst.logger.critical("Failed to restart the DAQ data interface")
         webInterface_inst.daq_cfg_ini_error = "Failed to restart the DAQ data interface"
-        return [-1]
+        return Output('dummy_output', 'children', '') #[no_update, no_update, no_update, no_update]
+
+        #return [-1]
 
     # Reset channel number count
     webInterface_inst.module_signal_processor.first_frame = 1
@@ -1848,6 +1855,9 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.start_processing()
     webInterface_inst.logger.debug("Signal processing started")
     webInterface_inst.daq_restart = 0
+
+    webInterface_inst.module_receiver.iq_header.active_ant_chs = webInterface_inst.daq_ini_cfg_params[1]
+
 
     webInterface_inst.daq_cfg_ini_error = ""
     webInterface_inst.active_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0] #webInterface_inst.tmp_daq_ini_cfg
