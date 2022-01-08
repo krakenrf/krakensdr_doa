@@ -1441,7 +1441,7 @@ def plot_spectrum():
     else:
         x_app = []
         y_app = []
-        num_r =  np.size(webInterface_inst.spectrum, 0)
+        num_r = webInterface_inst.module_receiver.M #np.size(webInterface_inst.spectrum, 0)
         for m in range(1, np.size(webInterface_inst.spectrum, 0)): #webInterface_inst.module_receiver.M+1):
             x_app.append(webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6)
             y_app.append(webInterface_inst.spectrum[m, :])
