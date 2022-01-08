@@ -348,6 +348,9 @@ def write_config_file(param_list):
     parser['daq']['daq_buffer_size']=str(param_list[2])
     parser['daq']['sample_rate']=str(param_list[3])
     parser['daq']['en_noise_source_ctr']=str(param_list[4])
+    # Set these for reconfigure
+    parser['daq']['center_freq']=str(int(webInterface_inst.module_receiver.daq_center_freq))
+    #parser['daq']['gain']=str(int(webInterface_inst.module_receiver.daq_rx_gain*10))
 
     parser['squelch']['en_squelch']=str(param_list[5])
     parser['squelch']['amplitude_threshold']=str(param_list[6])
@@ -1020,13 +1023,10 @@ def fetch_dsp_data():
                 webInterface_inst.daq_cpi               = int(iq_header.cpi_length*10**3/iq_header.sampling_freq)
                 gain_list_str=""
 
-                #print("ACTIVE ANT CHS: " + str(iq_header.active_ant_chs))
-
                 for m in range(iq_header.active_ant_chs):
                     gain_list_str+=str(iq_header.if_gains[m]/10)
                     gain_list_str+=", "
                 
-                #print("GAIN LIST STR+ " + gain_list_str)
                 webInterface_inst.daq_if_gains          =gain_list_str[:-2]
                 daq_status_update_flag = 1
             elif data_entry[0] == "update_rate":
@@ -1814,7 +1814,7 @@ def reconfig_daq_chain(input_value, freq, gain):
     else:
         webInterface_inst.logger.info("DAQ Subsystem configuration file edited")
 
-    time.sleep(2)
+    #time.sleep(2)
 
     webInterface_inst.daq_restart = 1
     
@@ -1824,12 +1824,11 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.stop_processing()
     webInterface_inst.logger.debug("Signal processing stopped")
 
-    time.sleep(2)
+    #time.sleep(2)
 
     # Close control and IQ data interfaces
     webInterface_inst.close_data_interfaces()
     webInterface_inst.logger.debug("Data interfaces are closed")
-
 
     os.chdir(daq_subsystem_path)
     # Kill DAQ subsystem
@@ -1842,33 +1841,69 @@ def reconfig_daq_chain(input_value, freq, gain):
     daq_start_script.wait()
     webInterface_inst.logger.debug("DAQ Subsystem restarted")
 
-    #time.sleep(2)
-
+    #time.sleep(3)
 
     os.chdir(root_path)
 
     # Reinitialize receiver data interface
-    if webInterface_inst.module_receiver.init_data_iface() == -1:
-        webInterface_inst.logger.critical("Failed to restart the DAQ data interface")
-        webInterface_inst.daq_cfg_ini_error = "Failed to restart the DAQ data interface"
-        return Output('dummy_output', 'children', '') #[no_update, no_update, no_update, no_update]
+    #if webInterface_inst.module_receiver.init_data_iface() == -1:
+    #    webInterface_inst.logger.critical("Failed to restart the DAQ data interface")
+    #    webInterface_inst.daq_cfg_ini_error = "Failed to restart the DAQ data interface"
+    #    return Output('dummy_output', 'children', '') #[no_update, no_update, no_update, no_update]
 
         #return [-1]
 
     # Reset channel number count
-    webInterface_inst.module_signal_processor.first_frame = 1
+    #webInterface_inst.module_receiver.M = webInterface_inst.daq_ini_cfg_params[1]
+
+    #webInterface_inst.module_receiver.M = 0
+    #webInterface_inst.module_signal_processor.first_frame = 1
+
+    #webInterface_inst.module_receiver.eth_connect()
+    #time.sleep(2)
+    #webInterface_inst.config_daq_rf(webInterface_inst.daq_center_freq, webInterface_inst.module_receiver.daq_rx_gain)
+
+    # Recreate and reinit the receiver and signal processor modules from scratch, keeping current setting values
+    daq_center_freq = webInterface_inst.module_receiver.daq_center_freq
+    daq_rx_gain = webInterface_inst.module_receiver.daq_rx_gain
+    daq_squelch_th_dB = webInterface_inst.module_receiver.daq_squelch_th_dB
+    rec_ip_addr = webInterface_inst.module_receiver.rec_ip_addr
+
+    DOA_ant_alignment = webInterface_inst.module_signal_processor.DOA_ant_alignment
+    DOA_inter_elem_space = webInterface_inst.module_signal_processor.DOA_inter_elem_space
+    en_DOA_estimation = webInterface_inst.module_signal_processor.en_DOA_estimation
+    en_DOA_FB_avg = webInterface_inst.module_signal_processor.en_DOA_FB_avg
+    en_squelch = webInterface_inst.module_signal_processor.en_squelch
+
+    webInterface_inst.module_receiver = ReceiverRTLSDR(data_que=webInterface_inst.rx_data_que, data_interface=settings.data_interface, logging_level=settings.logging_level*10)
+    webInterface_inst.module_receiver.daq_center_freq   = daq_center_freq
+    webInterface_inst.module_receiver.daq_rx_gain       = daq_rx_gain #settings.uniform_gain #daq_rx_gain
+    webInterface_inst.module_receiver.daq_squelch_th_dB = daq_squelch_th_dB
+    webInterface_inst.module_receiver.rec_ip_addr       = rec_ip_addr
+
+    webInterface_inst.module_signal_processor = SignalProcessor(data_que=webInterface_inst.sp_data_que, module_receiver=webInterface_inst.module_receiver, logging_level=settings.logging_level*10)        
+    webInterface_inst.module_signal_processor.DOA_ant_alignment    = DOA_ant_alignment
+    webInterface_inst.module_signal_processor.DOA_inter_elem_space = DOA_inter_elem_space
+    webInterface_inst.module_signal_processor.en_DOA_estimation    = en_DOA_estimation
+    webInterface_inst.module_signal_processor.en_DOA_FB_avg        = en_DOA_FB_avg
+    webInterface_inst.module_signal_processor.en_squelch           = en_squelch
+
+    webInterface_inst.config_doa_in_signal_processor()
+    webInterface_inst.module_signal_processor.start()
+
+    # This must be here, otherwise the gains dont reinit properly?
+    webInterface_inst.module_receiver.M = webInterface_inst.daq_ini_cfg_params[1]
 
     # Restart signal processing
     webInterface_inst.start_processing()
     webInterface_inst.logger.debug("Signal processing started")
     webInterface_inst.daq_restart = 0
 
-    webInterface_inst.module_receiver.iq_header.active_ant_chs = webInterface_inst.daq_ini_cfg_params[1]
+    #time.sleep(2)
 
 
     webInterface_inst.daq_cfg_ini_error = ""
     webInterface_inst.active_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0] #webInterface_inst.tmp_daq_ini_cfg
-
 
     return Output("daq_cfg_files", "value", daq_config_filename), Output("active_daq_ini_cfg", "children", "Active Configuration: " + webInterface_inst.active_daq_ini_cfg)
 
