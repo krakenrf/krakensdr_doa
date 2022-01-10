@@ -11,6 +11,7 @@ Running these two subsystems on separate processing units can grant higher throu
 We have a beta Pi 4 SD card image available at the link below:
 
 **Jan 11 2022 Build:** https://drive.google.com/file/d/1b8fQ4DhZs7FNki7D3vV7c56gWiWgbb2h/view?usp=sharing
+
 Dec 14 2021 Build: https://drive.google.com/file/d/1TTb9UOu3nuPCiMQWc4DCdKDlWTDBfN00/view?usp=sharing
 
 As this is a beta, the code will not autostart on boot and it is intended to be used by those familiar with Linux. For efficiency, the image is terminal only, with no desktop GUI. You can access the terminal either via SSH or by plugging in a HDMI monitor.
