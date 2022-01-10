@@ -8,7 +8,12 @@ Running these two subsystems on separate processing units can grant higher throu
 ## Pi 4 Image QUICKSTART (For Interested KerberosSDR Owners, or beta KrakenSDR Testers)
 
 ### Beta Image
-We have a beta Pi 4 SD card image available here **https://drive.google.com/file/d/1TTb9UOu3nuPCiMQWc4DCdKDlWTDBfN00/view?usp=sharing**. As this is a beta, the code will not autostart on boot and it is intended to be used by those familiar with Linux. For efficiency, the image is terminal only, with no desktop GUI. You can access the terminal either via SSH or by plugging in a HDMI monitor.
+We have a beta Pi 4 SD card image available at the link below:
+
+**Jan 11 2022 Build:** https://drive.google.com/file/d/1b8fQ4DhZs7FNki7D3vV7c56gWiWgbb2h/view?usp=sharing
+Dec 14 2021 Build: https://drive.google.com/file/d/1TTb9UOu3nuPCiMQWc4DCdKDlWTDBfN00/view?usp=sharing
+
+As this is a beta, the code will not autostart on boot and it is intended to be used by those familiar with Linux. For efficiency, the image is terminal only, with no desktop GUI. You can access the terminal either via SSH or by plugging in a HDMI monitor.
 
 To run this code flash the image file to an 8GB or larger SD Card, and login to the terminal with the follow credentials:
 
@@ -28,7 +33,7 @@ For KerberosSDR users you will need to initially flash the EEPROM to use the new
 Once the EEPROM is flashed you can run the code.
 
 ### Running KrakenSDR Software
-Go into the `~/krakensdr` folder and run the `./kraken_doa_start.sh` script. This will automatically start the DAQ and DoA DSP software. After a minute or so you should be able to go to a device on your network, and using a browser browse to the web interface at `krakensdr:8080`. If hostnames are not supported on your network, you can connect via `PI4_IP_ADDRESS:8080`.
+Go into the `~/krakensdr_doa` folder and run the `./kraken_doa_start.sh` script. This will automatically start the DAQ and DoA DSP software. After a minute or so you should be able to go to a device on your network, and using a browser browse to the web interface at `krakensdr:8080`. If hostnames are not supported on your network, you can connect via `PI4_IP_ADDRESS:8080`.
 
 The image is currently set up for the KerberosSDR, but you may wish to double check the `Advanced DAQ Settings` by clicking on that checkbox. Ensure that the `# RX channels` is set to `4`, and the `Calibration Track Mode` is set to `No Tracking`. For the first run we don't recommend making any changes, but if you do, or use one of the preconfig files, ensure that you set these settings back for the KerberosSDR. Clicking on `Reconfigure & Restart DAQ Chain` will restart the system with the changes.
 
@@ -46,7 +51,7 @@ The default active bandwidth in the image is set to 300 kHz. If you need to redu
 
 The image recommended for use and is tested for the Pi 4 only. We strongly recommend using a Pi 4. The Pi 3 can also be used in a pinch, though it will run the code much slower and it may not be fast enough to process fast bursty signals. The initial code run numba JIT compiles will take several minutes as well (first time you click start or enable the squelch), and the spectrum display may lag. To convert the Pi 4 image to a Pi 3 install, you will need to recompile the NE10 ARM DSP library and the Heimdall C DAQ files for the Pi 3 CPU first however. 
 
-As the Pi 3 very quickly thermal throttles, we recommend adding a good heatsink and fan and installing cpufrequtils `sudo apt install cpufrequtils`, and in `~/krakensdr/heimdall_daq_fw/Firmware/daq_start_sm.sh` uncomment `#sudo cpufreq-set -g performance`.
+As the Pi 3 very quickly thermal throttles, we recommend adding a good heatsink and fan and installing cpufrequtils `sudo apt install cpufrequtils`, and in `~/krakensdr_doa/heimdall_daq_fw/Firmware/daq_start_sm.sh` uncomment `#sudo cpufreq-set -g performance`.
 
 Follow the steps above for the Pi 4, but before you run the code you'll need to recompile for the Pi 3 CPU by following the steps in the `Heimdall README` for the `NE10` and `Heimdall Manual Install Compile Instructions`, BUT use the following commands instead:
 
@@ -60,7 +65,7 @@ make
 Then copy the new `libNE10.a` library over.
 
 ``` bash
-cd ~/krakensdr/heimdall_daq_fw/Firmware/_daq_core/
+cd ~/krakensdr_doa/heimdall_daq_fw/Firmware/_daq_core/
 cp ~/Ne10/build/modules/libNE10.a .
 ```
 
