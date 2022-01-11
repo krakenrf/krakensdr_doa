@@ -153,6 +153,8 @@ cp krakensdr_doa/util/kraken_doa_stop.sh .
 
 Please be patient on the first run, at it can take 1-2 minutes for the JIT numba compiler to compile the numba optimized functions, and during this compilation time it may appear that the software has gotten stuck. On subsqeuent runs this loading time will be much faster as it will read from cache.
 
+After starting the script a web based server opens at port number `8080`, which then can be accessed by typing `KRAKEN_IP:8080/` in the address bar of any web browser. You can find the IP address of the KrakenSDR Pi4 wither via your routers WiFi management page, or by typing `ip addr` into the terminal. You can also use the hostname of the Pi4 in place of the IP address, but this only works on local networks, and not the internet, or mobile hotspot networks.
+
 ### Remote operation
 
 *UNTESTED*
@@ -165,8 +167,6 @@ Please be patient on the first run, at it can take 1-2 minutes for the JIT numba
 4. To stop the server and the DSP processing chain run the following script:
 `./kill.sh`
 
-After starting the script a web based server opens at port number `8080`, which then can be accessed by typing `KRAKEN_IP:8080/` in the address bar of any web browser. You can find the IP address of the KrakenSDR Pi4 wither via your routers WiFi management page, or by typing `ip addr` into the terminal. You can also use the hostname of the Pi4 in place of the IP address, but this only works on local networks, and not the internet, or mobile hotspot networks.
-
   ![image info](./doc/kraken_doadsp_main.png)
 
 ## Upcoming Features and Known Bugs
@@ -178,5 +178,7 @@ After starting the script a web based server opens at port number `8080`, which 
 3. [FEATURE] Some users would like to monitor the spectrum, and manually click on an active signal to DF that particular signal. We will be looking at a way to implement this.  
 
 4. [BUG] Sometimes the DOA graphs will not load properly and refreshing the page is required. A fix is being investigated.
+
+5. [FEATURE] A remote control API will be added, allowing advanced users to make configuration changes programmatically and remotely.
 
 This software was 95% developed by Tamas Peto, and makes use of his pyAPRIL and pyARGUS libraries. See his website at www.tamaspeto.com
