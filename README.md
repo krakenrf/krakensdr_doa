@@ -10,7 +10,7 @@ Running these two subsystems on separate processing units can grant higher throu
 ### Beta Image
 We have a beta Pi 4 SD card image available at the link below:
 
-**Jan 11 2022 Build:** https://drive.google.com/file/d/1b8fQ4DhZs7FNki7D3vV7c56gWiWgbb2h/view?usp=sharing (NOTE: KeberosSDR users, please remember to turn off Perioidic Tracking in the Calibration Track Mode setting under Advanced Custom DAQ Configuration, this was left on by mistake in this image. Be sure to click on Reconfigure & Restart DAQ Chain after change that setting to No Tracking.)
+**Jan 11 2022 Build:** https://drive.google.com/file/d/1b8fQ4DhZs7FNki7D3vV7c56gWiWgbb2h/view?usp=sharing (NOTE: KeberosSDR users, please remember to turn off `Perioidic Tracking` in the `Calibration Track Mode` setting under `Advanced Custom DAQ Configuration`, this was left on by mistake in this image. Be sure to click on `Reconfigure & Restart DAQ Chain` after changing that setting to `No Tracking`.)
 
 Dec 14 2021 Build: https://drive.google.com/file/d/1TTb9UOu3nuPCiMQWc4DCdKDlWTDBfN00/view?usp=sharing
 
