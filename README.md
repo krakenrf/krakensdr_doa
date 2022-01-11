@@ -86,6 +86,12 @@ Then run `make` to recompile `heimdall`.
 
 Now you can run the code as normal on the Pi 3.
 
+## Corey Koval Third Party KeberosSDR Switch Support
+
+Corey has created a third party switch addon that he sells on his Tindie store at https://www.tindie.com/stores/lakeshorelabs. This is similar to the switches that the KrakenSDR has, and allows the unit to retune without needing to disconnect antennas for recalibration.
+
+This image has code enabled that allows it to automatically work with the switches. If you connect the switches up to Raspberry Pi in the way that Corey describes in his instructions it should automatically activate and deactivate the switches when required, and the KerberosSDR can approach the functionality of the KrakenSDR.  
+
 ## Manual Installation from a fresh OS
 
 1. Install the prerequisites
