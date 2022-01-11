@@ -181,4 +181,8 @@ After starting the script a web based server opens at port number `8080`, which 
 
 5. [FEATURE] A remote control API will be added, allowing advanced users to make configuration changes programmatically and remotely.
 
+## Support
+
+If you encounter bugs, requests, have questions, or maybe want to show off something you've done with the system, please make use of the GitHub issues system. Any faults or warranty claims for KerberosSDR or KrakenSDR hardware should be directed to our email at thekraken@krakenrf.com
+
 This software was 95% developed by Tamas Peto, and makes use of his pyAPRIL and pyARGUS libraries. See his website at www.tamaspeto.com
