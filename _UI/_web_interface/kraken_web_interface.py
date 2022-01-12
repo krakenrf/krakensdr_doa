@@ -1098,7 +1098,7 @@ def fetch_dsp_data():
         pass
         # Handle task here and call q.task_done()
 
-    if (webInterface_inst.pathname == "/config" or webInterface_inst.pathname == "/") and daq_status_update_flag:
+    if (webInterface_inst.pathname == "/config" or webInterface_inst.pathname == "/" or webInterface_inst.pathname == "/init") and daq_status_update_flag:
         update_daq_status()
     elif webInterface_inst.pathname == "/spectrum" and spectrum_update_flag:
         plot_spectrum()
@@ -1257,7 +1257,7 @@ def display_page(pathname):
     global doa_fig
     webInterface_inst.pathname = pathname
 
-    if pathname == "/":
+    if pathname == "/" or pathname == "/init":
         webInterface_inst.module_signal_processor.en_spectrum = False
         return [generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"]
     elif pathname == "/config":
