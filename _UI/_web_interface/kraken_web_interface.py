@@ -85,7 +85,7 @@ import save_settings as settings
 from krakenSDR_receiver import ReceiverRTLSDR
 from krakenSDR_signal_processor import SignalProcessor
 
-import tooltips
+#import tooltips
 
 class webInterface():
 
@@ -905,9 +905,9 @@ def generate_config_page_layout(webInterface_inst):
 
     config_page_component_list = [daq_config_card, daq_status_card, dsp_config_card, display_options_card,squelch_card]
 
-    if not webInterface_inst.disable_tooltips:
-        config_page_component_list.append(tooltips.dsp_config_tooltips)
-        config_page_component_list.append(tooltips.daq_ini_config_tooltips)
+    #if not webInterface_inst.disable_tooltips:
+    #    config_page_component_list.append(tooltips.dsp_config_tooltips)
+    #    config_page_component_list.append(tooltips.daq_ini_config_tooltips)
 
     return html.Div(children=config_page_component_list)
 
