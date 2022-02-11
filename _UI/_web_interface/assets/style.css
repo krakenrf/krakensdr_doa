@@ -5,6 +5,7 @@ body {
   color:#ffffff;
   margin: 0px;
   padding: 0px;
+  overflow-x: hidden;
 }
 *{
     font-size:18px;
@@ -62,7 +63,7 @@ iframe{
   margin: 5px;
 }
 .header_active, .header a:hover{
-  background-color: #ff6600c0;  
+  background-color: #ff6600c0;
 }
 .ctr_toolbar{
   background-color: #000000;
@@ -70,13 +71,13 @@ iframe{
   width: 100%;
   text-align: center;
 }
-.ctr_toolbar_item {  
+.ctr_toolbar_item {
   text-align: center;
   display   : inline-block;
   position  : relative;
   margin    : 0 auto;
   padding   : 0px;
-  float     : center;  
+  float     : center;
 }
 .doa_check{
   text-align: left;
@@ -131,7 +132,7 @@ iframe{
   font-size:20px;
   text-decoration: none;
   text-align: center;
-  width: 100%;  
+  width: 100%;
 }
 .btn_stop:hover{
   color: rgb(0, 0, 0);
@@ -147,7 +148,7 @@ iframe{
   font-size:20px;
   text-decoration: none;
   text-align: center;
-  width: 100%;  
+  width: 100%;
 }
 .btn_save_cfg:hover{
   color: rgb(154, 233, 102);
@@ -157,7 +158,7 @@ iframe{
   color: rgb(0, 0, 0);
   background-color: #ffffff;
   opacity: 0.95;
-  border-radius:0.2em;  
+  border-radius:0.2em;
   width: 300px;
 }
 .card{
@@ -174,14 +175,14 @@ iframe{
 .monitor_card{
   background-color: #000000;
   border: 0.1em solid #ffffff;
-  border-radius:0.2em;      
-  width: 95%;  
+  border-radius:0.2em;
+  width: 95%;
   height: 800px;
   overflow:scroll;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.46);
-  margin: auto;    
+  margin: auto;
  }
- 
+
 .field{
   width: 400px;
   display: block;
