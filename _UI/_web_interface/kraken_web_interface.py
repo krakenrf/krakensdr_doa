@@ -136,6 +136,16 @@ class webInterface():
         #       UI Status and Config variables      #
         #############################################
 
+        # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
+        self.DOA_data_format = "XML"  # XML, CSV, or JSON
+
+        # Station Information
+        self.station_id = "NO-ID"
+        self.location_source = "None"
+        self.latitude = 0.0
+        self.longitude = 0.0
+        self.heading = 0.0
+
         # DAQ Subsystem status parameters
         self.daq_conn_status = 0
         self.daq_cfg_iface_status = 0  # 0- ready, 1-busy
@@ -225,6 +235,16 @@ class webInterface():
         data["en_advanced_daq_cfg"] = self.en_advanced_daq_cfg
         data["logging_level"] = settings.logging_level
         data["disable_tooltips"] = settings.disable_tooltips
+
+        # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
+        data["doa_data_format"] = settings.doa_data_format  # XML, CSV, or JSON
+
+        # Station Information
+        # data["station_id"] = settings.station_id
+        # data["location_source"] = settings.location_source
+        # data["latitude"] = settings.latitude
+        # data["longitude"] = settings.longitude
+        # data["heading"] = settings.heading
 
         settings.write(data)
 
@@ -928,7 +948,26 @@ def generate_config_page_layout(webInterface_inst):
             html.Div(reconfig_note, id="squelch_reconfig_note", className="field", style={"color": "red"}),
         ], className="card")
 
-    config_page_component_list = [daq_config_card, daq_status_card, dsp_config_card, display_options_card, squelch_card]
+    station_config_card = \
+        html.Div([
+            html.H2("Station Information", id="station_conf_title"),
+            html.Div([
+                html.Div("Station ID:", className="field-label"),
+                dcc.Input(id='station_id_input', value=webInterface_inst.module_signal_processor.station_id, type='text', className="field-body")
+            ]),
+            html.Div([
+                html.Div("DOA Data Format:", className="field-label"),
+                dcc.Dropdown(id='doa_format_type',
+                             options=[
+                                 {'label': 'XML', 'value': 'XML'},
+                                 {'label': 'CSV', 'value': 'CSV'},
+                                 # {'label': 'JSON', 'value': 'JSON'},
+                             ],
+                             value=webInterface_inst.module_signal_processor.DOA_data_format, style={"display": "inline-block"}, className="field-body"),
+            ]),
+        ], className="card")
+
+    config_page_component_list = [daq_config_card, daq_status_card, dsp_config_card, display_options_card, squelch_card, station_config_card]
 
     if not webInterface_inst.disable_tooltips:
         config_page_component_list.append(tooltips.dsp_config_tooltips)
