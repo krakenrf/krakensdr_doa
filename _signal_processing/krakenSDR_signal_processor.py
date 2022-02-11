@@ -26,6 +26,7 @@ import logging
 import threading
 import queue
 import math
+import xml.etree.ElementTree as ET
 
 # Import optimization modules
 import numba as nb
@@ -56,31 +57,31 @@ from pyargus import directionEstimation as de
 # indefinitely when trying to receive data.
 #server.settimeout(0.2)
 
-class SignalProcessor(threading.Thread):
-    
-    def __init__(self, data_que, module_receiver, logging_level=10):
 
+class SignalProcessor(threading.Thread):
+
+    def __init__(self, data_que, module_receiver, logging_level=10):
         """
             Parameters:
             -----------
             :param: data_que: Que to communicate with the UI (web iface/Qt GUI)
             :param: module_receiver: Kraken SDR DoA DSP receiver modules
-        """        
+        """
         super(SignalProcessor, self).__init__()
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging_level)
 
-        root_path      = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-        doa_res_file_path = os.path.join(os.path.join(root_path,"_android_web","DOA_value.html"))        
-        self.DOA_res_fd = open(doa_res_file_path,"w+")
+        root_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        doa_res_file_path = os.path.join(os.path.join(root_path, "_android_web", "DOA_value.html"))
+        self.DOA_res_fd = open(doa_res_file_path, "w+")
 
         self.module_receiver = module_receiver
         self.data_que = data_que
         self.en_spectrum = False
         self.en_record = False
         self.en_DOA_estimation = True
-        self.first_frame = 1 # Used to configure local variables from the header fields
-        self.processed_signal = np.empty(0)        
+        self.first_frame = 1  # Used to configure local variables from the header fields
+        self.processed_signal = np.empty(0)
 
         # Squelch feature
         self.data_ready = False
@@ -90,53 +91,61 @@ class SignalProcessor(threading.Thread):
         self.raw_signal_amplitude = np.empty(0)
         self.filt_signal = np.empty(0)
         self.squelch_mask = np.empty(0)
-                
+
         # DOA processing options
         self.en_DOA_Bartlett = False
-        self.en_DOA_Capon    = False
-        self.en_DOA_MEM      = False
-        self.en_DOA_MUSIC    = False
-        self.en_DOA_FB_avg   = False
-        self.DOA_offset      = 0
+        self.en_DOA_Capon = False
+        self.en_DOA_MEM = False
+        self.en_DOA_MUSIC = False
+        self.en_DOA_FB_avg = False
+        self.DOA_offset = 0
         self.DOA_inter_elem_space = 0.5
-        self.DOA_ant_alignment    = "ULA"
-        self.DOA_theta =  np.linspace(0,359,360)
+        self.DOA_ant_alignment = "ULA"
+        self.DOA_theta = np.linspace(0, 359, 360)
 
-            
-        # Processing parameters        
-        self.spectrum_window_size = 2048 #1024
+        # Processing parameters
+        self.spectrum_window_size = 2048  # 1024
         self.spectrum_window = "hann"
         self.run_processing = False
-        self.is_running = False 
-
+        self.is_running = False
 
         self.channel_number = 4  # Update from header
-        
+
         # Result vectors
         self.DOA_Bartlett_res = np.ones(181)
         self.DOA_Capon_res = np.ones(181)
         self.DOA_MEM_res = np.ones(181)
         self.DOA_MUSIC_res = np.ones(181)
-        self.DOA_theta = np.arange(0,181,1)
+        self.DOA_theta = np.arange(0, 181, 1)
 
         self.max_index = 0
         self.max_frequency = 0
         self.fft_signal_width = 0
 
-        self.DOA_theta =  np.linspace(0,359,360)
+        self.DOA_theta = np.linspace(0, 359, 360)
 
-        self.spectrum = None #np.ones((self.channel_number+2,N), dtype=np.float32)
+        self.spectrum = None  # np.ones((self.channel_number+2,N), dtype=np.float32)
         self.spectrum_upd_counter = 0
 
+        # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
+        self.DOA_data_format = "XML"  # XML, CSV, or JSON
+
+        # Location parameters
+        self.station_id = "NOCALL"
+        self.latitude = 0.0
+        self.longitude = 0.0
+        self.heading = 0.0
+        self.altitude = 0.0
+        self.speed = 0.0
 
     def run(self):
         """
-            Main processing thread        
+            Main processing thread
         """
         while True:
             self.is_running = False
             time.sleep(1)
-            while self.run_processing:  
+            while self.run_processing:
                 self.is_running = True
 
                 que_data_packet = []
@@ -146,20 +155,20 @@ class SignalProcessor(threading.Thread):
                 self.module_receiver.get_iq_online()
 
                 # Check frame type for processing
-                en_proc = (self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_DATA)# or \
-                          #(self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_CAL)# For debug purposes
+                en_proc = (self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_DATA)  # or \
+                #(self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_CAL)# For debug purposes
                 """
                     You can enable here to process other frame types (such as call type frames)
                 """
 
-                que_data_packet.append(['iq_header',self.module_receiver.iq_header])
+                que_data_packet.append(['iq_header', self.module_receiver.iq_header])
                 self.logger.debug("IQ header has been put into the data que entity")
 
                 # Configure processing parameteres based on the settings of the DAQ chain
                 if self.first_frame:
                     self.channel_number = self.module_receiver.iq_header.active_ant_chs
                     self.spectrum_upd_counter = 0
-                    self.spectrum = np.ones((self.channel_number+2, self.spectrum_window_size), dtype=np.float32)
+                    self.spectrum = np.ones((self.channel_number + 2, self.spectrum_window_size), dtype=np.float32)
                     self.first_frame = 0
 
                 decimation_factor = 1
@@ -170,7 +179,7 @@ class SignalProcessor(threading.Thread):
                     self.processed_signal = self.module_receiver.iq_samples.copy()
                     self.data_ready = True
 
-                    first_decimation_factor = 1 #480
+                    first_decimation_factor = 1  # 480
 
                     # TESTING: DSP side main decimation - significantly slower than NE10 but it works ok-ish
                     #decimated_signal = signal.decimate(self.processed_signal, first_decimation_factor, n = 584, ftype='fir', zero_phase=True) #first_decimation_factor * 2, ftype='fir')
@@ -181,90 +190,87 @@ class SignalProcessor(threading.Thread):
                     N = self.spectrum_window_size
 
                     N_perseg = 0
-                    N_perseg = min(N, len(self.processed_signal[0,:])//25)
+                    N_perseg = min(N, len(self.processed_signal[0, :]) // 25)
                     N_perseg = N_perseg // 1
-
 
                     for m in range(self.channel_number):
                         # Get power spectrum
-                        f, Pxx_den = signal.welch(self.processed_signal[m, :], self.module_receiver.iq_header.sampling_freq//first_decimation_factor,
-                                                nperseg=N_perseg,
-                                                nfft=N,
-                                                noverlap=int(N_perseg*0.25),
-                                                detrend=False,
-                                                return_onesided=False,
-                                                window= ('tukey', 0.25), #tukey window gives better time resolution for squelching #self.spectrum_window, #('tukey', 0.25), #self.spectrum_window, 
-                                                #window=self.spectrum_window,
-                                                scaling="spectrum")
+                        f, Pxx_den = signal.welch(self.processed_signal[m, :], self.module_receiver.iq_header.sampling_freq // first_decimation_factor,
+                                                  nperseg=N_perseg,
+                                                  nfft=N,
+                                                  noverlap=int(N_perseg * 0.25),
+                                                  detrend=False,
+                                                  return_onesided=False,
+                                                  window=('tukey', 0.25),  # tukey window gives better time resolution for squelching #self.spectrum_window, #('tukey', 0.25), #self.spectrum_window,
+                                                  #window=self.spectrum_window,
+                                                  scaling="spectrum")
 
-                        self.spectrum[1+m,:] = np.fft.fftshift(10*np.log10(Pxx_den))
+                        self.spectrum[1 + m, :] = np.fft.fftshift(10 * np.log10(Pxx_den))
                     #self.spectrum[1:self.module_receiver.iq_header.active_ant_chs+1,:] = np.fft.fftshift(10*np.log10(Pxx_den))
 
-                    self.spectrum[0,:] = np.fft.fftshift(f)
+                    self.spectrum[0, :] = np.fft.fftshift(f)
 
-                    max_ch = np.argmax(np.max(self.spectrum[1:self.module_receiver.iq_header.active_ant_chs+1,:], axis=1)) # Find the channel that had the max amplitude
-                    max_amplitude = np.max(self.spectrum[1+max_ch, :]) #Max amplitude out of all 5 channels
-                    max_spectrum = self.spectrum[1+max_ch, :] #Send max ch to channel centering
+                    max_ch = np.argmax(np.max(self.spectrum[1:self.module_receiver.iq_header.active_ant_chs + 1, :], axis=1))  # Find the channel that had the max amplitude
+                    max_amplitude = np.max(self.spectrum[1 + max_ch, :])  # Max amplitude out of all 5 channels
+                    max_spectrum = self.spectrum[1 + max_ch, :]  # Send max ch to channel centering
 
-                    que_data_packet.append(['max_amplitude',max_amplitude])
+                    que_data_packet.append(['max_amplitude', max_amplitude])
 
                     #-----> SQUELCH PROCESSING <-----
 
-                    if self.en_squelch:                    
+                    if self.en_squelch:
                         self.data_ready = False
 
                         self.processed_signal, decimation_factor, self.fft_signal_width, self.max_index = \
-                                               center_max_signal(self.processed_signal, self.spectrum[0,:], max_spectrum, self.module_receiver.daq_squelch_th_dB, self.module_receiver.iq_header.sampling_freq)
+                            center_max_signal(self.processed_signal, self.spectrum[0, :], max_spectrum, self.module_receiver.daq_squelch_th_dB, self.module_receiver.iq_header.sampling_freq)
 
                         decimated_signal = []
                         if(decimation_factor > 1):
-                            decimated_signal = signal.decimate(self.processed_signal, decimation_factor, n = decimation_factor * 2, ftype='fir')
-                            self.processed_signal = decimated_signal #.copy()
-
+                            decimated_signal = signal.decimate(self.processed_signal, decimation_factor, n=decimation_factor * 2, ftype='fir')
+                            self.processed_signal = decimated_signal  # .copy()
 
                         #Only update if we're above the threshold
                         if max_amplitude > self.module_receiver.daq_squelch_th_dB:
                             self.data_ready = True
 
-                     
-                    #-----> SPECTRUM PROCESSING <----- 
-                    
+                    #-----> SPECTRUM PROCESSING <-----
+
                     if self.en_spectrum and self.data_ready:
 
-                        spectrum_samples = self.module_receiver.iq_samples #spectrum_signal #self.processed_signal #self.module_receiver.iq_samples #self.processed_signal
+                        spectrum_samples = self.module_receiver.iq_samples  # spectrum_signal #self.processed_signal #self.module_receiver.iq_samples #self.processed_signal
 
                         # Create signal window for plot
 #                        signal_window = np.ones(len(self.spectrum[1,:])) * -100
  #                       signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(self.spectrum[1,:]))] = max(self.spectrum[1,:])
                         signal_window = np.ones(len(max_spectrum)) * -100
-                        signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(max_spectrum))] = max(max_spectrum)
+                        signal_window[max(self.max_index - self.fft_signal_width // 2, 0): min(self.max_index + self.fft_signal_width // 2, len(max_spectrum))] = max(max_spectrum)
 
-                        self.spectrum[self.channel_number+1, :] = signal_window #np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
+                        self.spectrum[self.channel_number + 1, :] = signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
                         que_data_packet.append(['spectrum', self.spectrum])
 
-                    #-----> DoA ESIMATION <----- 
+                    #-----> DoA ESIMATION <-----
                     conf_val = 0
                     theta_0 = 0
                     if self.en_DOA_estimation and self.data_ready and self.channel_number > 1:
-                        self.estimate_DOA()                        
+                        self.estimate_DOA()
                         que_data_packet.append(['doa_thetas', self.DOA_theta])
                         if self.en_DOA_Bartlett:
                             doa_result_log = DOA_plot_util(self.DOA_Bartlett_res)
-                            theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
                             conf_val = calculate_doa_papr(self.DOA_Bartlett_res)
                             que_data_packet.append(['DoA Bartlett', doa_result_log])
                             que_data_packet.append(['DoA Bartlett Max', theta_0])
                             que_data_packet.append(['DoA Bartlett confidence', conf_val])
                         if self.en_DOA_Capon:
                             doa_result_log = DOA_plot_util(self.DOA_Capon_res)
-                            theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
                             conf_val = calculate_doa_papr(self.DOA_Capon_res)
                             que_data_packet.append(['DoA Capon', doa_result_log])
                             que_data_packet.append(['DoA Capon Max', theta_0])
                             que_data_packet.append(['DoA Capon confidence', conf_val])
                         if self.en_DOA_MEM:
                             doa_result_log = DOA_plot_util(self.DOA_MEM_res)
-                            theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                            theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
                             conf_val = calculate_doa_papr(self.DOA_MEM_res)
                             que_data_packet.append(['DoA MEM', doa_result_log])
                             que_data_packet.append(['DoA MEM Max', theta_0])
@@ -280,44 +286,46 @@ class SignalProcessor(threading.Thread):
                         DOA_str = str(int(theta_0))
                         confidence_str = "{:.2f}".format(np.max(conf_val))
                         max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
-                        
-#################################################### 
-                        # KerberosSDR App compatible message output, this will be redundant soon once the new app is published
-
-                        #confidence_str = "{}".format(np.max(int(conf_val*100)))
-                        #max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude+100)))
-
-                        #message = str(int(time.time() * 1000)) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
-                        #html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+confidence_str+"</CONF>\n<PWR>"+max_power_level_str+"</PWR>\n</DATA>"
-                        #self.DOA_res_fd.seek(0)
-                        #self.DOA_res_fd.write(html_str)
-                        #self.DOA_res_fd.truncate()
-                        #self.logger.debug("DoA results writen: {:s}".format(html_str))
-####################################################
-
-#####################################################
-                        #KrakenSDR Android App Output
-                        #TODO: This will change into a JSON output
                         freq = str(self.module_receiver.daq_center_freq)
-                        latency = str(100)
-                        message = str(int(time.time() * 1000)) + ", " \
-                                                               + DOA_str + ", " \
-                                                               + confidence_str + ", " \
-                                                               + max_power_level_str + ", " \
-                                                               + freq + ", " \
-                                                               + self.DOA_ant_alignment + ", " \
-                                                               + latency + ", " \
-                                                               + "R, R, R, R, R, R, R, R, R, R" #Reserve 10 entries for other things
 
-                        for i in range(len(doa_result_log)):
-                            message += ", " + "{:.2f}".format(doa_result_log[i] + np.abs(np.min(doa_result_log)))
+                        confidence_str = "{}".format(np.max(int(conf_val * 100)))
+                        max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude + 100)))
 
-                        self.DOA_res_fd.seek(0)
-                        self.DOA_res_fd.write(message)
-                        self.DOA_res_fd.truncate()
-                        self.logger.debug("DoA results writen: {:s}".format(message))
+                        # message = str(int(time.time() * 1000)) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
+                        station_id = "NOCALL"
+                        latitude = 0.0
+                        longitude = 0.0
+                        heading = 0.0
 
-######################################################
+                        # Kerberos SDR App
+                        data_format = "XML"
+
+                        # KrakenSDR App
+                        #data_format = "CSV"
+
+                        if data_format == "XML":
+                            self.wr_xml(station_id,
+                                        DOA_str,
+                                        confidence_str,
+                                        max_power_level_str,
+                                        freq,
+                                        latitude,
+                                        longitude,
+                                        heading)
+
+                        elif data_format == "CSV":
+                            self.wr_csv(station_id,
+                                        DOA_str,
+                                        confidence_str,
+                                        max_power_level_str,
+                                        freq,
+                                        doa_result_log,
+                                        latitude,
+                                        longitude,
+                                        heading)
+
+                        else:
+                            self.logger.error(f"Invalid DOA Result data format: {data_format}")
 
                     # Record IQ samples
                     if self.en_record:
@@ -325,14 +333,14 @@ class SignalProcessor(threading.Thread):
                         self.logger.error("Saving IQ samples to npy is obsolete, IQ Frame saving is currently not implemented")
 
                 stop_time = time.time()
-                que_data_packet.append(['update_rate', stop_time-start_time])
-                que_data_packet.append(['latency', int(stop_time*10**3)-self.module_receiver.iq_header.time_stamp])
+                que_data_packet.append(['update_rate', stop_time - start_time])
+                que_data_packet.append(['latency', int(stop_time * 10**3) - self.module_receiver.iq_header.time_stamp])
 
                 # If the que is full, and data is ready (from squelching), clear the buffer immediately so that useful data has the priority
                 if self.data_que.full() and self.data_ready:
                     try:
                         #self.logger.info("BUFFER WAS NOT EMPTY, EMPTYING NOW")
-                        self.data_que.get(False) #empty que if not taken yet so fresh data is put in
+                        self.data_que.get(False)  # empty que if not taken yet so fresh data is put in
                     except queue.Empty:
                         #self.logger.info("DIDNT EMPTY")
                         pass
@@ -340,7 +348,7 @@ class SignalProcessor(threading.Thread):
                 # Put data into buffer, but if there is no data because its a cal/trig wait frame etc, then only write if the buffer is empty
                 # Otherwise just discard the data so that we don't overwrite good DATA frames.
                 try:
-                    self.data_que.put(que_data_packet, False) # Must be non-blocking so DOA can update when dash browser window is closed
+                    self.data_que.put(que_data_packet, False)  # Must be non-blocking so DOA can update when dash browser window is closed
                 except:
                     # Discard data, UI couldn't consume fast enough
                     pass
@@ -356,12 +364,12 @@ class SignalProcessor(threading.Thread):
         """
             Estimates the direction of arrival of the received RF signal
         """
-                
+
         # Calculating spatial correlation matrix
-        R = corr_matrix(self.processed_signal) #de.corr_matrix_estimate(self.processed_signal.T, imp="fast")
+        R = corr_matrix(self.processed_signal)  # de.corr_matrix_estimate(self.processed_signal.T, imp="fast")
 
         if self.en_DOA_FB_avg:
-            R=de.forward_backward_avg(R)
+            R = de.forward_backward_avg(R)
 
         M = self.channel_number
 
@@ -377,10 +385,10 @@ class SignalProcessor(threading.Thread):
                 DOA_Capon_res = de.DOA_Capon(R, scanning_vectors)
                 self.DOA_Capon_res = DOA_Capon_res
             if self.en_DOA_MEM:
-                DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)
+                DOA_MEM_res = de.DOA_MEM(R, scanning_vectors, column_select=0)
                 self.DOA_MEM_res = DOA_MEM_res
             if self.en_DOA_MUSIC:
-                DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1) #de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
+                DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension=1)  # de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
                 self.DOA_MUSIC_res = DOA_MUSIC_res
 
         elif self.DOA_ant_alignment == "ULA":
@@ -397,11 +405,71 @@ class SignalProcessor(threading.Thread):
                 DOA_Capon_res = de.DOA_Capon(R, scanning_vectors)
                 self.DOA_Capon_res = DOA_Capon_res
             if self.en_DOA_MEM:
-                DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)
+                DOA_MEM_res = de.DOA_MEM(R, scanning_vectors, column_select=0)
                 self.DOA_MEM_res = DOA_MEM_res
             if self.en_DOA_MUSIC:
-                DOA_MUSIC_res = de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
+                DOA_MUSIC_res = de.DOA_MUSIC(R, scanning_vectors, signal_dimension=1)
                 self.DOA_MUSIC_res = DOA_MUSIC_res
+
+    def wr_xml(self, station_id, doa, conf, pwr, freq,
+               latitude, longitude, heading):
+        epoch_time = int(1000 * round(time.time(), 3))
+        # create the file structure
+        data = ET.Element('DATA')
+        xml_st_id = ET.SubElement(data, 'STATION_ID')
+        xml_time = ET.SubElement(data, 'TIME')
+        xml_freq = ET.SubElement(data, 'FREQUENCY')
+        xml_location = ET.SubElement(data, 'LOCATION')
+        xml_latitide = ET.SubElement(xml_location, 'LATITUDE')
+        xml_longitude = ET.SubElement(xml_location, 'LONGITUDE')
+        xml_heading = ET.SubElement(xml_location, 'HEADING')
+        xml_doa = ET.SubElement(data, 'DOA')
+        xml_pwr = ET.SubElement(data, 'PWR')
+        xml_conf = ET.SubElement(data, 'CONF')
+
+        xml_st_id.text = str(station_id)
+        xml_time.text = str(epoch_time)
+        xml_freq.text = str(freq)
+        xml_latitide.text = str(latitude)
+        xml_longitude.text = str(longitude)
+        xml_heading.text = str(heading)
+        xml_doa.text = doa
+        xml_pwr.text = pwr
+        xml_conf.text = conf
+
+        # create a new XML file with the results
+        html_str = ET.tostring(data, encoding="unicode")
+        self.DOA_res_fd.seek(0)
+        self.DOA_res_fd.write(html_str)
+        self.DOA_res_fd.truncate()
+        # print("Wrote XML")
+
+    def wr_csv(self, station_id, DOA_str, confidence_str, max_power_level_str,
+               freq, doa_result_log, latitude, longitude, heading,):
+        # KrakenSDR Android App Output
+        # TODO: This will change into a JSON output (Or just add it as another option)
+        latency = str(100)
+        message = str(int(time.time() * 1000)) + ", " \
+            + DOA_str + ", " \
+            + confidence_str + ", " \
+            + max_power_level_str + ", " \
+            + freq + ", " \
+            + self.DOA_ant_alignment + ", " \
+            + latency + ", " \
+            + station_id + ", " \
+            + latitude + ", " \
+            + longitude + ", " \
+            + heading + ", " \
+            + "R, R, R, R, R, R"  # Reserve 6 entries for other things
+        # maybe add altitude and speed in the future?
+
+        for i in range(len(doa_result_log)):
+           message += ", " + "{:.2f}".format(doa_result_log[i] + np.abs(np.min(doa_result_log)))
+
+        self.DOA_res_fd.seek(0)
+        self.DOA_res_fd.write(message)
+        self.DOA_res_fd.truncate()
+        self.logger.debug("DoA results writen: {:s}".format(message))
 
 
 #NUMBA optimized center tracking. Gives a mild speed boost ~25% faster.
@@ -418,10 +486,10 @@ def center_max_signal(processed_signal, frequency, fft_spectrum, threshold, samp
 
     # Auto shift peak frequency center of spectrum, this frequency will be decimated:
     # https://pysdr.org/content/filters.html
-    f0 = -max_frequency #+10
-    Ts = 1.0/sample_freq
-    t = np.arange(0.0, Ts*len(processed_signal[0, :]), Ts)
-    exponential = np.exp(2j*np.pi*f0*t) # this is essentially a complex sine wave
+    f0 = -max_frequency  # +10
+    Ts = 1.0 / sample_freq
+    t = np.arange(0.0, Ts * len(processed_signal[0, :]), Ts)
+    exponential = np.exp(2j * np.pi * f0 * t)  # this is essentially a complex sine wave
 
     return processed_signal * exponential, decimation_factor, fft_signal_width, max_index
 
@@ -430,48 +498,50 @@ def center_max_signal(processed_signal, frequency, fft_spectrum, threshold, samp
 @njit(fastmath=True, cache=True)
 def DOA_MUSIC(R, scanning_vectors, signal_dimension, angle_resolution=1):
     # --> Input check
-    if R[:,0].size != R[0,:].size:
+    if R[:, 0].size != R[0, :].size:
         print("ERROR: Correlation matrix is not quadratic")
-        return np.ones(1, dtype=nb.c16)*-1 #[(-1, -1j)]
+        return np.ones(1, dtype=nb.c16) * -1  # [(-1, -1j)]
 
-    if R[:,0].size != scanning_vectors[:,0].size:
+    if R[:, 0].size != scanning_vectors[:, 0].size:
         print("ERROR: Correlation matrix dimension does not match with the antenna array dimension")
-        return np.ones(1, dtype=nb.c16)*-2
+        return np.ones(1, dtype=nb.c16) * -2
 
     #ADORT = np.zeros(scanning_vectors[0,:].size, dtype=np.complex) #CHANGE TO nb.c16 for NUMBA
-    ADORT = np.zeros(scanning_vectors[0,:].size, dtype=nb.c16)
-    M = R[:,0].size #np.size(R, 0)
+    ADORT = np.zeros(scanning_vectors[0, :].size, dtype=nb.c16)
+    M = R[:, 0].size  # np.size(R, 0)
 
     # --- Calculation ---
     # Determine eigenvectors and eigenvalues
     sigmai, vi = lin.eig(R)
     sigmai = np.abs(sigmai)
 
-    idx = sigmai.argsort()[::1] # Sort eigenvectors by eigenvalues, smallest to largest
+    idx = sigmai.argsort()[::1]  # Sort eigenvectors by eigenvalues, smallest to largest
     #sigmai = sigmai[idx] # Eigenvalues not used again
-    vi = vi[:,idx]
+    vi = vi[:, idx]
 
     # Generate noise subspace matrix
     noise_dimension = M - signal_dimension
     #E = np.zeros((M, noise_dimension),dtype=np.complex)
-    E = np.zeros((M, noise_dimension),dtype=nb.c16)
+    E = np.zeros((M, noise_dimension), dtype=nb.c16)
     for i in range(noise_dimension):
-        E[:,i] = vi[:,i]
+        E[:, i] = vi[:, i]
 
-    theta_index=0
-    for i in range(scanning_vectors[0,:].size):
+    theta_index = 0
+    for i in range(scanning_vectors[0, :].size):
         S_theta_ = scanning_vectors[:, i]
-        S_theta_  = S_theta_.T
-        ADORT[theta_index] = 1/np.abs(S_theta_.conj().T @ (E @ E.conj().T) @ S_theta_)
+        S_theta_ = S_theta_.T
+        ADORT[theta_index] = 1 / np.abs(S_theta_.conj().T @ (E @ E.conj().T) @ S_theta_)
         theta_index += 1
 
     return ADORT
 
 # Numba optimized version of pyArgus corr_matrix_estimate with "fast". About 2x faster on Pi4
-@njit(fastmath=True, cache=True) #(nb.c8[:,:](nb.c16[:,:]))
+
+
+@njit(fastmath=True, cache=True)  # (nb.c8[:,:](nb.c16[:,:]))
 def corr_matrix(X):
-    M = X[:,0].size
-    N = X[0,:].size
+    M = X[:, 0].size
+    N = X[0, :].size
     #R = np.zeros((M, M), dtype=nb.c8)
     R = np.dot(X, X.conj().T)
     R = np.divide(R, N)
@@ -479,20 +549,23 @@ def corr_matrix(X):
 
 # Numba optimized scanning vectors generation for UCA arrays. About 10x faster on Pi4
 # LRU cache memoize about 1000x faster.
+
+
 @lru_cache(maxsize=8)
 def uca_scanning_vectors(M, DOA_inter_elem_space):
 
-    thetas =  np.linspace(0,359,360) # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
+    thetas = np.linspace(0, 359, 360)  # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
 
-    x = DOA_inter_elem_space * np.cos(2*np.pi/M * np.arange(M))
-    y = -DOA_inter_elem_space * np.sin(2*np.pi/M * np.arange(M)) # For this specific array only
+    x = DOA_inter_elem_space * np.cos(2 * np.pi / M * np.arange(M))
+    y = -DOA_inter_elem_space * np.sin(2 * np.pi / M * np.arange(M))  # For this specific array only
 
     scanning_vectors = np.zeros((M, thetas.size), dtype=np.complex)
     for i in range(thetas.size):
-        scanning_vectors[:,i] = np.exp(1j*2*np.pi* (x*np.cos(np.deg2rad(thetas[i])) + y*np.sin(np.deg2rad(thetas[i]))))
+        scanning_vectors[:, i] = np.exp(1j * 2 * np.pi * (x * np.cos(np.deg2rad(thetas[i])) + y * np.sin(np.deg2rad(thetas[i]))))
 
     return scanning_vectors
    # scanning_vectors = de.gen_scanning_vectors(M, x, y, self.DOA_theta)
+
 
 @njit(fastmath=True, cache=True)
 def DOA_plot_util(DOA_data, log_scale_min=-100):
@@ -503,18 +576,20 @@ def DOA_plot_util(DOA_data, log_scale_min=-100):
         - Changes to log scale
     """
 
-    DOA_data = np.divide(np.abs(DOA_data), np.max(np.abs(DOA_data))) # Normalization
-    DOA_data = 10*np.log10(DOA_data) # Change to logscale
+    DOA_data = np.divide(np.abs(DOA_data), np.max(np.abs(DOA_data)))  # Normalization
+    DOA_data = 10 * np.log10(DOA_data)  # Change to logscale
 
-    for i in range(len(DOA_data)): # Remove extremely low values
+    for i in range(len(DOA_data)):  # Remove extremely low values
         if DOA_data[i] < log_scale_min:
             DOA_data[i] = log_scale_min
 
     return DOA_data
 
+
 @njit(fastmath=True, cache=True)
 def calculate_doa_papr(DOA_data):
-    return 10*np.log10(np.max(np.abs(DOA_data))/np.mean(np.abs(DOA_data)))
+    return 10 * np.log10(np.max(np.abs(DOA_data)) / np.mean(np.abs(DOA_data)))
+
 
 # Old time-domain squelch algorithm (Unused as freq domain FFT with overlaps gives significantly better sensitivity with acceptable time resolution expense
 """
@@ -525,9 +600,9 @@ def calculate_doa_papr(DOA_data):
     burst_stop_index  = len(self.filtered_signal) # CARL FIX: Initialize this to the length of the signal, incase the signal is active the entire time
     self.logger.info("Original burst stop index: {:d}".format(burst_stop_index))
 
-    min_burst_size = K                    
+    min_burst_size = K
     burst_stop_amp_val = 0
-    for n in np.arange(K, len(self.filtered_signal), 1):                        
+    for n in np.arange(K, len(self.filtered_signal), 1):
         if self.filtered_signal[n] < self.squelch_threshold:
             burst_stop_amp_val = self.filtered_signal[n]
             burst_stop_index = n
@@ -546,12 +621,12 @@ def calculate_doa_papr(DOA_data):
         self.logger.debug("The length of the captured burst size is under the minimum: {:d}".format(burst_stop_index))
         burst_stop_index = 0
 
-    if burst_stop_index !=0:                        
+    if burst_stop_index !=0:
         self.logger.info("INSIDE burst_stop_index != 0")
 
        self.logger.debug("Burst stop index: {:d}".format(burst_stop_index))
        self.logger.debug("Burst stop ampl val: {:f}".format(burst_stop_amp_val))
-       self.squelch_mask = np.zeros(len(self.filtered_signal))                        
+       self.squelch_mask = np.zeros(len(self.filtered_signal))
        self.squelch_mask[0 : burst_stop_index] = np.ones(burst_stop_index)*self.squelch_threshold
        # Next line removes the end parts of the samples after where the signal ended, truncating the array
        self.processed_signal = self.module_receiver.iq_samples[: burst_stop_index, self.squelch_mask == self.squelch_threshold]
@@ -563,9 +638,7 @@ def calculate_doa_papr(DOA_data):
        self.data_ready=True
    else:
        self.logger.info("Signal burst is not found, try to adjust the threshold levels")
-       #self.data_ready=True                            
+       #self.data_ready=True
        self.squelch_mask = np.ones(len(self.filtered_signal))*self.squelch_threshold
        self.processed_signal = np.zeros([self.channel_number, len(self.filtered_signal)])
 """
-
-
