@@ -25,7 +25,6 @@ import time
 import logging
 import threading
 import queue
-import math
 import xml.etree.ElementTree as ET
 
 # Import optimization modules
@@ -36,7 +35,7 @@ from functools import lru_cache
 # Math support
 import numpy as np
 import numpy.linalg as lin
-#from numba import jit
+# from numba import jit
 
 # Signal processing support
 from scipy import fft
@@ -45,17 +44,17 @@ from scipy.signal import correlate
 from scipy.signal import convolve
 from pyargus import directionEstimation as de
 
-#import socket
+# import socket
 # UDP is useless to us because it cannot work over mobile internet
 
 # Init UDP
-#server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-#server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+# server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+# server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 # Enable broadcasting mode
-#server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+# server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 # Set a timeout so the  socket does not block
 # indefinitely when trying to receive data.
-#server.settimeout(0.2)
+# server.settimeout(0.2)
 
 
 class SignalProcessor(threading.Thread):
@@ -126,6 +125,8 @@ class SignalProcessor(threading.Thread):
 
         self.spectrum = None  # np.ones((self.channel_number+2,N), dtype=np.float32)
         self.spectrum_upd_counter = 0
+
+        self.latency = 100
 
         # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
         self.DOA_data_format = "XML"  # XML, CSV, or JSON
@@ -241,7 +242,7 @@ class SignalProcessor(threading.Thread):
 
                         # Create signal window for plot
 #                        signal_window = np.ones(len(self.spectrum[1,:])) * -100
- #                       signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(self.spectrum[1,:]))] = max(self.spectrum[1,:])
+#                       signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(self.spectrum[1,:]))] = max(self.spectrum[1,:])
                         signal_window = np.ones(len(max_spectrum)) * -100
                         signal_window[max(self.max_index - self.fft_signal_width // 2, 0): min(self.max_index + self.fft_signal_width // 2, len(max_spectrum))] = max(max_spectrum)
 
@@ -327,15 +328,17 @@ class SignalProcessor(threading.Thread):
 
                 stop_time = time.time()
                 que_data_packet.append(['update_rate', stop_time - start_time])
-                que_data_packet.append(['latency', int(stop_time * 10**3) - self.module_receiver.iq_header.time_stamp])
+                self.latency = int(stop_time * 10**3) - self.module_receiver.iq_header.time_stamp
+                que_data_packet.append(['latency', self.latency])
+                # que_data_packet.append(['latency', int(stop_time * 10**3) - self.module_receiver.iq_header.time_stamp])
 
                 # If the que is full, and data is ready (from squelching), clear the buffer immediately so that useful data has the priority
                 if self.data_que.full() and self.data_ready:
                     try:
-                        #self.logger.info("BUFFER WAS NOT EMPTY, EMPTYING NOW")
+                        # self.logger.info("BUFFER WAS NOT EMPTY, EMPTYING NOW")
                         self.data_que.get(False)  # empty que if not taken yet so fresh data is put in
                     except queue.Empty:
-                        #self.logger.info("DIDNT EMPTY")
+                        # self.logger.info("DIDNT EMPTY")
                         pass
 
                 # Put data into buffer, but if there is no data because its a cal/trig wait frame etc, then only write if the buffer is empty
@@ -442,7 +445,7 @@ class SignalProcessor(threading.Thread):
         epoch_time = int(time.time() * 1000)
         # KrakenSDR Android App Output
         # TODO: This will change into a JSON output (Or just add it as another option)
-        latency = str(100)
+        # latency = str(100)
         # message = str(int(time.time() * 1000)) + ", " \
         #     + DOA_str + ", " \
         #     + confidence_str + ", " \
@@ -457,12 +460,12 @@ class SignalProcessor(threading.Thread):
         #     + "R, R, R, R, R, R"  # Reserve 6 entries for other things
         # # maybe add altitude and speed in the future?
         message = f"{epoch_time}, {DOA_str}, {confidence_str}, {max_power_level_str}, "
-        message += f"{freq}, {self.DOA_ant_alignment}, {latency}, {station_id}, "
+        message += f"{freq}, {self.DOA_ant_alignment}, {self.latency}, {station_id}, "
         message += f"{latitude}, {longitude}, {heading}, "
         message += "R, R, R, R, R, R"  # Reserve 6 entries for other things
 
         for i in range(len(doa_result_log)):
-           message += ", " + "{:.2f}".format(doa_result_log[i] + np.abs(np.min(doa_result_log)))
+            message += ", " + "{:.2f}".format(doa_result_log[i] + np.abs(np.min(doa_result_log)))
 
         self.DOA_res_fd.seek(0)
         self.DOA_res_fd.write(message)
@@ -562,7 +565,7 @@ def uca_scanning_vectors(M, DOA_inter_elem_space):
         scanning_vectors[:, i] = np.exp(1j * 2 * np.pi * (x * np.cos(np.deg2rad(thetas[i])) + y * np.sin(np.deg2rad(thetas[i]))))
 
     return scanning_vectors
-   # scanning_vectors = de.gen_scanning_vectors(M, x, y, self.DOA_theta)
+    # scanning_vectors = de.gen_scanning_vectors(M, x, y, self.DOA_theta)
 
 
 @njit(fastmath=True, cache=True)
