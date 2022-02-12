@@ -430,20 +430,6 @@ def get_preconfigs(config_files_path):
 
 
 #############################################
-# Calculate radius from interelement spacing
-#############################################
-def calculate_radius(ant_arrangement_index, freq, ant_meters):
-    wave_length = (299.79 / freq)
-    if ant_arrangement_index == "ULA":
-        ant_spacing = (ant_meters / wave_length)
-
-    elif ant_arrangement_index == "UCA":
-        ant_spacing = ((ant_meters / wave_length) / math.sqrt(2))
-
-    return ant_spacing
-
-
-#############################################
 #          Prepare Dash application         #
 ############################################
 webInterface_inst = webInterface()
@@ -948,13 +934,17 @@ def generate_config_page_layout(webInterface_inst):
             html.Div(reconfig_note, id="squelch_reconfig_note", className="field", style={"color": "red"}),
         ], className="card")
 
+    #--------------------------------
+    # Misc station config parameters
+    #--------------------------------
     station_config_card = \
         html.Div([
             html.H2("Station Information", id="station_conf_title"),
             html.Div([
                 html.Div("Station ID:", className="field-label"),
                 dcc.Input(id='station_id_input', value=webInterface_inst.module_signal_processor.station_id, type='text', className="field-body")
-            ]),
+            ], className="field"),
+            html.Br(),
             html.Div([
                 html.Div("DOA Data Format:", className="field-label"),
                 dcc.Dropdown(id='doa_format_type',
@@ -965,9 +955,36 @@ def generate_config_page_layout(webInterface_inst):
                              ],
                              value=webInterface_inst.module_signal_processor.DOA_data_format, style={"display": "inline-block"}, className="field-body"),
             ]),
+            html.Br(),
+            html.Div([
+                html.Div("Location Source:", className="field-label"),
+                dcc.Dropdown(id='loc_src_dropdown',
+                             options=[
+                                 {'label': 'None', 'value': 'None'},
+                                 {'label': 'Static', 'value': 'Static'},
+                                 {'label': 'gpsd', 'value': 'GPS'},
+                             ],
+                             value="None", style={"display": "inline-block"}, className="field-body"),
+            ]),
+            html.Div([
+                html.Div([
+                    html.Div("Latitude:", className="field-label"),
+                    dcc.Input(id='latitude_input', value=webInterface_inst.latitude, type='text', className="field-body")
+                ], className="field"),
+                html.Div([
+                    html.Div("Longitude:", className="field-label"),
+                    dcc.Input(id='longitude_input', value=webInterface_inst.longitude, type='text', className="field-body")
+                ], className="field"),
+                html.Div([
+                    html.Div("Heading:", className="field-label"),
+                    dcc.Input(id='heading_input', value=webInterface_inst.heading, type='text', className="field-body")
+                ], className="field"),
+            ], id="location_fields"),
         ], className="card")
 
-    config_page_component_list = [daq_config_card, daq_status_card, dsp_config_card, display_options_card, squelch_card, station_config_card]
+    config_page_component_list = [daq_config_card, daq_status_card,
+                                  dsp_config_card, display_options_card,
+                                  squelch_card, station_config_card]
 
     if not webInterface_inst.disable_tooltips:
         config_page_component_list.append(tooltips.dsp_config_tooltips)
@@ -1012,6 +1029,13 @@ def generate_doa_page_layout(webInterface_inst):
             )], className="monitor_card"),
     ])
     return doa_page_layout
+
+
+# Return static content
+@app.server.route('/test')
+def readback_test():
+    return "<h1>Hello World!</h1>"
+
 
 #============================================
 #          CALLBACK FUNCTIONS
@@ -1300,6 +1324,12 @@ def update_daq_params(input_value, f0, gain):
     webInterface_inst.daq_center_freq = f0
     webInterface_inst.config_daq_rf(f0, gain)
     return 1
+
+
+@app.callback_shared(None,
+                     [Input(component_id="doa_format_type", component_property='value')])
+def set_doa_format(doa_format):
+    webInterface_inst.module_signal_processor.DOA_data_format = doa_format
 
 
 @app.callback_shared(
@@ -1847,6 +1877,15 @@ def update_daq_ini_params(
 def toggle_adv_daq(toggle_value):
     webInterface_inst.en_advanced_daq_cfg = toggle_value
     if toggle_value:
+        return {'display': 'block'}
+    else:
+        return {'display': 'none'}
+
+
+@app.callback(Output('location_fields', 'style'),
+              [Input('loc_src_dropdown', 'value')])
+def toggle_location_info(toggle_value):
+    if toggle_value == "Static":
         return {'display': 'block'}
     else:
         return {'display': 'none'}

@@ -292,40 +292,33 @@ class SignalProcessor(threading.Thread):
                         max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude + 100)))
 
                         # message = str(int(time.time() * 1000)) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
-                        station_id = "NOCALL"
-                        latitude = 0.0
-                        longitude = 0.0
-                        heading = 0.0
-
-                        # Kerberos SDR App
-                        data_format = "XML"
 
                         # KrakenSDR App
                         #data_format = "CSV"
 
-                        if data_format == "XML":
-                            self.wr_xml(station_id,
+                        if self.DOA_data_format == "XML":
+                            self.wr_xml(self.station_id,
                                         DOA_str,
                                         confidence_str,
                                         max_power_level_str,
                                         freq,
-                                        latitude,
-                                        longitude,
-                                        heading)
+                                        self.latitude,
+                                        self.longitude,
+                                        self.heading)
 
-                        elif data_format == "CSV":
-                            self.wr_csv(station_id,
+                        elif self.DOA_data_format == "CSV":
+                            self.wr_csv(self.station_id,
                                         DOA_str,
                                         confidence_str,
                                         max_power_level_str,
                                         freq,
                                         doa_result_log,
-                                        latitude,
-                                        longitude,
-                                        heading)
+                                        self.latitude,
+                                        self.longitude,
+                                        self.heading)
 
                         else:
-                            self.logger.error(f"Invalid DOA Result data format: {data_format}")
+                            self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
 
                     # Record IQ samples
                     if self.en_record:
@@ -446,22 +439,27 @@ class SignalProcessor(threading.Thread):
 
     def wr_csv(self, station_id, DOA_str, confidence_str, max_power_level_str,
                freq, doa_result_log, latitude, longitude, heading,):
+        epoch_time = int(time.time() * 1000)
         # KrakenSDR Android App Output
         # TODO: This will change into a JSON output (Or just add it as another option)
         latency = str(100)
-        message = str(int(time.time() * 1000)) + ", " \
-            + DOA_str + ", " \
-            + confidence_str + ", " \
-            + max_power_level_str + ", " \
-            + freq + ", " \
-            + self.DOA_ant_alignment + ", " \
-            + latency + ", " \
-            + station_id + ", " \
-            + latitude + ", " \
-            + longitude + ", " \
-            + heading + ", " \
-            + "R, R, R, R, R, R"  # Reserve 6 entries for other things
-        # maybe add altitude and speed in the future?
+        # message = str(int(time.time() * 1000)) + ", " \
+        #     + DOA_str + ", " \
+        #     + confidence_str + ", " \
+        #     + max_power_level_str + ", " \
+        #     + freq + ", " \
+        #     + self.DOA_ant_alignment + ", " \
+        #     + latency + ", " \
+        #     + station_id + ", " \
+        #     + latitude + ", " \
+        #     + longitude + ", " \
+        #     + heading + ", " \
+        #     + "R, R, R, R, R, R"  # Reserve 6 entries for other things
+        # # maybe add altitude and speed in the future?
+        message = f"{epoch_time}, {DOA_str}, {confidence_str}, {max_power_level_str}, "
+        message += f"{freq}, {self.DOA_ant_alignment}, {latency}, {station_id}, "
+        message += f"{latitude}, {longitude}, {heading}, "
+        message += "R, R, R, R, R, R"  # Reserve 6 entries for other things
 
         for i in range(len(doa_result_log)):
            message += ", " + "{:.2f}".format(doa_result_log[i] + np.abs(np.min(doa_result_log)))
