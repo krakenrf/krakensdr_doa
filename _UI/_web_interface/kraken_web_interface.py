@@ -27,6 +27,7 @@ import time
 import subprocess
 import orjson
 import math
+import re
 # Import third-party modules
 
 #Testing dash_devices
@@ -240,11 +241,11 @@ class webInterface():
         data["doa_data_format"] = settings.doa_data_format  # XML, CSV, or JSON
 
         # Station Information
-        # data["station_id"] = settings.station_id
-        # data["location_source"] = settings.location_source
-        # data["latitude"] = settings.latitude
-        # data["longitude"] = settings.longitude
-        # data["heading"] = settings.heading
+        data["station_id"] = self.module_signal_processor.station_id
+        data["location_source"] = self.module_signal_processor.location_source
+        data["latitude"] = self.module_signal_processor.latitude
+        data["longitude"] = self.module_signal_processor.longitude
+        data["heading"] = self.module_signal_processor.heading
 
         settings.write(data)
 
@@ -537,6 +538,7 @@ app.layout = html.Div([
     dcc.Location(id='url', children='/config', refresh=False),
 
     html.Div([html.H1('KrakenSDR - Direction of Arrival Estimation')], style={"text-align": "center"}, className="main_title"),
+    html.Div([html.H2(webInterface_inst.module_signal_processor.station_id)], style={"text-align": "center"}, id="station_header"),  # className="main_title"),
     html.Div([html.A("Configuration", className="header_active", id="header_config", href="/config"),
               html.A("Spectrum", className="header_inactive", id="header_spectrum", href="/spectrum"),
               html.A("DoA Estimation", className="header_inactive", id="header_doa", href="/doa"),
@@ -942,7 +944,9 @@ def generate_config_page_layout(webInterface_inst):
             html.H2("Station Information", id="station_conf_title"),
             html.Div([
                 html.Div("Station ID:", className="field-label"),
-                dcc.Input(id='station_id_input', value=webInterface_inst.module_signal_processor.station_id, type='text', className="field-body")
+                dcc.Input(id='station_id_input',
+                          value=webInterface_inst.module_signal_processor.station_id,
+                          type='text', className="field-body")
             ], className="field"),
             html.Br(),
             html.Div([
@@ -951,9 +955,10 @@ def generate_config_page_layout(webInterface_inst):
                              options=[
                                  {'label': 'XML', 'value': 'XML'},
                                  {'label': 'CSV', 'value': 'CSV'},
-                                 # {'label': 'JSON', 'value': 'JSON'},
+                                 {'label': 'JSON', 'value': 'JSON', 'disabled': True},
                              ],
-                             value=webInterface_inst.module_signal_processor.DOA_data_format, style={"display": "inline-block"}, className="field-body"),
+                             value=webInterface_inst.module_signal_processor.DOA_data_format,
+                             style={"display": "inline-block"}, className="field-body"),
             ]),
             html.Br(),
             html.Div([
@@ -962,22 +967,28 @@ def generate_config_page_layout(webInterface_inst):
                              options=[
                                  {'label': 'None', 'value': 'None'},
                                  {'label': 'Static', 'value': 'Static'},
-                                 {'label': 'gpsd', 'value': 'GPS'},
+                                 {'label': 'GPS', 'value': 'gpsd', 'disabled': True},
                              ],
                              value="None", style={"display": "inline-block"}, className="field-body"),
             ]),
             html.Div([
                 html.Div([
                     html.Div("Latitude:", className="field-label"),
-                    dcc.Input(id='latitude_input', value=webInterface_inst.latitude, type='text', className="field-body")
+                    dcc.Input(id='latitude_input',
+                              value=webInterface_inst.module_signal_processor.latitude,
+                              type='number', className="field-body")
                 ], className="field"),
                 html.Div([
                     html.Div("Longitude:", className="field-label"),
-                    dcc.Input(id='longitude_input', value=webInterface_inst.longitude, type='text', className="field-body")
+                    dcc.Input(id='longitude_input',
+                              value=webInterface_inst.module_signal_processor.longitude,
+                              type='number', className="field-body")
                 ], className="field"),
                 html.Div([
                     html.Div("Heading:", className="field-label"),
-                    dcc.Input(id='heading_input', value=webInterface_inst.heading, type='text', className="field-body")
+                    dcc.Input(id='heading_input',
+                              value=webInterface_inst.module_signal_processor.heading,
+                              type='number', className="field-body")
                 ], className="field"),
             ], id="location_fields"),
         ], className="card")
@@ -1326,10 +1337,38 @@ def update_daq_params(input_value, f0, gain):
     return 1
 
 
+# Set DOA Output Format
 @app.callback_shared(None,
                      [Input(component_id="doa_format_type", component_property='value')])
 def set_doa_format(doa_format):
     webInterface_inst.module_signal_processor.DOA_data_format = doa_format
+
+
+# Update Station ID
+@app.callback_shared(Output(component_id='station_header', component_property='children'),
+                     [Input(component_id='station_id_input', component_property='value')])
+def set_station_id(station_id):
+    valid_id = re.sub('[^A-Za-z0-9\-]+', '-', station_id)
+    webInterface_inst.module_signal_processor.station_id = valid_id
+    return valid_id
+
+
+# @app.callback([Output(component_id='station_header', component_property='children'),
+#               [Input(component_id='station_id_input', component_property='value')])
+# def set_web_station_id(station_id):
+#     valid_id = re.sub('[^A-Za-z0-9\-]+', '-', station_id)
+#     return valid_id
+
+
+# Set location data
+@app.callback_shared(None,
+                     [Input(component_id="latitude_input", component_property='value'),
+                      Input(component_id="longitude_input", component_property='value'),
+                      Input(component_id="heading_input", component_property='value')])
+def set_static_location(lat, lon, heading):
+    webInterface_inst.module_signal_processor.latitude = lat
+    webInterface_inst.module_signal_processor.longitude = lon
+    webInterface_inst.module_signal_processor.heading = heading
 
 
 @app.callback_shared(
@@ -1660,7 +1699,7 @@ def update_daq_ini_params(
     cfg_cal_track_mode, cfg_amplitude_cal_mode, cfg_cal_frame_interval, \
     cfg_cal_frame_burst_size, cfg_amplitude_tolerance, cfg_phase_tolerance, \
     cfg_max_sync_fails, cfg_data_block_len, cfg_decimated_bw, cfg_recal_interval, \
-    config_fname=daq_config_filename):
+        config_fname=daq_config_filename):
     # TODO: Use disctionarry instead of parameter list
 
     ctx = dash.callback_context
