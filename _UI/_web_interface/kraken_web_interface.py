@@ -549,8 +549,9 @@ app.layout = html.Div([
         html.H1('KrakenSDR - Direction of Arrival Estimation')
     ], style={"text-align": "center"}, className="main_title"),
     html.Div([
-        html.H2(webInterface_inst.module_signal_processor.station_id)],
-        style={"text-align": "center"}, id="station_header"),  # className="main_title"),
+        html.H2(webInterface_inst.module_signal_processor.station_id,
+                id="station_header")],
+             style={"text-align": "center"}),  # className="main_title"),
     html.Div([html.A("Configuration", className="header_active", id="header_config", href="/config"),
               html.A("Spectrum", className="header_inactive", id="header_spectrum", href="/spectrum"),
               html.A("DoA Estimation", className="header_inactive", id="header_doa", href="/doa"),
