@@ -22,7 +22,7 @@ Username: `pi`
 
 Password: `krakensdr`
 
-### Connectivity 
+### Connectivity
 Run `sudo raspi-config` to set up your WiFi connection and WiFi country if not using Ethernet. Alternatively, you could connect headlessly by using the `wpa_supplicant` method. Once you're connected, you can login via SSH if desired (or you can continue to use a physical HDMI screen if preferred). You can try connecting to SSH via the hostname `krakensdr`, or if hostnames are not supported by your network you will need to determine the IP address of the Pi 4 either by running the `ip addr` command on the Pi 4, or using your WiFi routers configuration page to find the `krakensdr` device IP.
 
 ### KerberosSDR BOOTING NOTE
@@ -50,7 +50,7 @@ The default active bandwidth in the image is set to 300 kHz. If you need to redu
 
 ## Pi 3 Users
 
-The image recommended for use and is tested for the Pi 4 only. We strongly recommend using a Pi 4. The Pi 3 can also be used in a pinch, though it will run the code much slower and it may not be fast enough to process fast bursty signals. The initial code run numba JIT compiles will take several minutes as well (first time you click start or enable the squelch), and the spectrum display may lag. To convert the Pi 4 image to a Pi 3 install, you will need to recompile the NE10 ARM DSP library and the Heimdall C DAQ files for the Pi 3 CPU first however. 
+The image recommended for use and is tested for the Pi 4 only. We strongly recommend using a Pi 4. The Pi 3 can also be used in a pinch, though it will run the code much slower and it may not be fast enough to process fast bursty signals. The initial code run numba JIT compiles will take several minutes as well (first time you click start or enable the squelch), and the spectrum display may lag. To convert the Pi 4 image to a Pi 3 install, you will need to recompile the NE10 ARM DSP library and the Heimdall C DAQ files for the Pi 3 CPU first however.
 
 As the Pi 3 very quickly thermal throttles, we recommend adding a good heatsink and fan and installing cpufrequtils `sudo apt install cpufrequtils`, and in `~/krakensdr_doa/heimdall_daq_fw/Firmware/daq_start_sm.sh` uncomment `#sudo cpufreq-set -g performance`.
 
@@ -142,6 +142,16 @@ cd ~/krakensdr
 cp krakensdr_doa/util/kraken_doa_start.sh .
 cp krakensdr_doa/util/kraken_doa_stop.sh .
 ```
+5. OPTIONAL: Adding GPS Support
+```bash
+sudo apt install gpsd gpsd-clients
+# Be sure you're in the kraken conda environment, if not activate it.
+# conda activate kraken
+pip3 install gpsd-py3
+```
+If you get this message: "Requirement already satisfied", but gps isn't working
+in the kraken software, you may have installed gpsd-py3 in your base environment.
+If so, uninstall it and try again in your kraken environment.
 
 ## Running
 
@@ -159,7 +169,7 @@ After starting the script a web based server opens at port number `8080`, which 
 
 *UNTESTED*
 
-1. Start the DAQ Subsystem either remotely. (Make sure that the `daq_chain_config.ini` contains the proper configuration) 
+1. Start the DAQ Subsystem either remotely. (Make sure that the `daq_chain_config.ini` contains the proper configuration)
     (See:https://github.com/krakenrf/heimdall_daq_fw/Documentation)
 2. Set the IP address of the DAQ Subsystem in the `settings.json`, `default_ip` field.
 3. Start the DoA DSP software by typing:
