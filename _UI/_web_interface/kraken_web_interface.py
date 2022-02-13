@@ -538,6 +538,7 @@ doa_fig = go.Figure(layout=fig_layout)
 # app = dash.Dash(__name__, suppress_callback_exceptions=True, compress=True, update_title="")
 # cannot use update_title with dash_devices
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app.title = "KrakenSDR"
 
 # app_log = logger.getLogger('werkzeug')
 # app_log.setLevel(settings.logging_level*10)
