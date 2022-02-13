@@ -40,6 +40,7 @@ import re
 
 import dash_core_components as dcc
 import dash_html_components as html
+# import dash_daq as daq # Idk why your fork of Dash doesn't have this
 
 import dash_devices as dash
 from dash_devices.dependencies import Input, Output, State
@@ -967,30 +968,46 @@ def generate_config_page_layout(webInterface_inst):
                              options=[
                                  {'label': 'None', 'value': 'None'},
                                  {'label': 'Static', 'value': 'Static'},
-                                 {'label': 'GPS', 'value': 'gpsd', 'disabled': True},
+                                 {'label': 'GPS', 'value': 'gpsd',
+                                  'disabled': not webInterface_inst.module_signal_processor.hasgps},
                              ],
                              value="None", style={"display": "inline-block"}, className="field-body"),
             ]),
+            html.Div([
+                html.Div("Fixed Heading", className="field-label"),
+                dcc.Checklist(options=option, id="fixed_heading_check",
+                              className="field-body",
+                              value=webInterface_inst.module_signal_processor.fixed_heading),
+                # html.Div("Fixed Heading:", className="field-label"),
+                # daq.BooleanSwitch(id="fixed_heading_check",
+                #                   on=webInterface_inst.module_signal_processor.fixed_heading,
+                #                   label="Use Fixed Heading",
+                #                   labelPosition="right"),
+            ], className="field", id="fixed_heading_div"),
             html.Div([
                 html.Div([
                     html.Div("Latitude:", className="field-label"),
                     dcc.Input(id='latitude_input',
                               value=webInterface_inst.module_signal_processor.latitude,
                               type='number', className="field-body")
-                ], className="field"),
+                ], id="latitude_field", className="field"),
                 html.Div([
                     html.Div("Longitude:", className="field-label"),
                     dcc.Input(id='longitude_input',
                               value=webInterface_inst.module_signal_processor.longitude,
                               type='number', className="field-body")
-                ], className="field"),
-                html.Div([
-                    html.Div("Heading:", className="field-label"),
-                    dcc.Input(id='heading_input',
-                              value=webInterface_inst.module_signal_processor.heading,
-                              type='number', className="field-body")
-                ], className="field"),
+                ], id="logitude_field", className="field"),
             ], id="location_fields"),
+            html.Div([
+                html.Div("Heading:", className="field-label"),
+                dcc.Input(id='heading_input',
+                          value=webInterface_inst.module_signal_processor.heading,
+                          type='number', className="field-body")
+            ], id="heading_field", className="field"),
+            html.Div([
+                html.Div("GPS:", className="field-label"),
+                html.Div("-", id="gps_status", className="field-body")
+            ], id="gps_status_field", className="field"),
         ], className="card")
 
     config_page_component_list = [daq_config_card, daq_status_card,
@@ -1353,22 +1370,74 @@ def set_station_id(station_id):
     return valid_id
 
 
-# @app.callback([Output(component_id='station_header', component_property='children'),
-#               [Input(component_id='station_id_input', component_property='value')])
-# def set_web_station_id(station_id):
-#     valid_id = re.sub('[^A-Za-z0-9\-]+', '-', station_id)
-#     return valid_id
+# Enable GPS Relevant fields
+@app.callback([Output('fixed_heading_div', 'style'),
+               Output('gps_status_field', 'style')],
+              [Input('loc_src_dropdown', 'value')])
+def toggle_gps_fields(toggle_value):
+    if toggle_value == "gpsd":
+        return [{'display': 'block'}, {'display': 'block'}]
+    else:
+        return [{'display': 'none'}, {'display': 'none'}]
+
+
+# Enable or Disable Heading Input Fields
+@app.callback(Output('heading_field', 'style'),
+              [Input('loc_src_dropdown', 'value'),
+               Input(component_id='fixed_heading_check', component_property='value')])
+def toggle_location_info(static_loc, fixed_heading):
+    if static_loc == "Static":
+        webInterface_inst.module_signal_processor.fixed_heading = True
+        print(webInterface_inst.module_signal_processor.hasgps)
+        return {'display': 'block'}
+    elif static_loc == "gpsd" and fixed_heading:
+        return {'display': 'block'}
+    elif static_loc == "None":
+        webInterface_inst.module_signal_processor.fixed_heading = False
+        return {'display': 'none'}
+    else:
+        return {'display': 'none'}
+
+
+# Enable or Disable Location Input Fields
+@app.callback(Output('location_fields', 'style'),
+              [Input('loc_src_dropdown', 'value')])
+def toggle_location_info(toggle_value):
+    if toggle_value == "Static":
+        return {'display': 'block'}
+    else:
+        return {'display': 'none'}
 
 
 # Set location data
 @app.callback_shared(None,
                      [Input(component_id="latitude_input", component_property='value'),
-                      Input(component_id="longitude_input", component_property='value'),
-                      Input(component_id="heading_input", component_property='value')])
-def set_static_location(lat, lon, heading):
+                      Input(component_id="longitude_input", component_property='value')])
+def set_static_location(lat, lon):
     webInterface_inst.module_signal_processor.latitude = lat
     webInterface_inst.module_signal_processor.longitude = lon
+
+
+# Set heading data
+@app.callback_shared(None,
+                     [Input(component_id="heading_input", component_property='value')])
+def set_static_location(heading):
     webInterface_inst.module_signal_processor.heading = heading
+
+
+# Enable GPS
+@app.callback_shared([Output("gps_status", "children"),
+                      Output("gps_status", "style")],
+                     [Input('loc_src_dropdown', 'value')])
+def enable_gps(toggle_value):
+    if toggle_value == "gpsd":
+        status = webInterface_inst.module_signal_processor.enable_gps()
+        if status:
+            return ["Enabled", {"color": "green"}]
+        else:
+            return ["Error", {"color": "red"}]
+    else:
+        return ["-", {"color": "white"}]
 
 
 @app.callback_shared(
@@ -1917,15 +1986,6 @@ def update_daq_ini_params(
 def toggle_adv_daq(toggle_value):
     webInterface_inst.en_advanced_daq_cfg = toggle_value
     if toggle_value:
-        return {'display': 'block'}
-    else:
-        return {'display': 'none'}
-
-
-@app.callback(Output('location_fields', 'style'),
-              [Input('loc_src_dropdown', 'value')])
-def toggle_location_info(toggle_value):
-    if toggle_value == "Static":
         return {'display': 'block'}
     else:
         return {'display': 'none'}

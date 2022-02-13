@@ -44,6 +44,16 @@ from scipy.signal import correlate
 from scipy.signal import convolve
 from pyargus import directionEstimation as de
 
+
+# Make gpsd an optional component
+try:
+    import gpsd
+    hasgps = True
+    print("gpsd Available")
+except ModuleNotFoundError:
+    hasgps = False
+    print("Can't find gpsd")
+
 # import socket
 # UDP is useless to us because it cannot work over mobile internet
 
@@ -59,7 +69,7 @@ from pyargus import directionEstimation as de
 
 class SignalProcessor(threading.Thread):
 
-    def __init__(self, data_que, module_receiver, logging_level=10):
+    def __init__(self, data_que, module_receiver, logging_level=10, hasgps=hasgps):
         """
             Parameters:
             -----------
@@ -135,9 +145,13 @@ class SignalProcessor(threading.Thread):
         self.station_id = "NOCALL"
         self.latitude = 0.0
         self.longitude = 0.0
+        self.fixed_heading = False
         self.heading = 0.0
         self.altitude = 0.0
         self.speed = 0.0
+        self.hasgps = hasgps
+        self.usegps = False
+        self.gps_connected = False
 
     def run(self):
         """
@@ -287,15 +301,15 @@ class SignalProcessor(threading.Thread):
                         DOA_str = str(int(theta_0))
                         confidence_str = "{:.2f}".format(np.max(conf_val))
                         max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
-                        freq = str(self.module_receiver.daq_center_freq)
+                        freq = self.module_receiver.daq_center_freq
 
                         confidence_str = "{}".format(np.max(int(conf_val * 100)))
                         max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude + 100)))
 
                         # message = str(int(time.time() * 1000)) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
 
-                        # KrakenSDR App
-                        #data_format = "CSV"
+                        if self.hasgps:
+                            self.update_location()
 
                         if self.DOA_data_format == "XML":
                             self.wr_xml(self.station_id,
@@ -407,6 +421,32 @@ class SignalProcessor(threading.Thread):
                 DOA_MUSIC_res = de.DOA_MUSIC(R, scanning_vectors, signal_dimension=1)
                 self.DOA_MUSIC_res = DOA_MUSIC_res
 
+    # Enable GPS
+    def enable_gps(self):
+        if self.hasgps:
+            if gpsd.state == {}:
+                gpsd.connect()
+                self.logger.info("Connecting to GPS")
+                self.gps_connected = True
+        else:
+            self.logger.error("You're trying to use GPS, but gpsd-py3 isn't installed")
+
+        return self.gps_connected
+
+    # Get GPS Data
+    def update_location(self):
+        if self.gps_connected:
+            try:
+                packet = gpsd.get_current()
+                self.latitude, self.longitude = packet.position()
+                if not self.fixed_heading:
+                    self.heading = packet.movement().get('track')
+            except (gpsd.NoFixError, UserWarning):
+                self.latitude = self.longitude = 0.0
+                self.heading if self.fixed_heading else 0.0
+        else:
+            self.logger.error("Trying to use GPS, but can't connect to gpsd")
+
     def wr_xml(self, station_id, doa, conf, pwr, freq,
                latitude, longitude, heading):
         epoch_time = int(1000 * round(time.time(), 3))
@@ -425,7 +465,7 @@ class SignalProcessor(threading.Thread):
 
         xml_st_id.text = str(station_id)
         xml_time.text = str(epoch_time)
-        xml_freq.text = str(freq)
+        xml_freq.text = str(freq / 1000000)
         xml_latitide.text = str(latitude)
         xml_longitude.text = str(longitude)
         xml_heading.text = str(heading)
