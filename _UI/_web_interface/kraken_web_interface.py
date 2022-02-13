@@ -1079,9 +1079,23 @@ def generate_config_page_layout(webInterface_inst):
                           type='number', className="field-body")
             ], id="heading_field", className="field"),
             html.Div([
-                html.Div("GPS:", className="field-label"),
-                html.Div("-", id="gps_status", className="field-body")
-            ], id="gps_status_field", className="field"),
+                html.Div([
+                    html.Div("GPS:", className="field-label"),
+                    html.Div("-", id="gps_status", className="field-body")
+                ], id="gps_status_field", className="field"),
+                html.Div([
+                    html.Div("Latitude:", id="label_gps_latitude", className="field-label"),
+                    html.Div("-", id="body_gps_latitude", className="field-body")
+                ], className="field"),
+                html.Div([
+                    html.Div("Longitude:", id="label_gps_longitude", className="field-label"),
+                    html.Div("-", id="body_gps_longitude", className="field-body")
+                ], className="field"),
+                html.Div([
+                    html.Div("Heading:", id="label_gps_heading", className="field-label"),
+                    html.Div("-", id="body_gps_heading", className="field-body")
+                ], className="field"),
+            ], id="gps_status_info")
         ], className="card")
 
     config_page_component_list = [daq_config_card, daq_status_card,
@@ -1149,8 +1163,10 @@ def func(client, connect):
     # print(client, connect, len(app.clients))
     if connect and len(app.clients) == 1:
         fetch_dsp_data()
+        fetch_gps_data()
     elif not connect and len(app.clients) == 0:
         webInterface_inst.dsp_timer.cancel()
+        webInterface_inst.gps_timer.cancel()
 
 
 def fetch_dsp_data():
@@ -1307,6 +1323,17 @@ def fetch_dsp_data():
     webInterface_inst.dsp_timer.start()
 
 
+def fetch_gps_data():
+    app.push_mods({
+        'body_gps_latitude': {'children': webInterface_inst.module_signal_processor.latitude},
+        'body_gps_longitude': {'children': webInterface_inst.module_signal_processor.longitude},
+        'body_gps_heading': {'children': webInterface_inst.module_signal_processor.heading}
+    })
+
+    webInterface_inst.gps_timer = Timer(1, fetch_gps_data)
+    webInterface_inst.gps_timer.start()
+
+
 def update_daq_status():
 
     #############################################
@@ -1449,7 +1476,7 @@ def set_station_id(station_id):
 
 # Enable GPS Relevant fields
 @app.callback([Output('fixed_heading_div', 'style'),
-               Output('gps_status_field', 'style')],
+               Output('gps_status_info', 'style')],
               [Input('loc_src_dropdown', 'value')])
 def toggle_gps_fields(toggle_value):
     if toggle_value == "gpsd":

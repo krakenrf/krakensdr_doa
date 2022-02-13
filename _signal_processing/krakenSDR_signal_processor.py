@@ -440,7 +440,7 @@ class SignalProcessor(threading.Thread):
                 packet = gpsd.get_current()
                 self.latitude, self.longitude = packet.position()
                 if not self.fixed_heading:
-                    self.heading = packet.movement().get('track')
+                    self.heading = round(packet.movement().get('track'), 1)
             except (gpsd.NoFixError, UserWarning):
                 self.latitude = self.longitude = 0.0
                 self.heading if self.fixed_heading else 0.0
