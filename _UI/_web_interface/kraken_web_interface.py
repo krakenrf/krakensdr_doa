@@ -143,14 +143,14 @@ class webInterface():
         #############################################
 
         # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
-        self.DOA_data_format = "XML"  # XML, CSV, or JSON
+        self.module_signal_processor.DOA_data_format = settings.doa_data_format  # XML, CSV, or JSON
 
         # Station Information
-        self.station_id = "NO-ID"
-        self.location_source = "None"
-        self.latitude = 0.0
-        self.longitude = 0.0
-        self.heading = 0.0
+        self.module_signal_processor.station_id = settings.station_id
+        self.location_source = settings.location_source
+        self.module_signal_processor.latitude = settings.latitude
+        self.module_signal_processor.longitude = settings.longitude
+        self.module_signal_processor.heading = settings.heading
 
         # DAQ Subsystem status parameters
         self.daq_conn_status = 0
@@ -247,7 +247,7 @@ class webInterface():
 
         # Station Information
         data["station_id"] = self.module_signal_processor.station_id
-        data["location_source"] = self.module_signal_processor.location_source
+        data["location_source"] = self.location_source
         data["latitude"] = self.module_signal_processor.latitude
         data["longitude"] = self.module_signal_processor.longitude
         data["heading"] = self.module_signal_processor.heading
@@ -1018,14 +1018,14 @@ def generate_config_page_layout(webInterface_inst):
         html.Div([
             html.H2("Station Information", id="station_conf_title"),
             html.Div([
-                html.Div("Station ID:", className="field-label"),
+                html.Div("Station ID:", id="station_id_label", className="field-label"),
                 dcc.Input(id='station_id_input',
                           value=webInterface_inst.module_signal_processor.station_id,
                           type='text', className="field-body")
             ], className="field"),
             html.Br(),
             html.Div([
-                html.Div("DOA Data Format:", className="field-label"),
+                html.Div("DOA Data Format:", id="doa_format_label", className="field-label"),
                 dcc.Dropdown(id='doa_format_type',
                              options=[
                                  {'label': 'XML', 'value': 'XML'},
@@ -1037,7 +1037,7 @@ def generate_config_page_layout(webInterface_inst):
             ]),
             html.Br(),
             html.Div([
-                html.Div("Location Source:", className="field-label"),
+                html.Div("Location Source:", id="location_src_label", className="field-label"),
                 dcc.Dropdown(id='loc_src_dropdown',
                              options=[
                                  {'label': 'None', 'value': 'None'},
@@ -1048,7 +1048,7 @@ def generate_config_page_layout(webInterface_inst):
                              value="None", style={"display": "inline-block"}, className="field-body"),
             ]),
             html.Div([
-                html.Div("Fixed Heading", className="field-label"),
+                html.Div("Fixed Heading", id="fixed_heading_label", className="field-label"),
                 dcc.Checklist(options=option, id="fixed_heading_check",
                               className="field-body",
                               value=en_fixed_heading),
@@ -1105,6 +1105,7 @@ def generate_config_page_layout(webInterface_inst):
     if not webInterface_inst.disable_tooltips:
         config_page_component_list.append(tooltips.dsp_config_tooltips)
         config_page_component_list.append(tooltips.daq_ini_config_tooltips)
+        config_page_component_list.append(tooltips.station_parameters_tooltips)
 
     return html.Div(children=config_page_component_list)
 
@@ -1506,6 +1507,7 @@ def toggle_location_info(static_loc, fixed_heading):
 @app.callback(Output('location_fields', 'style'),
               [Input('loc_src_dropdown', 'value')])
 def toggle_location_info(toggle_value):
+    webInterface_inst.location_source = toggle_value
     if toggle_value == "Static":
         return {'display': 'block'}
     else:
