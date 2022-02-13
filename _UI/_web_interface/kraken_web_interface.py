@@ -1046,7 +1046,7 @@ def generate_config_page_layout(webInterface_inst):
                                  {'label': 'GPS', 'value': 'gpsd',
                                   'disabled': not webInterface_inst.module_signal_processor.hasgps},
                              ],
-                             value="None", style={"display": "inline-block"}, className="field-body"),
+                             value=webInterface_inst.location_source, style={"display": "inline-block"}, className="field-body"),
             ]),
             html.Div([
                 html.Div("Fixed Heading", id="fixed_heading_label", className="field-label"),
