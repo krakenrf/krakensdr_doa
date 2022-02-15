@@ -2203,6 +2203,18 @@ def reconfig_daq_chain(input_value, freq, gain):
     en_DOA_FB_avg = webInterface_inst.module_signal_processor.en_DOA_FB_avg
     en_squelch = webInterface_inst.module_signal_processor.en_squelch
 
+    doa_format = webInterface_inst.module_signal_processor.DOA_data_format
+    doa_station_id = webInterface_inst.module_signal_processor.station_id
+    doa_lat = webInterface_inst.module_signal_processor.latitude
+    doa_lon = webInterface_inst.module_signal_processor.longitude
+    doa_fixed_heading = webInterface_inst.module_signal_processor.fixed_heading
+    doa_heading = webInterface_inst.module_signal_processor.heading
+    #alt
+    #speed
+    doa_hasgps = webInterface_inst.module_signal_processor.hasgps
+    doa_usegps = webInterface_inst.module_signal_processor.usegps
+    doa_gps_connected = webInterface_inst.module_signal_processor.gps_connected
+
     webInterface_inst.module_receiver = ReceiverRTLSDR(data_que=webInterface_inst.rx_data_que, data_interface=settings.data_interface, logging_level=settings.logging_level * 10)
     webInterface_inst.module_receiver.daq_center_freq = daq_center_freq
     webInterface_inst.module_receiver.daq_rx_gain = daq_rx_gain  # settings.uniform_gain #daq_rx_gain
@@ -2215,6 +2227,17 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.module_signal_processor.en_DOA_estimation = en_DOA_estimation
     webInterface_inst.module_signal_processor.en_DOA_FB_avg = en_DOA_FB_avg
     webInterface_inst.module_signal_processor.en_squelch = en_squelch
+    webInterface_inst.module_signal_processor.DOA_data_format = doa_format
+    webInterface_inst.module_signal_processor.station_id = doa_station_id
+    webInterface_inst.module_signal_processor.latitude = doa_lat
+    webInterface_inst.module_signal_processor.longitude = doa_lon
+    webInterface_inst.module_signal_processor.fixed_heading = doa_fixed_heading
+    webInterface_inst.module_signal_processor.heading = doa_heading
+    #alt
+    #speed
+    webInterface_inst.module_signal_processor.hasgps = doa_hasgps
+    webInterface_inst.module_signal_processor.usegps = doa_usegps
+    webInterface_inst.module_signal_processor.gps_connected = doa_gps_connected
 
     webInterface_inst.config_doa_in_signal_processor()
     webInterface_inst.module_signal_processor.start()
