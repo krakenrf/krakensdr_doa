@@ -26,6 +26,11 @@ import queue
 import time
 import subprocess
 import orjson
+import json
+
+import numba as nb
+from numba import jit, njit
+
 # Import third-party modules
 
 #Testing dash_devices
@@ -465,13 +470,15 @@ for m in range(0, webInterface_inst.module_receiver.M+1): #+1 for the auto decim
 
 
 waterfall_init = [[-80] * webInterface_inst.module_signal_processor.spectrum_window_size] * 50
+waterfall_init_x = list(range(0, webInterface_inst.module_signal_processor.spectrum_window_size-1)) #[1] * webInterface_inst.module_signal_processor.spectrum_window_size
 
 waterfall_fig = go.Figure(layout=fig_layout)
 waterfall_fig.add_trace(go.Heatmapgl(
+                         x=waterfall_init_x,
                          z=waterfall_init,
                          zsmooth=False,
                          showscale=False,
-                         hoverinfo='skip',
+                         #hoverinfo='skip',
                          colorscale=[[0.0, '#000020'],
                          [0.0714, '#000030'],
                          [0.1428, '#000050'],
@@ -900,6 +907,34 @@ def generate_config_page_layout(webInterface_inst):
                 html.Div("Squelch threshold [dB] (<0):", className="field-label"),                                         
                 dcc.Input(id='squelch_th', value=webInterface_inst.module_receiver.daq_squelch_th_dB, type='number', debounce=True, className="field-body")
             ], className="field"),
+
+        html.Div([
+                html.Div("Phase Test 1:", className="field-label"),                                         
+                dcc.Input(id='phase_test_1', value=webInterface_inst.module_signal_processor.phasetest[0], type='number', debounce=True, className="field-body")
+            ], className="field"),
+
+        html.Div([
+                html.Div("Phase Test 2:", className="field-label"),                                         
+                dcc.Input(id='phase_test_2', value=webInterface_inst.module_signal_processor.phasetest[1], type='number', debounce=True, className="field-body")
+            ], className="field"),
+
+        html.Div([
+                html.Div("Phase Test 3:", className="field-label"),                                         
+                dcc.Input(id='phase_test_3', value=webInterface_inst.module_signal_processor.phasetest[2], type='number', debounce=True, className="field-body")
+            ], className="field"),
+
+        html.Div([
+                html.Div("Phase Test 4:", className="field-label"),                                         
+                dcc.Input(id='phase_test_4', value=webInterface_inst.module_signal_processor.phasetest[3], type='number', debounce=True, className="field-body")
+            ], className="field"),
+
+        html.Div([
+                html.Div("Phase Test 5", className="field-label"),                                         
+                dcc.Input(id='phase_test_5', value=webInterface_inst.module_signal_processor.phasetest[4], type='number', debounce=True, className="field-body")
+            ], className="field"),
+
+
+
         html.Div(reconfig_note, id="squelch_reconfig_note", className="field", style={"color":"red"}),
     ], className="card")
 
@@ -1236,9 +1271,14 @@ def update_daq_params(input_value, f0, gain):
 @app.callback_shared(
     None,
     [Input(component_id ="en_dsp_squelch_check"      , component_property="value"),
-    Input(component_id ="squelch_th"                , component_property="value")],
+    Input(component_id ="squelch_th"                , component_property="value"),
+    Input(component_id ="phase_test_1"                , component_property="value"),
+    Input(component_id ="phase_test_2"                , component_property="value"),
+    Input(component_id ="phase_test_3"                , component_property="value"),
+    Input(component_id ="phase_test_4"                , component_property="value"),
+    Input(component_id ="phase_test_5"                , component_property="value")],
 )
-def update_squelch_params(en_dsp_squelch, squelch_threshold):
+def update_squelch_params(en_dsp_squelch, squelch_threshold, pt1, pt2, pt3, pt4, pt5):
     if squelch_threshold is None:
         squelch_threshold = 0
     webInterface_inst.module_receiver.daq_squelch_th_dB = squelch_threshold
@@ -1246,6 +1286,14 @@ def update_squelch_params(en_dsp_squelch, squelch_threshold):
         webInterface_inst.module_signal_processor.en_squelch = True
     else:
         webInterface_inst.module_signal_processor.en_squelch = False
+
+    webInterface_inst.module_signal_processor.phasetest[0] = float(pt1)
+    webInterface_inst.module_signal_processor.phasetest[1] = float(pt2)
+    webInterface_inst.module_signal_processor.phasetest[2] = float(pt3)
+    webInterface_inst.module_signal_processor.phasetest[3] = float(pt4)
+    webInterface_inst.module_signal_processor.phasetest[4] = float(pt5)
+
+
 
 @app.callback([Output("page-content"   , "children"),
               Output("header_config"  ,"className"),
@@ -1298,6 +1346,21 @@ def save_config_btn(input_value):
     webInterface_inst.logger.info("Saving DAQ and DSP Configuration")
     webInterface_inst.save_configuration()
 
+@app.callback(
+    None,
+    [Input('spectrum-graph', 'clickData')]
+)
+def click_to_set_freq_spectrum(clickData):
+    webInterface_inst.module_signal_processor.channel_freq = int(clickData["points"][0]["x"])
+    #print("Processing click data." + str(json.dumps(clickData)))
+    #print("Processing click data." + str(clickData["points"][0]["x"]))
+
+@app.callback(
+    None,
+    [Input('waterfall-graph', 'clickData')]
+)
+def click_to_set_freq_spectrum(clickData):
+    webInterface_inst.module_signal_processor.channel_freq = int(clickData["points"][0]["x"])
 
 def plot_doa():
     global doa_fig
@@ -1338,7 +1401,6 @@ def plot_doa():
                                              name=label,
                                              fill= 'toself'
                                              ))
-
 
                 doa_fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
                                            angularaxis = dict(rotation=90,
@@ -1416,11 +1478,13 @@ def plot_spectrum():
                     color='rgba(255,255,255,1)',
                     title_font_size=20,
                     tickfont_size= 15, #figure_font_size,
-                    range=[np.min(x), np.max(x)],
-                    rangemode='normal',
+                    #range=[np.min(x), np.max(x)],
+                    #rangemode='normal',
                     mirror=True,
                     ticks='outside',
-                    showline=True)
+                    showline=True,
+                    #fixedrange=True
+                    )
         spectrum_fig.update_yaxes(title_text="Amplitude [dB]",
                     color='rgba(255,255,255,1)',
                     title_font_size=20,
@@ -1428,14 +1492,50 @@ def plot_spectrum():
                     range=[-90, 0],
                     mirror=True,
                     ticks='outside',
-                    showline=True)
-
+                    showline=True,
+                    #fixedrange=True
+                    )
 
         spectrum_fig.update_layout(margin=go.layout.Margin(b=5, t=0))
+
+        #x=webInterface_inst.spectrum[0,::2] + webInterface_inst.daq_center_freq*10**6
+        x=webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6
+
+        waterfall_init = [[-80] * (webInterface_inst.module_signal_processor.spectrum_window_size//2)] * 50
+        #waterfall_init_x = list(range(0, webInterface_inst.module_signal_processor.spectrum_window_size-1)) #[1] * webInterface_inst.module_signal_processor.spectrum_window_size
+
+        waterfall_fig = go.Figure(layout=fig_layout)
+        waterfall_fig.add_trace(go.Heatmapgl(
+                         x=x,
+                         z=waterfall_init,
+                         zsmooth=False,
+                         showscale=False,
+                         #hoverinfo='none',
+                         colorscale=[[0.0, '#000020'],
+                         [0.0714, '#000030'],
+                         [0.1428, '#000050'],
+                         [0.2142, '#000091'],
+                         [0.2856, '#1E90FF'],
+                         [0.357, '#FFFFFF'],
+                         [0.4284, '#FFFF00'],
+                         [0.4998, '#FE6D16'],
+                         [0.5712, '#FE6D16'],
+                         [0.6426, '#FF0000'],
+                         [0.714, '#FF0000'],
+                         [0.7854, '#C60000'],
+                         [0.8568, '#9F0000'],
+                         [0.9282, '#750000'],
+                         [1.0, '#4A0000']]))
+
+
+        waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], fixedrange=True, showgrid=False)
+        waterfall_fig.update_yaxes(tickfont_size=1, fixedrange=True, showgrid=False)
+        waterfall_fig.update_layout(margin=go.layout.Margin(t=5))
 
         webInterface_inst.reset_spectrum_graph_flag = False
         app.push_mods({
                'spectrum-graph': {'figure': spectrum_fig},
+               'waterfall-graph': {'figure': waterfall_fig},
         })
 
     else:
@@ -1448,11 +1548,21 @@ def plot_spectrum():
 
         update_data = dict(x=x_app, y=y_app)
 
+        x = webInterface_inst.spectrum[1, :]
 
+        #spectrum_size = 1024
+        #x_resamp = np.ones(spectrum_size, dtype=np.float32)
+        #for i in range(1024):
+        #    x_resamp[i] = np.max(x[i*2:2*(i+1)])
+
+        # Numba is about 5x faster
+        #x_resamp = halve_spectrum(x)
+        x_resamp = x
         app.push_mods({
             'spectrum-graph': {'extendData': [update_data, list(range(0,len(webInterface_inst.spectrum)-1)), len(webInterface_inst.spectrum[0,:])]},
-            #'waterfall-graph': {'extendData': [dict(z = [[webInterface_inst.spectrum[1, :]]]), [0], 50]},
-            'waterfall-graph': {'extendData': [dict(z = [[np.sum(webInterface_inst.spectrum[1:num_r+1, :], axis=0)]]), [0], 50]}, #Add up spectrum for waterfall
+            #'waterfall-graph': {'extendData': [dict(z = [[np.sum(webInterface_inst.spectrum[1:num_r+1, ::4], axis=0)]]), [0], 50]}, #Add up spectrum for waterfall
+            'waterfall-graph': {'extendData': [dict(z = [[x_resamp]]), [0], 50]}, #Add up spectrum for waterfall
+            #'waterfall-graph': {'extendData': [dict(z = [[x]]), [0], 50]}, #Add up spectrum for waterfall
         })
 
 @app.callback(
@@ -1906,6 +2016,17 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.active_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0] #webInterface_inst.tmp_daq_ini_cfg
 
     return Output("daq_cfg_files", "value", daq_config_filename), Output("active_daq_ini_cfg", "children", "Active Configuration: " + webInterface_inst.active_daq_ini_cfg)
+
+# Significantly faster with numba once we added nb.prange
+@njit(fastmath=True, cache=True, parallel=True)
+def halve_spectrum(x):
+    spectrum_size = len(x) // 2
+    x_resamp = np.ones(spectrum_size, dtype=np.float32)
+    #group = len(self.spectrum[0,:]) // spectrum_size
+    for i in nb.prange(spectrum_size):
+        x_resamp[i] = np.max(x[i*2:2*(i+1)])
+
+    return x_resamp
 
 if __name__ == "__main__":    
     # For Development only, otherwise use gunicorn    
