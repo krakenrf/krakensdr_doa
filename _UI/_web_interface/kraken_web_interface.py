@@ -1501,7 +1501,8 @@ def plot_spectrum():
         #x=webInterface_inst.spectrum[0,::2] + webInterface_inst.daq_center_freq*10**6
         x=webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6
 
-        waterfall_init = [[-80] * (webInterface_inst.module_signal_processor.spectrum_window_size//2)] * 50
+        #waterfall_init = [[-80] * (webInterface_inst.module_signal_processor.spectrum_window_size)] * 50
+        waterfall_init = [[-80] * 1024] * 50
         #waterfall_init_x = list(range(0, webInterface_inst.module_signal_processor.spectrum_window_size-1)) #[1] * webInterface_inst.module_signal_processor.spectrum_window_size
 
         waterfall_fig = go.Figure(layout=fig_layout)
@@ -1528,8 +1529,8 @@ def plot_spectrum():
                          [1.0, '#4A0000']]))
 
 
-        waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], fixedrange=True, showgrid=False)
-        waterfall_fig.update_yaxes(tickfont_size=1, fixedrange=True, showgrid=False)
+        #waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], fixedrange=True, showgrid=False)
+        #waterfall_fig.update_yaxes(tickfont_size=1, fixedrange=True, showgrid=False)
         waterfall_fig.update_layout(margin=go.layout.Margin(t=5))
 
         webInterface_inst.reset_spectrum_graph_flag = False
