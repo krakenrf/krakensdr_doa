@@ -36,6 +36,7 @@ from functools import lru_cache
 # Math support
 import numpy as np
 import numpy.linalg as lin
+import numexpr as ne
 #from numba import jit
 import pyfftw
 
@@ -277,6 +278,11 @@ class SignalProcessor(threading.Thread):
                                                 scaling="spectrum")
 
                         self.spectrum[1+m,:] = fft.fftshift(10*np.log10(Pxx_den))
+                        start = time.time()
+
+                        end = time.time()
+                        print("time shift log: " + str((end-start)*1000))
+
                     self.spectrum[0,:] = fft.fftshift(f)
 
                     #self.spectrum[1,:] = 10*np.log10(fft.fft(combined_sig, N, workers=4, overwrite_x=True))
@@ -304,10 +310,7 @@ class SignalProcessor(threading.Thread):
                         decimation_factor = max((self.module_receiver.iq_header.sampling_freq // bw), 1)//global_decimation_factor
                         # Shift then FIR decimate method
 
-
                         self.processed_signal = channelize(self.processed_signal, freq, decimation_factor, self.module_receiver.iq_header.sampling_freq//global_decimation_factor)
-
-
 
                         ########################## Method to check IQ diffs when noise source forced ON
                         iq_diffs = calc_sync(self.processed_signal)
@@ -348,11 +351,9 @@ class SignalProcessor(threading.Thread):
                         # Create signal window for plot
 #                        signal_window = np.ones(len(self.spectrum[1,:])) * -100
  #                       signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(self.spectrum[1,:]))] = max(self.spectrum[1,:])
-
                         signal_window = np.ones(len(max_spectrum)) * -100
                         #signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(max_spectrum))] = max(max_spectrum)
                         signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(max_spectrum))] = max_amplitude
-
                         self.spectrum[self.channel_number+1, :] = signal_window #np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
 
                         spectrum_size = 1024 #2048
@@ -423,6 +424,7 @@ class SignalProcessor(threading.Thread):
 #####################################################
                         #KrakenSDR Android App Output
                         #TODO: This will change into a JSON output
+                        
                         freq = str(self.module_receiver.daq_center_freq)
                         latency = str(100)
                         message = str(int(time.time() * 1000)) + ", " \
@@ -434,13 +436,16 @@ class SignalProcessor(threading.Thread):
                                                                + latency + ", " \
                                                                + "R, R, R, R, R, R, R, R, R, R" #Reserve 10 entries for other things
 
+                        doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
                         for i in range(len(doa_result_log)):
-                            message += ", " + "{:.2f}".format(doa_result_log[i] + np.abs(np.min(doa_result_log)))
-
+                            message += ", " + "{:.2f}".format(doa_result_log[i])
+                        
                         self.DOA_res_fd.seek(0)
                         self.DOA_res_fd.write(message)
                         self.DOA_res_fd.truncate()
                         self.logger.debug("DoA results writen: {:s}".format(message))
+
+
 
 ######################################################
 
@@ -483,7 +488,7 @@ class SignalProcessor(threading.Thread):
         """
 
         # Calculating spatial correlation matrix
-        R = corr_matrix(self.processed_signal.copy()).copy() #de.corr_matrix_estimate(self.processed_signal.T, imp="fast")
+        R = corr_matrix(self.processed_signal) #de.corr_matrix_estimate(self.processed_signal.T, imp="fast")
 
         if self.en_DOA_FB_avg:
             R=de.forward_backward_avg(R)
@@ -527,7 +532,6 @@ class SignalProcessor(threading.Thread):
             if self.en_DOA_MUSIC:
                 DOA_MUSIC_res = de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
                 self.DOA_MUSIC_res = DOA_MUSIC_res
-
 
 
 def calc_sync(iq_samples):
@@ -633,8 +637,10 @@ def get_exponential(freq, sample_freq, sig_len):
 
     return np.ascontiguousarray(exponential)
 
+#def numba_mult(a,b):
+#    return ne.evaluate('a*b')
+
 @njit(fastmath=True, cache=True, parallel=True)
-#@njit(fastmath=True, cache=True)
 def numba_mult(a,b):
     return a*b
 
