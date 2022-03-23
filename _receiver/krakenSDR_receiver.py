@@ -204,7 +204,7 @@ class ReceiverRTLSDR():
             if incoming_payload_size > 0:
                 iq_samples_in = (buffer[1024:1024 + incoming_payload_size].view(dtype=np.complex64))\
                                 .reshape(self.iq_header.active_ant_chs, self.iq_header.cpi_length)
-                self.iq_samples = iq_samples_in.copy() # Must be .copy
+                self.iq_samples = iq_samples_in #.copy() # Must be .copy
 
             self.in_shmem_iface.send_ctr_buff_ready(active_buff_index)
 
@@ -345,6 +345,10 @@ class ReceiverRTLSDR():
                 self.logger.error("Unable to start communication thread")
                 self.logger.error("Error message: {:s}".format(errorMsg))
     
+
+#    def set_offset(self, offset):
+#        cmd="OFST"
+
     def set_if_gain(self, gain):
         """
             Configures the IF gain of the receiver through the control interface

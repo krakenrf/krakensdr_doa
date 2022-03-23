@@ -21,6 +21,10 @@
 # Import built-in modules
 import sys
 import os
+os.environ['OPENBLAS_NUM_THREADS'] = '4'
+os.environ['NUMBA_CPU_NAME'] = 'cortex-a72'
+os.environ['NUMBA_OPT'] = '4'
+
 import time
 import logging
 import threading
@@ -32,6 +36,12 @@ import copy
 import numba as nb
 from numba import jit, njit
 from functools import lru_cache
+from joblib import Parallel, delayed
+import multiprocessing
+
+import jax
+import jax.scipy.signal as jsignal
+import jax.numpy as jnp
 
 # Math support
 import numpy as np
@@ -114,7 +124,7 @@ class SignalProcessor(threading.Thread):
 
             
         # Processing parameters        
-        self.spectrum_window_size = fft.next_fast_len(16384) #16384 #2048 #8192 #2048 #8192 #4096 #2048 #1024
+        self.spectrum_window_size = fft.next_fast_len(4096) #16384) #16384 #2048 #8192 #2048 #8192 #4096 #2048 #1024
         self.spectrum_window = "hann"
         self.run_processing = False
         self.is_running = False 
@@ -142,8 +152,6 @@ class SignalProcessor(threading.Thread):
         self.corrections = np.zeros((self.channel_number, 16384), dtype=np.complex64)
 
 
-        os.environ['NUMBA_CPU_NAME'] = 'cortex-a72'
-        os.environ['NUMBA_OPT'] = '4'
 
     def run(self):
         """
@@ -155,6 +163,10 @@ class SignalProcessor(threading.Thread):
         #pyfftw.interfaces.cache.enable()
         
         scipy.fft.set_workers(4)
+
+        #fir_filt, b = signal.firwin(65, 1. / 2, window='hann'), 1.
+        #fir_filt = np.ascontiguousarray(fir_filt)
+        #parallel = Parallel(n_jobs=4, backend="threading")
 
         while True:
             self.is_running = False
@@ -170,7 +182,6 @@ class SignalProcessor(threading.Thread):
                 self.module_receiver.get_iq_online()
 
                 start_time = time.time()
-
 
                 # Check frame type for processing
                 en_proc = (self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_DATA)# or \
@@ -197,54 +208,20 @@ class SignalProcessor(threading.Thread):
 
                 if en_proc:
 
+
                     self.processed_signal = np.ascontiguousarray(self.module_receiver.iq_samples) #self.module_receiver.iq_samples.copy()
 
                     global_decimation_factor = max(int(self.phasetest[0]), 1) #ps_len // 65536 #int(self.phasetest[0]) + 1
 
+                    #for m in range(0, self.channel_number-1):
+                        #self.processed_signal[m,:] = signal.oaconvolve(self.processed_signal[m,:], fir_filt, mode='same') #signal.lfilter(fir_filt, 1., self.processed_signal)
+                        #self.processed_signal[m,:] = np.convolve(self.processed_signal[m,:], fir_filt, mode='same') #signal.lfilter(fir_filt, 1., self.processed_signal)
+ 
                     if global_decimation_factor > 1:
                         self.processed_signal = signal.decimate(self.processed_signal, global_decimation_factor, n = global_decimation_factor * 2, ftype='fir')
-                    """
-                    # DSP SIDE FULL SPECTRUM CORRECTION TESTS: THIS MOVES OVER TO DELAY_SYNC.PY WHEN DONE
-                    # CAN WE DO THIS WITHOUT FFTS??
-                    if int(self.phasetest[1]) == 0:
-                        std_ch_phase = np.angle(fft.fft(self.processed_signal[0,:],  workers=4))
-                        #corrections = np.zeros((self.channel_number, len(self.processed_signal[0,:])), dtype=np.complex64)
-                        for m in range(1,5):
-                            ch_fft = fft.fft(self.processed_signal[m,:], workers=4)
-                            ch_phase = np.angle(ch_fft)
-                            phase_diff = ch_phase - std_ch_phase
-                            self.corrections[m,:] = np.exp(-1j*phase_diff) #fft.ifft(numba_mult(ch_fft, np.exp(-1j*phase_diff)), workers=4, overwrite_x = True) / self.processed_signal[m,:]
 
-                    ch_fft = fft.fft(self.processed_signal[1:5, :], workers=4, axis=1)
-                    self.processed_signal[1:5,:] = fft.ifft(numba_mult(ch_fft, self.corrections[1:5,:]), workers=4, overwrite_x = True)
-                    # Alterantive convolutional method, but it's slow
-                    #sample_len = len(self.processed_signal[0, :])
-                    #self.processed_signal[1,:] = signal.oaconvolve(self.processed_signal[1, :], np.tile(self.corrections[1,:],2))[sample_len:2 * sample_len]
-                    """
                     ps_len = len(self.processed_signal[0,:])
                     avg = int(self.phasetest[0]) + 1 #ps_len // 65536 #int(self.phasetest[0]) + 1
-                    """
-                    processed_signal_avg = np.zeros((self.channel_number, ps_len//avg), dtype=np.complex64)
-                    for m in range(self.channel_number):
-                        #ps_avg = self.processed_signal[m, 0:ps_len//avg]
-
-                        for i in range(0, avg):
-                            processed_signal_avg[m,:] += self.processed_signal[m, ps_len//avg * i: ps_len//avg * (i+1)]
-
-                    processed_signal_avg /= avg
-                        #ps_avg /= avg
-                        #processed_signal_avg[m, :] = ps_avg.copy()
- 
-                    self.processed_signal = processed_signal_avg #.copy()
-                    """
-
-                    #if abs(self.channel_freq - self.module_receiver.daq_center_freq) > self.module_receiver.iq_header.sampling_freq/2:
-                    #    self.channel_freq = self.module_receiver.daq_center_freq
-
-                    #freq = self.channel_freq - self.module_receiver.daq_center_freq #63500
-                    #bw = 32500
-                    #decimation_factor = max((self.module_receiver.iq_header.sampling_freq // bw), 1)//global_decimation_factor
-                    #self.processed_signal = channelize(self.processed_signal, freq, decimation_factor, self.module_receiver.iq_header.sampling_freq//global_decimation_factor)
 
                     self.data_ready = True
                     max_amplitude = -100
@@ -252,38 +229,36 @@ class SignalProcessor(threading.Thread):
 
                     N_perseg = N #2048
 
-                    #a = self.processed_signal
-                    #max_channel = np.sum(np.abs(a),axis=1).argmax()
-                    #combined_sig = self.processed_signal[max_channel, :] #a[np.abs(a) == np.max(np.abs(a), axis=0)] #np.abs(self.processed_signal, axis=0)
-                    #combined_sig = np.mean(self.processed_signal, axis=0) #a[np.abs(a) == np.max(np.abs(a), axis=0)] #np.abs(self.processed_signal, axis=0)
-
                     combined_sig = self.processed_signal[1,:] #combine_channels(self.processed_signal)
                     #for m in range(self.channel_number): #range(1): #range(self.channel_number):
                     #for m in range(1): #range(1): #range(self.channel_number):
                     m = 0
-                    with fft.set_workers(4):
+                    #with fft.set_workers(4):
                         # Get power spectrum
                         #f, Pxx_den = signal.welch(self.processed_signal[m, :], self.module_receiver.iq_header.sampling_freq//first_decimation_factor,
-                        #f, Pxx_den = signal.welch(combined_sig, self.module_receiver.iq_header.sampling_freq//decimation_factor,
-                        f, Pxx_den = signal.welch(combined_sig, self.module_receiver.iq_header.sampling_freq//global_decimation_factor,
-                                                nperseg=N_perseg,
+
+
+                    start = time.time()
+
+                    f, Pxx_den = signal.welch(combined_sig, self.module_receiver.iq_header.sampling_freq//decimation_factor,
+                    #f, Pxx_den = signal.periodogram(combined_sig, self.module_receiver.iq_header.sampling_freq//decimation_factor,
+                    #f, Pxx_den = jsignal.welch(combined_sig, self.module_receiver.iq_header.sampling_freq//global_decimation_factor,
+                                                nperseg= N_perseg,
                                                 nfft=N,
-                                                noverlap=int(N_perseg*0.0),
+                                                noverlap=0, #int(N_perseg*0.0),
                                                 detrend=False,
                                                 return_onesided=False,
                                                 #window='boxcar',
                                                 window= 'blackman', #('tukey', 0.25), #tukey window gives better time resolution for squelching #self.spectrum_window, #('tukey', 0.25), #self.spectrum_window, 
                                                 #window= ('tukey', 0.25), #tukey window gives better time resolution for squelching #self.spectrum_window, #('tukey', 0.25), #self.spectrum_window, 
                                                 #window=self.spectrum_window,
-                                                scaling="spectrum")
+                                                scaling='spectrum')
 
-                        self.spectrum[1+m,:] = fft.fftshift(10*np.log10(Pxx_den))
-                        start = time.time()
-
-                        end = time.time()
-                        print("time shift log: " + str((end-start)*1000))
-
+                    self.spectrum[1+m,:] = fft.fftshift(10*np.log10(Pxx_den))
                     self.spectrum[0,:] = fft.fftshift(f)
+
+                    end = time.time()
+                    #print("welch time taken: " + str((end-start)*1000))
 
                     #self.spectrum[1,:] = 10*np.log10(fft.fft(combined_sig, N, workers=4, overwrite_x=True))
                     #self.spectrum[0, :] = fft.fftfreq(N, 1/self.module_receiver.iq_header.sampling_freq) #np.fft.fftshift(np.fft.fftfreq(len(combined_sig), 1/self.module_receiver.iq_header.sampling_freq))/10**6
@@ -313,16 +288,10 @@ class SignalProcessor(threading.Thread):
                         self.processed_signal = channelize(self.processed_signal, freq, decimation_factor, self.module_receiver.iq_header.sampling_freq//global_decimation_factor)
 
                         ########################## Method to check IQ diffs when noise source forced ON
-                        iq_diffs = calc_sync(self.processed_signal)
-                        #print("IQ DIFFS: " + str(iq_diffs))
-                        print("IQ DIFFS ANGLE: " + str(np.rad2deg(np.angle(iq_diffs))))
-                        ##########################
-                        #for m in range(1, self.channel_number):
-                        #    self.processed_signal[m, :] *= iq_diffs[m]
-
                         #iq_diffs = calc_sync(self.processed_signal)
+                        #print("IQ DIFFS: " + str(iq_diffs))
                         #print("IQ DIFFS ANGLE: " + str(np.rad2deg(np.angle(iq_diffs))))
-
+                        ##########################
 
                         self.fft_signal_width = int((len(self.spectrum[0,:]) * bw) / self.module_receiver.iq_header.sampling_freq)
                         freqMin = -self.module_receiver.iq_header.sampling_freq/2
@@ -362,13 +331,11 @@ class SignalProcessor(threading.Thread):
                         #que_data_packet.append(['spectrum', self.spectrum])
                         que_data_packet.append(['spectrum', spectrum_plot_data])
 
-                    #-----> DoA ESIM ATION <----- 
+                    #-----> DoA ESIMATION <-----
                     conf_val = 0
                     theta_0 = 0
                     if self.en_DOA_estimation and self.data_ready and self.channel_number > 1 and self.squelch_update:
-
-
-                        self.estimate_DOA()                        
+                        self.estimate_DOA()
 
                         que_data_packet.append(['doa_thetas', self.DOA_theta])
                         if self.en_DOA_Bartlett:
@@ -445,8 +412,6 @@ class SignalProcessor(threading.Thread):
                         self.DOA_res_fd.truncate()
                         self.logger.debug("DoA results writen: {:s}".format(message))
 
-
-
 ######################################################
 
                     # Record IQ samples
@@ -497,7 +462,7 @@ class SignalProcessor(threading.Thread):
 
         if self.DOA_ant_alignment == "UCA":
 
-            scanning_vectors = uca_scanning_vectors(M, self.DOA_inter_elem_space)
+            scanning_vectors = gen_scanning_vectors(M, self.DOA_inter_elem_space, self.DOA_ant_alignment)
 
             # DOA estimation
             if self.en_DOA_Bartlett:
@@ -515,9 +480,11 @@ class SignalProcessor(threading.Thread):
 
         elif self.DOA_ant_alignment == "ULA":
 
-            x = np.zeros(M)
-            y = -np.arange(M) * self.DOA_inter_elem_space
-            scanning_vectors = de.gen_scanning_vectors(M, x, y, self.DOA_theta)
+            #x = np.zeros(M)
+            #y = -np.arange(M) * self.DOA_inter_elem_space
+            #scanning_vectors = de.gen_scanning_vectors(M, x, y, self.DOA_theta)
+
+            scanning_vectors = gen_scanning_vectors(M, self.DOA_inter_elem_space, self.DOA_ant_alignment)
 
             # DOA estimation
             if self.en_DOA_Bartlett:
@@ -530,8 +497,37 @@ class SignalProcessor(threading.Thread):
                 DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)
                 self.DOA_MEM_res = DOA_MEM_res
             if self.en_DOA_MUSIC:
-                DOA_MUSIC_res = de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
+                DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
                 self.DOA_MUSIC_res = DOA_MUSIC_res
+
+@njit(fastmath=True, cache=True, parallel=True)
+def appy_FIR(arr, kernel):
+
+    m = arr.size
+    n = kernel.size
+    out_size = m - n + 1
+
+    #M = len(fir_filt)
+    #N = len(processed_signal[:,0])
+    #valid_len = max(M, N) - min(M, N) + 1
+
+    sig = np.zeros((len(arr[:,0]), out_size), dtype=np.complex64)
+
+
+
+    #out = np.empty(out_size, dtype=np.float64)
+    kernel = np.flip(kernel)  # wrong results otherwise
+    for m in range(0,5):
+        for i in range(out_size):
+            sig[m, i] = np.dot(arr[m, i:i + n], kernel)
+    return sig
+
+
+
+    #for m in nb.prange(0, 5):
+    #    sig[m,:] = np.convolve(processed_signal[m,:], fir_filt) #signal.lfilter(fir_filt, 1., self.processed_signal)
+    return sig
+
 
 
 def calc_sync(iq_samples):
@@ -582,6 +578,8 @@ def calc_sync(iq_samples):
 
     return iq_diffs
 
+
+
 # Significantly faster with numba once we added nb.prange
 @njit(fastmath=True, cache=True, parallel=True)
 def reduce_spectrum(spectrum, spectrum_size, channel_number):
@@ -591,35 +589,6 @@ def reduce_spectrum(spectrum, spectrum_size, channel_number):
         for i in nb.prange(spectrum_size):
             spectrum_plot_data[m, i] = np.max(spectrum[m, i*group:group*(i+1)])
     return spectrum_plot_data
-
-#@njit(fastmath=True, cache=True, parallel=True)
-#def combine_channels(a):
-#    res = np.zeros(len(a[0,:]), dtype=np.complex64)
-#    for i in range(len(a[0,:])):
-#        res[i] = np.mean(a[:, i])
-
-#    return res
-
-#NUMBA optimized center tracking. Gives a mild speed boost ~25% faster.
-@njit(fastmath=True, cache=True, parallel=True)
-def center_max_signal(processed_signal, frequency, fft_spectrum, threshold, sample_freq):
-
-    # Where is the max frequency? e.g. where is the signal?
-    max_index = np.argmax(fft_spectrum)
-    max_frequency = frequency[max_index]
-
-    # Auto decimate down to exactly the max signal width
-    fft_signal_width = np.sum(fft_spectrum > threshold) + 25
-    decimation_factor = max((sample_freq // fft_signal_width) // 2, 1) # THIS IS WRONG??: We are dividing by fft_signal_width which is based on array cells, not bw
-
-    # Auto shift peak frequency center of spectrum, this frequency will be decimated:
-    # https://pysdr.org/content/filters.html
-    f0 = -max_frequency #+10
-    Ts = 1.0/sample_freq
-    t = np.arange(0.0, Ts*len(processed_signal[0, :]), Ts)
-    exponential = np.exp(2j*np.pi*f0*t) # this is essentially a complex sine wave
-
-    return processed_signal * exponential, decimation_factor, fft_signal_width, max_index
 
 @lru_cache(maxsize=8)
 def get_fir(n, q, padd):
@@ -637,79 +606,29 @@ def get_exponential(freq, sample_freq, sig_len):
 
     return np.ascontiguousarray(exponential)
 
-#def numba_mult(a,b):
-#    return ne.evaluate('a*b')
-
 @njit(fastmath=True, cache=True, parallel=True)
 def numba_mult(a,b):
     return a*b
 
-
-def polyphase_core(x, m, f):
-    #x = input data
-    #m = decimation rate
-    #f = filter
-    #Hack job - append zeros to match decimation rate
-    if x.shape[0] % m != 0:
-        x = np.append(x, np.zeros((m - x.shape[0] % m,)))
-    if f.shape[0] % m != 0:
-        f = np.append(f, np.zeros((m - f.shape[0] % m,)))
-    polyphase = p = np.zeros((m, (x.shape[0] + f.shape[0]) // m), dtype=np.complex64)
-    p[0, :-1] = np.convolve(x[::m], f[::m])
-    #Invert the x values when applying filters
-    for i in range(1, m):
-        p[i, 1:] = np.convolve(x[m - i::m], f[i::m])
-    return p
-        
-def polyphase_single_filter(x, m, f):
-    return np.sum(polyphase_core(x, m, f), axis=0)
-
-@lru_cache(maxsize=8)
+# Memoize the filter
+@lru_cache(maxsize=24)
 def shift_filter(decimation_factor, freq, sampling_freq, padd):
     system = get_fir(decimation_factor*2, decimation_factor, padd)
     b = system.num
     a = system.den
     exponential = get_exponential(-freq, sampling_freq, len(b))
-    b = numba_mult(b, exponential) #b * exponential # MEMOIZE THIS FOR SPEED! THE EXPONENTIAL AND B STAY THE SAME EACH TIME FOR EACH CHANNEL
+    b = numba_mult(b, exponential)
     return signal.dlti(b,a)
 
 #@jit(fastmath=True, cache=True, parallel=True)
 def channelize(processed_signal, freq, decimation_factor, sampling_freq):
 
-    """
-    # Polyphase examplke but very slow https://colab.research.google.com/github/kastnerkyle/kastnerkyle.github.io/blob/master/posts/polyphase-signal-processing/polyphase-signal-processing.ipynb#scrollTo=DFDOz4tshf-_
-    system = get_fir(decimation_factor*2-1, decimation_factor)
-    b = system.num
-    exponential = get_exponential(-freq, sampling_freq, len(b))
-    b = numba_mult(b, exponential) #b * exponential
-
-    return polyphase_single_filter(processed_signal, int(decimation_factor), b)
-    """
-
-    """
-    system = get_fir(decimation_factor*2, decimation_factor)
-    exponential = get_exponential(freq, sampling_freq, len(processed_signal[0,:]))
-    return signal.resample_poly(numba_mult(processed_signal, exponential), 1, decimation_factor, axis=-1, window=system.num)
-    #return signal.decimate(numba_mult(processed_signal, exponential), decimation_factor, ftype=system) #first_decimation_factor * 2, ftype='fir')
-    """
-    
-    """
-    system = get_fir(decimation_factor*2, decimation_factor)
-    b = system.num
-    a = system.den
-    exponential = get_exponential(-freq, sampling_freq, len(b))
-    b = numba_mult(b, exponential) #b * exponential # MEMOIZE THIS FOR SPEED! THE EXPONENTIAL AND B STAY THE SAME EACH TIME FOR EACH CHANNEL
-    system = signal.dlti(b,a)
-    """
-    # This method is significantly more efficient
-    # Create band pass FIR filter and use it with decimate
-
     system = shift_filter(decimation_factor, freq, sampling_freq, 1.1)
     decimated = signal.decimate(processed_signal, decimation_factor, ftype=system) #first_decimation_factor * 2, ftype='fir')
     # Shift the signal after to get back to normal decimate behaviour
     exponential = get_exponential(freq, sampling_freq/decimation_factor, len(decimated[0,:]))
-    return numba_mult(decimated, exponential) #decimated * exponential
-    
+    return numba_mult(decimated, exponential)
+
     # Old Method
     # Auto shift peak frequency center of spectrum, this frequency will be decimated:
     # https://pysdr.org/content/filters.html
@@ -723,9 +642,6 @@ def channelize(processed_signal, freq, decimation_factor, sampling_freq):
     #decimated_signal = signal.decimate(processed_signal, decimation_factor, n = decimation_factor * 2, ftype='fir')
 
     #return decimated_signal
-
-
-
 
 # NUMBA optimized MUSIC function. About 100x faster on the Pi 4
 #@njit(fastmath=True, cache=True, parallel=True)
@@ -779,21 +695,23 @@ def corr_matrix(X):
     R = np.divide(R, N)
     return R
 
-# Numba optimized scanning vectors generation for UCA arrays. About 10x faster on Pi4
 # LRU cache memoize about 1000x faster.
 @lru_cache(maxsize=8)
-def uca_scanning_vectors(M, DOA_inter_elem_space):
+def gen_scanning_vectors(M, DOA_inter_elem_space, type):
 
     thetas =  np.linspace(0,359,360) # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
-
-    x = DOA_inter_elem_space * np.cos(2*np.pi/M * np.arange(M))
-    y = -DOA_inter_elem_space * np.sin(2*np.pi/M * np.arange(M)) # For this specific array only
+    if type == "UCA":
+        x = DOA_inter_elem_space * np.cos(2*np.pi/M * np.arange(M))
+        y = -DOA_inter_elem_space * np.sin(2*np.pi/M * np.arange(M)) # For this specific array only
+    else: #"ULA"
+        x = np.zeros(M)
+        y = -np.arange(M) * DOA_inter_elem_space
 
     scanning_vectors = np.zeros((M, thetas.size), dtype=np.complex64)
     for i in range(thetas.size):
         scanning_vectors[:,i] = np.exp(1j*2*np.pi* (x*np.cos(np.deg2rad(thetas[i])) + y*np.sin(np.deg2rad(thetas[i]))))
 
-    return scanning_vectors
+    return np.ascontiguousarray(scanning_vectors)
    # scanning_vectors = de.gen_scanning_vectors(M, x, y, self.DOA_theta)
 
 @njit(fastmath=True, cache=True)
@@ -817,28 +735,6 @@ def DOA_plot_util(DOA_data, log_scale_min=-100):
 @njit(fastmath=True, cache=True)
 def calculate_doa_papr(DOA_data):
     return 10*np.log10(np.max(np.abs(DOA_data))/np.mean(np.abs(DOA_data)))
-
-@njit(fastmath=True, cache=True)
-def combine_processed_signal(processed_signal, channel_number):
-    ps_all = processed_signal[0, :]
-    for m in range(1, channel_number):
-        #ps_all = np.where(np.abs(ps_all) > np.abs(self.processed_signal[m, :]), ps_all, self.processed_signal[m, :])
-        ps_all += processed_signal[m, :]
-    ps_all /= channel_number
-
-    return ps_all
-
-@njit(fastmath=True, cache=True)
-def time_average_processed_signal(ps_all):
-    ps_len = len(ps_all)
-
-    avg = ps_len//50000 #32
-    ps_avg = ps_all[1:ps_len//avg]
-    for i in range(1, avg):
-        ps_avg += ps_all[ps_len//avg * i + 1 : ps_len//avg * (i+1)]
-
-    #ps_avg /= avg
-    return ps_avg / avg
 
 # Old time-domain squelch algorithm (Unused as freq domain FFT with overlaps gives significantly better sensitivity with acceptable time resolution expense
 """

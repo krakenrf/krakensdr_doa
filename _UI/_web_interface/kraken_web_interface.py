@@ -441,7 +441,7 @@ fig_layout = go.Layout(
         )    
     )
 
-fig_dummy = go.Figure(layout=fig_layout)
+"""fig_dummy = go.Figure(layout=fig_layout)
 #fig_dummy.add_trace(go.Scatter(x=x, y=y, name = "Avg spectrum"))
 
 for m in range(0, webInterface_inst.module_receiver.M+1): #+1 for the auto decimation window selection
@@ -454,23 +454,60 @@ for m in range(0, webInterface_inst.module_receiver.M+1): #+1 for the auto decim
 
 
 fig_dummy.update_xaxes(title_text="Frequency [MHz]")
-fig_dummy.update_yaxes(title_text="Amplitude [dB]")
+fig_dummy.update_yaxes(title_text="Amplitude [dB]")"""
 
 option = [{"label":"", "value": 1}]
 
 spectrum_fig = go.Figure(layout=fig_layout)
 
-for m in range(0, webInterface_inst.module_receiver.M+1): #+1 for the auto decimation window selection
+for m in range(0, webInterface_inst.module_receiver.M): #+1 for the auto decimation window selection
     spectrum_fig.add_trace(go.Scattergl(x=x,
                              y=y,
                              name="Channel {:d}".format(m),
                              line = dict(color = trace_colors[m],
-                                         width = 2)
+                                         width = 1)
                              ))
 
+#m = np.size(webInterface_inst.spectrum,0)-1
 
-waterfall_init = [[-80] * webInterface_inst.module_signal_processor.spectrum_window_size] * 50
+spectrum_fig.add_trace(go.Scattergl(x=x,
+                       y=y, #webInterface_inst.spectrum[m, :],
+                       name="Selected Signal Window",
+                       line = dict(color = trace_colors[m],
+                       width = 3)
+                               ))
+
+spectrum_fig.update_xaxes( #title_text=freq_label,
+                    color='rgba(255,255,255,1)',
+                    title_font_size=20,
+                    tickfont_size= 15, #figure_font_size,
+                    #range=[np.min(x), np.max(x)],
+                    #rangemode='normal',
+                    mirror=True,
+                    ticks='outside',
+                    showline=True,
+                    #fixedrange=True
+                    )
+spectrum_fig.update_yaxes(title_text="Amplitude [dB]",
+                    color='rgba(255,255,255,1)',
+                    title_font_size=20,
+                    tickfont_size=figure_font_size,
+                    range=[-90, 0],
+                    mirror=True,
+                    ticks='outside',
+                    showline=True,
+                    #fixedrange=True
+                    )
+
+spectrum_fig.update_layout(margin=go.layout.Margin(b=5, t=0))
+
+
+
+
+
+#waterfall_init = [[-80] * webInterface_inst.module_signal_processor.spectrum_window_size] * 50
 waterfall_init_x = list(range(0, webInterface_inst.module_signal_processor.spectrum_window_size-1)) #[1] * webInterface_inst.module_signal_processor.spectrum_window_size
+waterfall_init = [[-80] * 1024] * 50
 
 waterfall_fig = go.Figure(layout=fig_layout)
 waterfall_fig.add_trace(go.Heatmapgl(
@@ -499,7 +536,6 @@ waterfall_fig.add_trace(go.Heatmapgl(
 waterfall_fig.update_xaxes(tickfont_size=1)
 waterfall_fig.update_yaxes(tickfont_size=1)
 waterfall_fig.update_layout(margin=go.layout.Margin(t=5))
-
 
 doa_fig = go.Figure(layout=fig_layout)
 
@@ -953,7 +989,7 @@ spectrum_page_layout = html.Div([
     dcc.Graph(
         id="spectrum-graph",
         style={'width': '100%', 'height': '45%'},
-        figure=fig_dummy #spectrum_fig #fig_dummy #spectrum_fig #fig_dummy
+        figure=spectrum_fig #fig_dummy #spectrum_fig #fig_dummy
     ),
     dcc.Graph(
         id="waterfall-graph",
@@ -1313,7 +1349,8 @@ def display_page(pathname):
         return [generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"]
     elif pathname == "/spectrum":
         webInterface_inst.module_signal_processor.en_spectrum = True
-        spectrum_fig = None # Force reload of graphs as axes may change etc
+        #spectrum_fig = None # Force reload of graphs as axes may change etc
+        webInterface_inst.reset_spectrum_graph_flag = True
         return [spectrum_page_layout, "header_inactive", "header_active", "header_inactive"]
     elif pathname == "/doa":
         webInterface_inst.module_signal_processor.en_spectrum = False
@@ -1449,32 +1486,38 @@ def plot_doa():
 def plot_spectrum():
     global spectrum_fig
     global waterfall_fig
-    if spectrum_fig == None:
-    #if webInterface_inst.reset_spectrum_graph_flag:
-        spectrum_fig = go.Figure(layout=fig_layout)
+    #if spectrum_fig == None:
+    if webInterface_inst.reset_spectrum_graph_flag:
+
+        #spectrum_fig = go.Figure(layout=fig_layout)
+        #spectrum_fig.data = []
         x=webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6
 
         # Plot traces
-        for m in range(np.size(webInterface_inst.spectrum, 0)-2):
-            spectrum_fig.add_trace(go.Scattergl(x=x,
+        for m in range(np.size(webInterface_inst.spectrum, 0)-1):
+            spectrum_fig.data[m]['x'] = x
+            #spectrum_fig.data[m]['y'] = y
+            """spectrum_fig.add_trace(go.Scattergl(x=x,
                                      y=y, #webInterface_inst.spectrum[m+1, :],
                                      name="Channel {:d}".format(m),
                                      line = dict(color = trace_colors[m],
                                                  width = 1)
-                                    ))
+                                    ))"""
 
-        spectrum_fig.add_hline(y=webInterface_inst.module_receiver.daq_squelch_th_dB)
+        #spectrum_fig.add_hline(y=webInterface_inst.module_receiver.daq_squelch_th_dB)
 
         # Add selected window plot
-        m = np.size(webInterface_inst.spectrum,0)-1
-        spectrum_fig.add_trace(go.Scattergl(x=x,
+        #m = np.size(webInterface_inst.spectrum,0)-1
+        #spectrum_fig.data[m]['x'] = x
+
+        """spectrum_fig.add_trace(go.Scattergl(x=x,
                              y=y, #webInterface_inst.spectrum[m, :],
                              name="Selected Signal Window",
                              line = dict(color = trace_colors[m],
                                          width = 3)
-                             ))
+                             ))"""
 
-        spectrum_fig.update_xaxes( #title_text=freq_label,
+        """spectrum_fig.update_xaxes( #title_text=freq_label,
                     color='rgba(255,255,255,1)',
                     title_font_size=20,
                     tickfont_size= 15, #figure_font_size,
@@ -1496,17 +1539,20 @@ def plot_spectrum():
                     #fixedrange=True
                     )
 
-        spectrum_fig.update_layout(margin=go.layout.Margin(b=5, t=0))
+        spectrum_fig.update_layout(margin=go.layout.Margin(b=5, t=0))"""
+
 
         #x=webInterface_inst.spectrum[0,::2] + webInterface_inst.daq_center_freq*10**6
-        x=webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6
+        #x=webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6
 
         #waterfall_init = [[-80] * (webInterface_inst.module_signal_processor.spectrum_window_size)] * 50
-        waterfall_init = [[-80] * 1024] * 50
+        #waterfall_init = [[-80] * 1024] * 50
         #waterfall_init_x = list(range(0, webInterface_inst.module_signal_processor.spectrum_window_size-1)) #[1] * webInterface_inst.module_signal_processor.spectrum_window_size
 
-        waterfall_fig = go.Figure(layout=fig_layout)
-        waterfall_fig.add_trace(go.Heatmapgl(
+        #waterfall_fig = go.Figure(layout=fig_layout)
+        waterfall_fig.data[0]['x'] = x #[]
+        #waterfall_fig.data[0]['z'] = waterfall_init #[]
+        """waterfall_fig.add_trace(go.Heatmapgl(
                          x=x,
                          z=waterfall_init,
                          zsmooth=False,
@@ -1526,12 +1572,11 @@ def plot_spectrum():
                          [0.7854, '#C60000'],
                          [0.8568, '#9F0000'],
                          [0.9282, '#750000'],
-                         [1.0, '#4A0000']]))
+                         [1.0, '#4A0000']]))"""
 
 
         #waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], fixedrange=True, showgrid=False)
         #waterfall_fig.update_yaxes(tickfont_size=1, fixedrange=True, showgrid=False)
-        waterfall_fig.update_layout(margin=go.layout.Margin(t=5))
 
         webInterface_inst.reset_spectrum_graph_flag = False
         app.push_mods({
