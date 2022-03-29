@@ -21,9 +21,9 @@
 # Import built-in modules
 import sys
 import os
-os.environ['OPENBLAS_NUM_THREADS'] = '4'
-os.environ['NUMBA_CPU_NAME'] = 'cortex-a72'
-os.environ['NUMBA_OPT'] = '4'
+#os.environ['OPENBLAS_NUM_THREADS'] = '4'
+#os.environ['NUMBA_CPU_NAME'] = 'cortex-a72'
+#os.environ['NUMBA_OPT'] = '4'
 
 import time
 import logging
@@ -38,10 +38,6 @@ from numba import jit, njit
 from functools import lru_cache
 from joblib import Parallel, delayed
 import multiprocessing
-
-import jax
-import jax.scipy.signal as jsignal
-import jax.numpy as jnp
 
 # Math support
 import numpy as np
@@ -105,11 +101,9 @@ class SignalProcessor(threading.Thread):
         self.raw_signal_amplitude = np.empty(0)
         self.filt_signal = np.empty(0)
         self.squelch_mask = np.empty(0)
-        self.channel_freq = 0
-        self.prev_channel_freq = 999999
 
         self.phasetest = [0,0,0,0,0]
-
+        self.dsp_decimation = 0
                 
         # DOA processing options
         self.en_DOA_Bartlett = False
@@ -125,12 +119,17 @@ class SignalProcessor(threading.Thread):
             
         # Processing parameters        
         self.spectrum_window_size = fft.next_fast_len(4096) #16384) #16384 #2048 #8192 #2048 #8192 #4096 #2048 #1024
+        self.spectrum_plot_size = 1024 #16384) #16384 #2048 #8192 #2048 #8192 #4096 #2048 #1024
         self.spectrum_window = "hann"
         self.run_processing = False
         self.is_running = False 
-
-
         self.channel_number = 4  # Update from header
+        self.spectrum_fig_type = 0 #0 Single, 1 Full
+
+        self.max_vfos = 16
+        self.vfo_bw = [12500] * 16
+        self.vfo_freq = [self.module_receiver.daq_center_freq] * 16
+        self.vfo_squelch = [-120] * 16
         
         # Result vectors
         self.DOA_Bartlett_res = np.ones(181)
@@ -139,15 +138,21 @@ class SignalProcessor(threading.Thread):
         self.DOA_MUSIC_res = np.ones(181)
         self.DOA_theta = np.arange(0,181,1)
 
-        self.max_index = 0
+        self.ch_center_pt = 0
+        #self.max_index = 0
         self.max_frequency = 0
-        self.fft_signal_width = 0
+        #self.fft_signal_width = 0
+        self.ch_width_pts = 0
+        
+
+       
+        self.active_vfos = 2
+        self.output_vfo = 0
 
         self.DOA_theta =  np.linspace(0,359,360)
 
         self.spectrum = None #np.ones((self.channel_number+2,N), dtype=np.float32)
         self.spectrum_upd_counter = 0
-
 
         self.corrections = np.zeros((self.channel_number, 16384), dtype=np.complex64)
 
@@ -197,7 +202,7 @@ class SignalProcessor(threading.Thread):
                 if self.first_frame:
                     self.channel_number = self.module_receiver.iq_header.active_ant_chs
                     self.spectrum_upd_counter = 0
-                    self.spectrum = np.ones((self.channel_number+2, self.spectrum_window_size), dtype=np.float32)
+                    self.spectrum = np.ones((self.channel_number+4, self.spectrum_window_size), dtype=np.float32)
                     self.first_frame = 0
                     self.corrections = np.zeros((self.channel_number, 1048576), dtype=np.complex64)
 
@@ -207,130 +212,234 @@ class SignalProcessor(threading.Thread):
                 self.data_ready = False
 
                 if en_proc:
-
-
                     self.processed_signal = np.ascontiguousarray(self.module_receiver.iq_samples) #self.module_receiver.iq_samples.copy()
+                    sampling_freq = self.module_receiver.iq_header.sampling_freq
 
-                    global_decimation_factor = max(int(self.phasetest[0]), 1) #ps_len // 65536 #int(self.phasetest[0]) + 1
 
+                    global_decimation_factor = max(int(self.dsp_decimation), 1) #max(int(self.phasetest[0]), 1) #ps_len // 65536 #int(self.phasetest[0]) + 1
                     #for m in range(0, self.channel_number-1):
                         #self.processed_signal[m,:] = signal.oaconvolve(self.processed_signal[m,:], fir_filt, mode='same') #signal.lfilter(fir_filt, 1., self.processed_signal)
                         #self.processed_signal[m,:] = np.convolve(self.processed_signal[m,:], fir_filt, mode='same') #signal.lfilter(fir_filt, 1., self.processed_signal)
  
                     if global_decimation_factor > 1:
                         self.processed_signal = signal.decimate(self.processed_signal, global_decimation_factor, n = global_decimation_factor * 2, ftype='fir')
+                        sampling_freq = sampling_freq//global_decimation_factor
 
                     ps_len = len(self.processed_signal[0,:])
                     avg = int(self.phasetest[0]) + 1 #ps_len // 65536 #int(self.phasetest[0]) + 1
 
                     self.data_ready = True
                     max_amplitude = -100
-                    N = self.spectrum_window_size
 
-                    N_perseg = N #2048
+                    if self.spectrum_fig_type == 0:
+                        m = 0
+                        N = self.spectrum_window_size
+                        self.spectrum = np.ones((self.channel_number+(self.active_vfos*2+1), N), dtype=np.float32) # Only 0.1 ms, not performance bottleneck
 
-                    combined_sig = self.processed_signal[1,:] #combine_channels(self.processed_signal)
-                    #for m in range(self.channel_number): #range(1): #range(self.channel_number):
-                    #for m in range(1): #range(1): #range(self.channel_number):
-                    m = 0
-                    #with fft.set_workers(4):
-                        # Get power spectrum
-                        #f, Pxx_den = signal.welch(self.processed_signal[m, :], self.module_receiver.iq_header.sampling_freq//first_decimation_factor,
-
-
-                    start = time.time()
-
-                    f, Pxx_den = signal.welch(combined_sig, self.module_receiver.iq_header.sampling_freq//decimation_factor,
-                    #f, Pxx_den = signal.periodogram(combined_sig, self.module_receiver.iq_header.sampling_freq//decimation_factor,
-                    #f, Pxx_den = jsignal.welch(combined_sig, self.module_receiver.iq_header.sampling_freq//global_decimation_factor,
-                                                nperseg= N_perseg,
-                                                nfft=N,
-                                                noverlap=0, #int(N_perseg*0.0),
-                                                detrend=False,
-                                                return_onesided=False,
-                                                #window='boxcar',
-                                                window= 'blackman', #('tukey', 0.25), #tukey window gives better time resolution for squelching #self.spectrum_window, #('tukey', 0.25), #self.spectrum_window, 
-                                                #window= ('tukey', 0.25), #tukey window gives better time resolution for squelching #self.spectrum_window, #('tukey', 0.25), #self.spectrum_window, 
-                                                #window=self.spectrum_window,
-                                                scaling='spectrum')
-
-                    self.spectrum[1+m,:] = fft.fftshift(10*np.log10(Pxx_den))
-                    self.spectrum[0,:] = fft.fftshift(f)
-
-                    end = time.time()
-                    #print("welch time taken: " + str((end-start)*1000))
-
-                    #self.spectrum[1,:] = 10*np.log10(fft.fft(combined_sig, N, workers=4, overwrite_x=True))
-                    #self.spectrum[0, :] = fft.fftfreq(N, 1/self.module_receiver.iq_header.sampling_freq) #np.fft.fftshift(np.fft.fftfreq(len(combined_sig), 1/self.module_receiver.iq_header.sampling_freq))/10**6
+                        single_ch = self.processed_signal[1,:]
+                        f, Pxx_den = signal.welch(single_ch, sampling_freq,
+                                     nperseg= N,
+                                     nfft=N,
+                                     noverlap=0.25, #int(N_perseg*0.0),
+                                     detrend=False,
+                                     return_onesided=False,
+                                     window= 'blackman', #('tukey', 0.25), #tukey window gives better time resolution for squelching #self.spectrum_window, #('tukey', 0.25), #self.spectrum_window, 
+                                     #window= ('tukey', 0.25), #tukey window gives better time resolution for squelching #self.spectrum_window, #('tukey', 0.25), #self.spectrum_window, 
+                                     scaling='spectrum')
+                        self.spectrum[1+m,:] = fft.fftshift(10*np.log10(Pxx_den))
+                        self.spectrum[0,:] = fft.fftshift(f)
+                    else:
+                        N = 32768
+                        self.spectrum = np.ones((self.channel_number+(self.active_vfos*2+1), N), dtype=np.float32)
+                        for m in range(self.channel_number): #range(1): #range(self.channel_number):
+                            f, Pxx_den = signal.periodogram(self.processed_signal[m,:], sampling_freq,
+                                         nfft=N,
+                                         detrend=False,
+                                         return_onesided=False,
+                                         window= 'blackman',
+                                         scaling='spectrum')
+                            self.spectrum[1+m,:] = fft.fftshift(10*np.log10(Pxx_den))
+                        self.spectrum[0,:] = fft.fftshift(f)
+                    
+                    #print("spectrum data size: " + str(len(self.spectrum[1,:])))
+                
 
 
-                    max_ch = np.argmax(np.max(self.spectrum[1:self.module_receiver.iq_header.active_ant_chs+1,:], axis=1)) # Find the channel that had the max amplitude
-                    max_amplitude = np.max(self.spectrum[1+max_ch, :]) #Max amplitude out of all 5 channels
-                    max_spectrum = self.spectrum[1+max_ch, :] #Send max ch to channel centering
+                    #max_ch = np.argmax(np.max(self.spectrum[1:self.module_receiver.iq_header.active_ant_chs+1,:], axis=1)) # Find the channel that had the max amplitude
+                    max_amplitude = np.max(self.spectrum[1, :]) #Max amplitude out of all 5 channels
+                    #max_spectrum = self.spectrum[1+max_ch, :] #Send max ch to channel centering
 
                     que_data_packet.append(['max_amplitude',max_amplitude])
 
-                    #-----> SQUELCH PROCESSING <-----
+                    #-----> DoA PROCESSING <-----
 
-                    if self.en_squelch and self.data_ready:
+                    single_data_output_vfo = 0
+
+                    if self.data_ready:
                         #self.data_ready = False
                         self.squelch_update = False
+                        spectrum_window_size = len(self.spectrum[0,:])
+                        #i = 0
+                        #TODO: Change ch notation to VFO
+                        #TODO: Implement modes:
+                        #     1. Single VFO (choose VFO channel to output data)
+                        #     2. Any Active VFO (output data from any active VFO (only for use with intermittant signals, otherwise the continuous signal would dominate)
+                        #     3. Peak (auto tune to peak signal on spectrum)
+                        #     4. All (output all VFOs to JSON only for flutter app)
+                        for i in range(self.active_vfos):
 
-                        if abs(self.channel_freq - self.module_receiver.daq_center_freq) > self.module_receiver.iq_header.sampling_freq/2 :
-                            self.channel_freq = self.module_receiver.daq_center_freq
+                            # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
+                            if abs(self.vfo_freq[i] - self.module_receiver.daq_center_freq) > sampling_freq/2 :
+                                self.vfo_freq[i] = self.module_receiver.daq_center_freq
 
-                        freq = self.channel_freq - self.module_receiver.daq_center_freq #63500
+                            freq = self.vfo_freq[i] - self.module_receiver.daq_center_freq #ch_freq is relative to -sample_freq/2 : sample_freq/2, so correct for that and get the actual freq
 
-                        bw = 12500 #int(self.phasetest[3]) + 1 #35000
-                        decimation_factor = max((self.module_receiver.iq_header.sampling_freq // bw), 1)//global_decimation_factor
-                        # Shift then FIR decimate method
+                            decimation_factor = max((sampling_freq // self.vfo_bw[i]), 1) # How much decimation is required to get to the requested bandwidth
 
-                        self.processed_signal = channelize(self.processed_signal, freq, decimation_factor, self.module_receiver.iq_header.sampling_freq//global_decimation_factor)
+                            # Get max amplitude of the channel from the FFT for squelching
+                            # From channel frequency determine array index of channel
+                            ch_width_pts = int((spectrum_window_size * self.vfo_bw[i]) / (sampling_freq)) # Width of channel in array indexes based on FFT size
+                            freqMin = -sampling_freq/2
 
-                        ########################## Method to check IQ diffs when noise source forced ON
-                        #iq_diffs = calc_sync(self.processed_signal)
-                        #print("IQ DIFFS: " + str(iq_diffs))
-                        #print("IQ DIFFS ANGLE: " + str(np.rad2deg(np.angle(iq_diffs))))
-                        ##########################
+                            ch_center_pt = int((((freq - freqMin) * spectrum_window_size) / sampling_freq))
 
-                        self.fft_signal_width = int((len(self.spectrum[0,:]) * bw) / self.module_receiver.iq_header.sampling_freq)
-                        freqMin = -self.module_receiver.iq_header.sampling_freq/2
-                        freqMax = self.module_receiver.iq_header.sampling_freq/2
-                        cellsMax = len(self.spectrum[0,:])
-                        freqRange = self.module_receiver.iq_header.sampling_freq
-                        cellsRange = len(self.spectrum[0,:])
+                            if self.spectrum_fig_type == 0: # Do CH1 only (or make channel selectable)
+                                spectrum_channel = self.spectrum[1, ch_center_pt - ch_width_pts//2 : ch_center_pt + ch_width_pts//2]
+                                max_amplitude = np.max(spectrum_channel)
+                            else:
+                                spectrum_channel = self.spectrum[:, ch_center_pt - ch_width_pts//2 : ch_center_pt + ch_width_pts//2]
+                                max_amplitude = np.max(spectrum_channel[1:self.module_receiver.iq_header.active_ant_chs+1, :])
 
-                        self.max_index = int((((freq - freqMin) * cellsRange) / freqRange))
+                            #Only update if we're above the threshold
+                            if max_amplitude > self.vfo_squelch[i]:
+                                #self.data_ready = True
+                                self.squelch_update = True
 
-                        spectrum_channel = self.spectrum[:, self.max_index - self.fft_signal_width//2 : self.max_index + self.fft_signal_width//2]
 
-                        max_amplitude = np.max(spectrum_channel[1:self.module_receiver.iq_header.active_ant_chs+1, :])
+                            # *** HERE WE NEED TO PERFORM THE SPECTRUM UPDATE TOO ***
+                            if self.en_spectrum:
+                                # Selected Channel Window
+                                signal_window = np.ones(spectrum_window_size) * -120
+                                signal_window[max(ch_center_pt - ch_width_pts//2, 0) : min(ch_center_pt + ch_width_pts//2, spectrum_window_size)] = 0 #max_amplitude
+                                self.spectrum[self.channel_number+(2*i+1), :] = signal_window #np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
 
-                        #Only update if we're above the threshold
-                        if max_amplitude > self.module_receiver.daq_squelch_th_dB:
-                            #self.data_ready = True
-                            self.squelch_update = True
+                                # Squelch Window
+                                signal_window = np.ones(spectrum_window_size) * -120
+                                signal_window[max(ch_center_pt - ch_width_pts//2, 0) : min(ch_center_pt + ch_width_pts//2, spectrum_window_size)] = self.vfo_squelch[i]
+                                self.spectrum[self.channel_number+(2*i+2), :] = signal_window #np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
+
+                            #-----> DoA ESIMATION <-----
+                            conf_val = 0
+                            theta_0 = 0
+                            if self.en_DOA_estimation and self.channel_number > 1 and self.squelch_update and (i == self.output_vfo or self.output_vfo < 0):
+
+                                # Do channelization
+                                vfo_channel = channelize(self.processed_signal, freq, decimation_factor, sampling_freq)
+
+                                ########################## Method to check IQ diffs when noise source forced ON
+                                #iq_diffs = calc_sync(self.processed_signal)
+                                #print("IQ DIFFS: " + str(iq_diffs))
+                                #print("IQ DIFFS ANGLE: " + str(np.rad2deg(np.angle(iq_diffs))))
+                                ##########################
+
+                                self.estimate_DOA(vfo_channel)
+
+                                que_data_packet.append(['doa_thetas', self.DOA_theta])
+                                if self.en_DOA_Bartlett:
+                                    doa_result_log = DOA_plot_util(self.DOA_Bartlett_res)
+                                    theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                                    conf_val = calculate_doa_papr(self.DOA_Bartlett_res)
+                                    que_data_packet.append(['DoA Bartlett', doa_result_log])
+                                    que_data_packet.append(['DoA Bartlett Max', theta_0])
+                                    que_data_packet.append(['DoA Bartlett confidence', conf_val])
+                                if self.en_DOA_Capon:
+                                    doa_result_log = DOA_plot_util(self.DOA_Capon_res)
+                                    theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                                    conf_val = calculate_doa_papr(self.DOA_Capon_res)
+                                    que_data_packet.append(['DoA Capon', doa_result_log])
+                                    que_data_packet.append(['DoA Capon Max', theta_0])
+                                    que_data_packet.append(['DoA Capon confidence', conf_val])
+                                if self.en_DOA_MEM:
+                                    doa_result_log = DOA_plot_util(self.DOA_MEM_res)
+                                    theta_0 = self.DOA_theta[np.argmax(doa_result_log)]        
+                                    conf_val = calculate_doa_papr(self.DOA_MEM_res)
+                                    que_data_packet.append(['DoA MEM', doa_result_log])
+                                    que_data_packet.append(['DoA MEM Max', theta_0])
+                                    que_data_packet.append(['DoA MEM confidence', conf_val])
+                                if self.en_DOA_MUSIC:
+                                    doa_result_log = DOA_plot_util(self.DOA_MUSIC_res)
+                                    theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
+                                    conf_val = calculate_doa_papr(self.DOA_MUSIC_res)
+                                    que_data_packet.append(['DoA MUSIC', doa_result_log])
+                                    que_data_packet.append(['DoA MUSIC Max', theta_0])
+                                    que_data_packet.append(['DoA MUSIC confidence', conf_val])
+
+                                DOA_str = str(int(theta_0))
+                                confidence_str = "{:.2f}".format(np.max(conf_val))
+                                max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
+
+
+
+                        
+#################################################### 
+                            # KerberosSDR App compatible message output, this will be redundant soon once the new app is published
+
+                            #confidence_str = "{}".format(np.max(int(conf_val*100)))
+                            #max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude+100)))
+
+                            #message = str(int(time.time() * 1000)) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
+                            #html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+confidence_str+"</CONF>\n<PWR>"+max_power_level_str+"</PWR>\n</DATA>"
+                            #self.DOA_res_fd.seek(0)
+                            #self.DOA_res_fd.write(html_str)
+                            #self.DOA_res_fd.truncate()
+                            #self.logger.debug("DoA results writen: {:s}".format(html_str))
+####################################################
+
+#####################################################
+                            #KrakenSDR Android App Output
+                            #TODO: This will change into a JSON output
+                        
+                        freq = str(self.module_receiver.daq_center_freq)
+                        latency = str(100)
+                        message = str(int(time.time() * 1000)) + ", " \
+                                                               + DOA_str + ", " \
+                                                               + confidence_str + ", " \
+                                                               + max_power_level_str + ", " \
+                                                               + freq + ", " \
+                                                               + self.DOA_ant_alignment + ", " \
+                                                               + latency + ", " \
+                                                               + "R, R, R, R, R, R, R, R, R, R" #Reserve 10 entries for other things
+
+                        doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
+                        for i in range(len(doa_result_log)):
+                            message += ", " + "{:.2f}".format(doa_result_log[i])
+                        
+                        self.DOA_res_fd.seek(0)
+                        self.DOA_res_fd.write(message)
+                        self.DOA_res_fd.truncate()
+                        self.logger.debug("DoA results writen: {:s}".format(message))
+
 
                     #-----> SPECTRUM PROCESSING <----- 
 
                     if self.en_spectrum and self.data_ready:
 
-                        #spectrum_samples = self.module_receiver.iq_samples #spectrum_signal #self.processed_signal #self.module_receiver.iq_samples #self.processed_signal
-
-                        # Create signal window for plot
-#                        signal_window = np.ones(len(self.spectrum[1,:])) * -100
- #                       signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(self.spectrum[1,:]))] = max(self.spectrum[1,:])
-                        signal_window = np.ones(len(max_spectrum)) * -100
-                        #signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(max_spectrum))] = max(max_spectrum)
-                        signal_window[max(self.max_index - self.fft_signal_width//2, 0) : min(self.max_index + self.fft_signal_width//2, len(max_spectrum))] = max_amplitude
+                        spectrum_size = len(self.spectrum[0,:])
+                        """
+                        # Selected Channel Window
+                        signal_window = np.ones(spectrum_size) * -120
+                        signal_window[max(self.ch_center_pt - self.ch_width_pts//2, 0) : min(self.ch_center_pt + self.ch_width_pts//2, spectrum_size)] = 0 #max_amplitude
                         self.spectrum[self.channel_number+1, :] = signal_window #np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
 
-                        spectrum_size = 1024 #2048
-                        spectrum_plot_data = reduce_spectrum(self.spectrum, spectrum_size, self.channel_number)
+                        # Squelch Window
+                        signal_window = np.ones(spectrum_size) * -120
+                        signal_window[max(self.ch_center_pt - self.ch_width_pts//2, 0) : min(self.ch_center_pt + self.ch_width_pts//2, spectrum_size)] = self.vfo_squelch[0]
+                        self.spectrum[self.channel_number+2, :] = signal_window #np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
+                        """
+                        spectrum_plot_data = reduce_spectrum(self.spectrum, self.spectrum_plot_size, self.channel_number)
 
-                        #que_data_packet.append(['spectrum', self.spectrum])
                         que_data_packet.append(['spectrum', spectrum_plot_data])
-
+                    """
                     #-----> DoA ESIMATION <-----
                     conf_val = 0
                     theta_0 = 0
@@ -411,7 +520,7 @@ class SignalProcessor(threading.Thread):
                         self.DOA_res_fd.write(message)
                         self.DOA_res_fd.truncate()
                         self.logger.debug("DoA results writen: {:s}".format(message))
-
+                    """
 ######################################################
 
                     # Record IQ samples
@@ -447,13 +556,13 @@ class SignalProcessor(threading.Thread):
                 print ("Time elapsed: ", thetime)
                 """
 
-    def estimate_DOA(self):
+    def estimate_DOA(self, processed_signal):
         """
             Estimates the direction of arrival of the received RF signal
         """
 
         # Calculating spatial correlation matrix
-        R = corr_matrix(self.processed_signal) #de.corr_matrix_estimate(self.processed_signal.T, imp="fast")
+        R = corr_matrix(processed_signal) #de.corr_matrix_estimate(self.processed_signal.T, imp="fast")
 
         if self.en_DOA_FB_avg:
             R=de.forward_backward_avg(R)
@@ -500,71 +609,12 @@ class SignalProcessor(threading.Thread):
                 DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
                 self.DOA_MUSIC_res = DOA_MUSIC_res
 
-@njit(fastmath=True, cache=True, parallel=True)
-def appy_FIR(arr, kernel):
-
-    m = arr.size
-    n = kernel.size
-    out_size = m - n + 1
-
-    #M = len(fir_filt)
-    #N = len(processed_signal[:,0])
-    #valid_len = max(M, N) - min(M, N) + 1
-
-    sig = np.zeros((len(arr[:,0]), out_size), dtype=np.complex64)
-
-
-
-    #out = np.empty(out_size, dtype=np.float64)
-    kernel = np.flip(kernel)  # wrong results otherwise
-    for m in range(0,5):
-        for i in range(out_size):
-            sig[m, i] = np.dot(arr[m, i:i + n], kernel)
-    return sig
-
-
-
-    #for m in nb.prange(0, 5):
-    #    sig[m,:] = np.convolve(processed_signal[m,:], fir_filt) #signal.lfilter(fir_filt, 1., self.processed_signal)
-    return sig
-
-
 
 def calc_sync(iq_samples):
     iq_diffs   = np.ones(4, dtype=np.complex64)
     dyn_ranges = []
 
     N_proc = len(iq_samples[0,:])
-
-    #fft1 = fft.fft(iq_samples[0,:])
-    #fft2 = fft.fft(iq_samples[1,:])
-
-    #phase1 = np.angle(fft1)
-    #phase2 = np.angle(fft2)
-
-    #std_ch_phase = np.angle(fft.fft(iq_samples[0,:]))
-    #phase2 = np.angle(iq_samples[1,:])
-
-    #phase_diff = phase2 - phase1
-
-    #print("phase diff: " + str(phase_diff))
-
-    #fft2 = fft2 * np.exp(-1j*phase_diff)
-    #iq_samples[1,:] = fft.ifft(fft2)
-
-    #shift = fft.ifft(np.exp(-1j*phase_diff))
-    #iq_samples[1,:] *= np.exp(-1j*phase_diff)
-
-    """
-    std_ch_phase = np.angle(fft.fft(iq_samples[0,:]))
-    for m in range(1,5):
-        ch_fft = fft.fft(iq_samples[m,:])
-        ch_phase = np.angle(ch_fft)
-        phase_diff = ch_phase - std_ch_phase
-        iq_samples[m,:] = fft.ifft(ch_fft * np.exp(-1j*phase_diff))
-    """
-
-    #print("phase 1 size: " + str(len(phase1)))
 
     # Calculate Spatial correlation matrix to determine amplitude-phase missmatches
     Rxx = iq_samples.dot(np.conj(iq_samples.T))
@@ -580,21 +630,26 @@ def calc_sync(iq_samples):
 
 
 
+# Reduce spectrum size for plotting purposes by taking the MAX val every few values
 # Significantly faster with numba once we added nb.prange
 @njit(fastmath=True, cache=True, parallel=True)
 def reduce_spectrum(spectrum, spectrum_size, channel_number):
-    spectrum_plot_data = np.ones((channel_number+2, spectrum_size), dtype=np.float32)
+    spectrum_elements = len(spectrum[:,0])
+
+    spectrum_plot_data = np.ones((spectrum_elements, spectrum_size), dtype=np.float32)
     group = len(spectrum[0,:]) // spectrum_size
-    for m in nb.prange(channel_number+2):
+    for m in nb.prange(spectrum_elements):
         for i in nb.prange(spectrum_size):
             spectrum_plot_data[m, i] = np.max(spectrum[m, i*group:group*(i+1)])
     return spectrum_plot_data
 
+# Get the FIR filter
 @lru_cache(maxsize=8)
 def get_fir(n, q, padd):
     #b, a = signal.firwin(n+1, 1. / q, window='hamming'), 1.
     return signal.dlti(signal.firwin(n+1, 1. / (q * padd), window='hann'), 1.)
 
+# Get the frequency rotation exponential
 @lru_cache(maxsize=8)
 def get_exponential(freq, sample_freq, sig_len):
     # Auto shift peak frequency center of spectrum, this frequency will be decimated:
@@ -610,7 +665,7 @@ def get_exponential(freq, sample_freq, sig_len):
 def numba_mult(a,b):
     return a*b
 
-# Memoize the filter
+# Memoize the total shift filter
 @lru_cache(maxsize=24)
 def shift_filter(decimation_factor, freq, sampling_freq, padd):
     system = get_fir(decimation_factor*2, decimation_factor, padd)
@@ -620,13 +675,13 @@ def shift_filter(decimation_factor, freq, sampling_freq, padd):
     b = numba_mult(b, exponential)
     return signal.dlti(b,a)
 
+# This function takes the full data, and efficiently returns only a filtered and decimated requested channel
+# Efficient method: Create BANDPASS Filter for frequency of interest, decimate with that bandpass filter, then do the final shift
 #@jit(fastmath=True, cache=True, parallel=True)
 def channelize(processed_signal, freq, decimation_factor, sampling_freq):
-
-    system = shift_filter(decimation_factor, freq, sampling_freq, 1.1)
-    decimated = signal.decimate(processed_signal, decimation_factor, ftype=system) #first_decimation_factor * 2, ftype='fir')
-    # Shift the signal after to get back to normal decimate behaviour
-    exponential = get_exponential(freq, sampling_freq/decimation_factor, len(decimated[0,:]))
+    system = shift_filter(decimation_factor, freq, sampling_freq, 1.1) # Decimate with a BANDPASS filter
+    decimated = signal.decimate(processed_signal, decimation_factor, ftype=system)
+    exponential = get_exponential(freq, sampling_freq/decimation_factor, len(decimated[0,:]))     # Shift the signal AFTER to get back to normal decimate behaviour
     return numba_mult(decimated, exponential)
 
     # Old Method

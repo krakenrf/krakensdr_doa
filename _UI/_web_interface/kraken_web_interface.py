@@ -22,14 +22,14 @@
 import logging
 import os
 import sys
-import queue 
+import queue
 import time
 import subprocess
 import orjson
 import json
 
-import numba as nb
-from numba import jit, njit
+#import numba as nb
+#from numba import jit, njit
 
 # Import third-party modules
 
@@ -115,9 +115,10 @@ class webInterface():
         self._update_rate_arr = None
         self._doa_method   = settings.doa_method_dict[settings.doa_method]
         self._doa_fig_type = settings.doa_fig_type_dict[settings.doa_fig_type]
+        self._spectrum_fig_type = 0
 
-        self.sp_data_que = queue.Queue(1) # Que to communicate with the signal processing module
-        self.rx_data_que = queue.Queue(1) # Que to communicate with the receiver modules
+        self.sp_data_que = queue.Queue(8) # Que to communicate with the signal processing module
+        self.rx_data_que = queue.Queue(8) # Que to communicate with the receiver modules
 
         # Instantiate and configure Kraken SDR modules
         self.module_receiver = ReceiverRTLSDR(data_que=self.rx_data_que, data_interface=settings.data_interface, logging_level=settings.logging_level*10)
@@ -181,6 +182,7 @@ class webInterface():
         self.pathname = ""
         self.reset_doa_graph_flag = False
         self.reset_spectrum_graph_flag = False
+        self.oldMaxIndex = 9999
         # Basic DAQ Config
         self.decimated_bandwidth = 12.5
 
@@ -465,17 +467,38 @@ for m in range(0, webInterface_inst.module_receiver.M): #+1 for the auto decimat
                              y=y,
                              name="Channel {:d}".format(m),
                              line = dict(color = trace_colors[m],
-                                         width = 1)
+                                         width = 1),
                              ))
 
 #m = np.size(webInterface_inst.spectrum,0)-1
 
-spectrum_fig.add_trace(go.Scattergl(x=x,
+for i in range(webInterface_inst.module_signal_processor.max_vfos): #webInterface_inst.module_signal_processor.active_vfos):
+    m = webInterface_inst.module_receiver.M + 2 #(2*i+1)
+    spectrum_fig.add_trace(go.Scattergl(x=x,
                        y=y, #webInterface_inst.spectrum[m, :],
-                       name="Selected Signal Window",
-                       line = dict(color = trace_colors[m],
-                       width = 3)
+                       name="VFO" + str(i),
+                       line = dict(color = trace_colors[m], width = 0),
+                       opacity = 0.33,
+                       fill='toself',
+                       visible=False
                                ))
+    m = webInterface_inst.module_receiver.M + 1 #(2*i+2)
+    spectrum_fig.add_trace(go.Scattergl(x=x,
+                       y=y, #webInterface_inst.spectrum[m, :],
+                       name="VFO" + str(i) +" Squelch",
+                       line = dict(color = trace_colors[m], width = 0),
+                       opacity = 0.33,
+                       fill='toself',
+                       visible=False
+                               ))
+
+    spectrum_fig.add_annotation(x=415640000, y=-5,
+            text="VFO-" + str(i),
+            showarrow=False,
+            yshift=10,
+            visible=False)
+
+
 
 spectrum_fig.update_xaxes( #title_text=freq_label,
                     color='rgba(255,255,255,1)',
@@ -500,23 +523,22 @@ spectrum_fig.update_yaxes(title_text="Amplitude [dB]",
                     )
 
 spectrum_fig.update_layout(margin=go.layout.Margin(b=5, t=0))
-
-
-
+spectrum_fig.update(layout_showlegend=False)
 
 
 #waterfall_init = [[-80] * webInterface_inst.module_signal_processor.spectrum_window_size] * 50
-waterfall_init_x = list(range(0, webInterface_inst.module_signal_processor.spectrum_window_size-1)) #[1] * webInterface_inst.module_signal_processor.spectrum_window_size
-waterfall_init = [[-80] * 1024] * 50
+#waterfall_init_x = list(range(0, webInterface_inst.module_signal_processor.spectrum_window_size-1)) #[1] * webInterface_inst.module_signal_processor.spectrum_window_size
+waterfall_init_x = list(range(0, webInterface_inst.module_signal_processor.spectrum_plot_size-1)) #[1] * webInterface_inst.module_signal_processor.spectrum_window_size
+waterfall_init = [[-80] * webInterface_inst.module_signal_processor.spectrum_plot_size] * 50
 
 waterfall_fig = go.Figure(layout=fig_layout)
-waterfall_fig.add_trace(go.Heatmapgl(
+waterfall_fig.add_trace(go.Heatmapgl( #heatmapgl was faster, but it causes weird issues, like the plot suddenly getting tiny at decimation factors above 3
                          x=waterfall_init_x,
                          z=waterfall_init,
                          zsmooth=False,
                          showscale=False,
                          #hoverinfo='skip',
-                         colorscale=[[0.0, '#000020'],
+                         colorscale=[[0.0, '#000020'], # CREDIT: Youssef color scale
                          [0.0714, '#000030'],
                          [0.1428, '#000050'],
                          [0.2142, '#000091'],
@@ -535,7 +557,7 @@ waterfall_fig.add_trace(go.Heatmapgl(
 
 waterfall_fig.update_xaxes(tickfont_size=1)
 waterfall_fig.update_yaxes(tickfont_size=1)
-waterfall_fig.update_layout(margin=go.layout.Margin(t=5))
+waterfall_fig.update_layout(margin=go.layout.Margin(t=5), hoverdistance=1000) #Set hoverdistance to 1000 seems to be a hack that fixed clickData events not always firing
 
 doa_fig = go.Figure(layout=fig_layout)
 
@@ -874,7 +896,7 @@ def generate_config_page_layout(webInterface_inst):
 
     dsp_config_card = \
     html.Div([
-        html.H2("DSP Configuration", id="init_title_d"),
+        html.H2("DoA Configuration", id="init_title_d"),
         html.Div([html.Div("Antenna configuration:"              , id="label_ant_arrangement"   , className="field-label"),
         dcc.RadioItems(
             options=[
@@ -916,6 +938,14 @@ def generate_config_page_layout(webInterface_inst):
     display_options_card = \
     html.Div([
         html.H2("Display Options", id="init_title_disp"),
+        html.Div("Spectrum Display:", className="field-label"), 
+        dcc.Dropdown(id='spectrum_fig_type',
+                options=[
+                    {'label': 'Single (Fast)', 'value': 0},
+                    {'label': 'Full' ,  'value': 1},
+                    ],
+            value=webInterface_inst._spectrum_fig_type, style={"display":"inline-block"},className="field-body"),
+
         html.Div("DoA Graph Type:", className="field-label"), 
         dcc.Dropdown(id='doa_fig_type',
                 options=[
@@ -932,49 +962,97 @@ def generate_config_page_layout(webInterface_inst):
     #-----------------------------
     #  Squelch Configuration Card
     #-----------------------------
-    reconfig_note = ""
     squelch_card = \
     html.Div([
-        html.H2("Squelch Configuration", id="init_title_sq"),
-        html.Div([html.Div("Enable squelch (DOA-DSP Subsystem)", id="label_en_dsp_squelch" , className="field-label"),
-                dcc.Checklist(options=option , id="en_dsp_squelch_check" , className="field-body", value=en_dsp_squelch_values),
-            ], className="field"),
-        html.Div([
-                html.Div("Squelch threshold [dB] (<0):", className="field-label"),                                         
-                dcc.Input(id='squelch_th', value=webInterface_inst.module_receiver.daq_squelch_th_dB, type='number', debounce=True, className="field-body")
-            ], className="field"),
+        html.H2("Channel Configuration", id="init_title_sq"),
+
+        html.Div("Channelization Mode:", className="field-label"), 
+        dcc.Dropdown(id='channelization_mode',
+                options=[
+                    {'label': 'Standard', 'value': 0},
+                    {'label': 'Max' ,  'value': 1},
+                    ],
+            value=0, style={"display":"inline-block"},className="field-body"),
+
+        html.Div("Active VFOs:", className="field-label"), 
+        dcc.Dropdown(id='active_vfos',
+                options=[
+                    {'label': '1', 'value': 1},
+                    {'label': '2', 'value': 2},
+                    {'label': '3', 'value': 3},
+                    {'label': '4', 'value': 4},
+                    {'label': '5', 'value': 5},
+                    {'label': '6', 'value': 6},
+                    {'label': '7', 'value': 7},
+                    {'label': '8', 'value': 8},
+                    {'label': '9', 'value': 9},
+                    {'label': '10', 'value': 10},
+                    {'label': '11', 'value': 11},
+                    {'label': '12', 'value': 12},
+                    {'label': '13', 'value': 13},
+                    {'label': '14', 'value': 14},
+                    {'label': '15', 'value': 15},
+                    {'label': '16', 'value': 16},
+                    ],
+            value=webInterface_inst.module_signal_processor.active_vfos, style={"display":"inline-block"},className="field-body"),
+
+        html.Div("Output VFO:", className="field-label"), 
+        dcc.Dropdown(id='output_vfo',
+                options=[
+                    {'label': 'ALL', 'value': -1},
+                    {'label': '0', 'value': 0},
+                    {'label': '1', 'value': 1},
+                    {'label': '2', 'value': 2},
+                    {'label': '3', 'value': 3},
+                    {'label': '4', 'value': 4},
+                    {'label': '5', 'value': 5},
+                    {'label': '6', 'value': 6},
+                    {'label': '7', 'value': 7},
+                    {'label': '8', 'value': 8},
+                    {'label': '9', 'value': 9},
+                    {'label': '10', 'value': 10},
+                    {'label': '11', 'value': 11},
+                    {'label': '12', 'value': 12},
+                    {'label': '13', 'value': 13},
+                    {'label': '14', 'value': 14},
+                    {'label': '15', 'value': 15},
+                    ],
+            value=webInterface_inst.module_signal_processor.output_vfo, style={"display":"inline-block"},className="field-body"),
 
         html.Div([
-                html.Div("Phase Test 1:", className="field-label"),                                         
-                dcc.Input(id='phase_test_1', value=webInterface_inst.module_signal_processor.phasetest[0], type='number', debounce=True, className="field-body")
+                html.Div("DSP Side Decimation:", className="field-label"),
+                dcc.Input(id='dsp_decimation', value=webInterface_inst.module_signal_processor.dsp_decimation, type='number', debounce=True, className="field-body")
             ], className="field"),
-
-        html.Div([
-                html.Div("Phase Test 2:", className="field-label"),                                         
-                dcc.Input(id='phase_test_2', value=webInterface_inst.module_signal_processor.phasetest[1], type='number', debounce=True, className="field-body")
-            ], className="field"),
-
-        html.Div([
-                html.Div("Phase Test 3:", className="field-label"),                                         
-                dcc.Input(id='phase_test_3', value=webInterface_inst.module_signal_processor.phasetest[2], type='number', debounce=True, className="field-body")
-            ], className="field"),
-
-        html.Div([
-                html.Div("Phase Test 4:", className="field-label"),                                         
-                dcc.Input(id='phase_test_4', value=webInterface_inst.module_signal_processor.phasetest[3], type='number', debounce=True, className="field-body")
-            ], className="field"),
-
-        html.Div([
-                html.Div("Phase Test 5", className="field-label"),                                         
-                dcc.Input(id='phase_test_5', value=webInterface_inst.module_signal_processor.phasetest[4], type='number', debounce=True, className="field-body")
-            ], className="field"),
-
-
-
-        html.Div(reconfig_note, id="squelch_reconfig_note", className="field", style={"color":"red"}),
     ], className="card")
 
+    #-----------------------------
+    #  VFO Configuration Card
+    #-----------------------------
+    vfo_card = [" "] * webInterface_inst.module_signal_processor.max_vfos
+
+    for i in range(webInterface_inst.module_signal_processor.max_vfos):
+        vfo_card[i] = \
+        html.Div([
+            html.Div([
+                    html.Div("VFO-" + str(i) + " Frequency (MHz):", className="field-label"),
+                    dcc.Input(id='vfo_' + str(i) + '_freq', value=webInterface_inst.module_signal_processor.vfo_freq[i] / 10**6, type='number', debounce=True, className="field-body")
+                ], className="field"),
+
+            html.Div([
+                    html.Div("VFO-" + str(i) + " Bandwidth (Hz):", className="field-label"),
+                    dcc.Input(id='vfo_' + str(i) + '_bw', value=webInterface_inst.module_signal_processor.vfo_bw[i], type='number', debounce=True, className="field-body")
+                ], className="field"),
+
+            html.Div([
+                    html.Div("VFO-" + str(i) + " Squelch (dB) :", className="field-label"),
+                    dcc.Input(id='vfo_' +str(i) + '_squelch', value=webInterface_inst.module_signal_processor.vfo_squelch[i], type='number', debounce=True, className="field-body")
+                ], className="field"),
+        ], id="vfo"+str(i), className="card", style = {'display': 'block'} if i < webInterface_inst.module_signal_processor.active_vfos else {'display': 'none'} )
+
     config_page_component_list = [daq_config_card, daq_status_card, dsp_config_card, display_options_card,squelch_card]
+
+    for i in range(webInterface_inst.module_signal_processor.max_vfos):
+        config_page_component_list.append(vfo_card[i])
 
     if not webInterface_inst.disable_tooltips:
         config_page_component_list.append(tooltips.dsp_config_tooltips)
@@ -986,17 +1064,23 @@ def generate_config_page_layout(webInterface_inst):
 spectrum_page_layout = html.Div([   
     html.Div([
     #dcc.Store(id="spectrum-store"),
+    #html.Div([
+
     dcc.Graph(
         id="spectrum-graph",
         style={'width': '100%', 'height': '45%'},
+        #style={'width': '800px', 'height': '45%'},
         figure=spectrum_fig #fig_dummy #spectrum_fig #fig_dummy
-    ),
+    ), #]),
+    #html.Div([
     dcc.Graph(
         id="waterfall-graph",
-        style={'width': '93.5%', 'height': '60%'},
+        style={'width': '100%', 'height': '60%'},
+        #style={'width': '93.5%', 'height': '60%'},
+        #style={'width': '800px', 'height': '60%'},
         figure=waterfall_fig #waterfall fig remains unchanged always due to slow speed to update entire graph #fig_dummy #spectrum_fig #fig_dummy
-    ),
-], className="monitor_card"),
+    ), #]),
+], style={'width': '100%', 'height': '80vh'}), #className="monitor_card"),
 
 ])
 def generate_doa_page_layout(webInterface_inst):
@@ -1306,28 +1390,174 @@ def update_daq_params(input_value, f0, gain):
 
 @app.callback_shared(
     None,
-    [Input(component_id ="en_dsp_squelch_check"      , component_property="value"),
-    Input(component_id ="squelch_th"                , component_property="value"),
-    Input(component_id ="phase_test_1"                , component_property="value"),
-    Input(component_id ="phase_test_2"                , component_property="value"),
-    Input(component_id ="phase_test_3"                , component_property="value"),
-    Input(component_id ="phase_test_4"                , component_property="value"),
-    Input(component_id ="phase_test_5"                , component_property="value")],
-)
-def update_squelch_params(en_dsp_squelch, squelch_threshold, pt1, pt2, pt3, pt4, pt5):
-    if squelch_threshold is None:
-        squelch_threshold = 0
-    webInterface_inst.module_receiver.daq_squelch_th_dB = squelch_threshold
-    if en_dsp_squelch is not None and len(en_dsp_squelch):
-        webInterface_inst.module_signal_processor.en_squelch = True
-    else:
-        webInterface_inst.module_signal_processor.en_squelch = False
+    [Input(component_id ="dsp_decimation"                , component_property="value"),
+    Input(component_id ="active_vfos"                , component_property="value"),
+    Input(component_id ="output_vfo"                , component_property="value"),
 
-    webInterface_inst.module_signal_processor.phasetest[0] = float(pt1)
-    webInterface_inst.module_signal_processor.phasetest[1] = float(pt2)
-    webInterface_inst.module_signal_processor.phasetest[2] = float(pt3)
-    webInterface_inst.module_signal_processor.phasetest[3] = float(pt4)
-    webInterface_inst.module_signal_processor.phasetest[4] = float(pt5)
+    Input(component_id ="vfo_0_bw"                , component_property="value"),
+    Input(component_id ="vfo_0_freq"              , component_property="value"),
+    Input(component_id ="vfo_0_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_1_bw"                , component_property="value"),
+    Input(component_id ="vfo_1_freq"              , component_property="value"),
+    Input(component_id ="vfo_1_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_2_bw"                , component_property="value"),
+    Input(component_id ="vfo_2_freq"              , component_property="value"),
+    Input(component_id ="vfo_2_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_3_bw"                , component_property="value"),
+    Input(component_id ="vfo_3_freq"              , component_property="value"),
+    Input(component_id ="vfo_3_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_4_bw"                , component_property="value"),
+    Input(component_id ="vfo_4_freq"              , component_property="value"),
+    Input(component_id ="vfo_4_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_5_bw"                , component_property="value"),
+    Input(component_id ="vfo_5_freq"              , component_property="value"),
+    Input(component_id ="vfo_5_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_6_bw"                , component_property="value"),
+    Input(component_id ="vfo_6_freq"              , component_property="value"),
+    Input(component_id ="vfo_6_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_7_bw"                , component_property="value"),
+    Input(component_id ="vfo_7_freq"              , component_property="value"),
+    Input(component_id ="vfo_7_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_8_bw"                , component_property="value"),
+    Input(component_id ="vfo_8_freq"              , component_property="value"),
+    Input(component_id ="vfo_8_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_9_bw"                , component_property="value"),
+    Input(component_id ="vfo_9_freq"              , component_property="value"),
+    Input(component_id ="vfo_9_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_10_bw"                , component_property="value"),
+    Input(component_id ="vfo_10_freq"              , component_property="value"),
+    Input(component_id ="vfo_10_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_11_bw"                , component_property="value"),
+    Input(component_id ="vfo_11_freq"              , component_property="value"),
+    Input(component_id ="vfo_11_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_12_bw"                , component_property="value"),
+    Input(component_id ="vfo_12_freq"              , component_property="value"),
+    Input(component_id ="vfo_12_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_13_bw"                , component_property="value"),
+    Input(component_id ="vfo_13_freq"              , component_property="value"),
+    Input(component_id ="vfo_13_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_14_bw"                , component_property="value"),
+    Input(component_id ="vfo_14_freq"              , component_property="value"),
+    Input(component_id ="vfo_14_squelch"           , component_property="value"),
+
+    Input(component_id ="vfo_15_bw"                , component_property="value"),
+    Input(component_id ="vfo_15_freq"              , component_property="value"),
+    Input(component_id ="vfo_15_squelch"           , component_property="value"),
+    ],
+)
+# TODO: This is dumb, can we set these callback parameters as an array somehow?
+def update_squelch_params(dsp_decimation, active_vfos, output_vfo,
+                                          vfo_0_bw, vfo_0_freq, vfo_0_squelch, 
+                                          vfo_1_bw, vfo_1_freq, vfo_1_squelch,
+                                          vfo_2_bw, vfo_2_freq, vfo_2_squelch,
+                                          vfo_3_bw, vfo_3_freq, vfo_3_squelch,
+                                          vfo_4_bw, vfo_4_freq, vfo_4_squelch,
+                                          vfo_5_bw, vfo_5_freq, vfo_5_squelch,
+                                          vfo_6_bw, vfo_6_freq, vfo_6_squelch,
+                                          vfo_7_bw, vfo_7_freq, vfo_7_squelch,
+                                          vfo_8_bw, vfo_8_freq, vfo_8_squelch,
+                                          vfo_9_bw, vfo_9_freq, vfo_9_squelch,
+                                          vfo_10_bw, vfo_10_freq, vfo_10_squelch,
+                                          vfo_11_bw, vfo_11_freq, vfo_11_squelch,
+                                          vfo_12_bw, vfo_12_freq, vfo_12_squelch,
+                                          vfo_13_bw, vfo_13_freq, vfo_13_squelch,
+                                          vfo_14_bw, vfo_14_freq, vfo_14_squelch,
+                                          vfo_15_bw, vfo_15_freq, vfo_15_squelch,
+                                          ):
+
+    webInterface_inst.module_signal_processor.dsp_decimation = dsp_decimation
+    webInterface_inst.module_signal_processor.active_vfos = active_vfos
+    webInterface_inst.module_signal_processor.output_vfo = output_vfo
+
+    for i in range(webInterface_inst.module_signal_processor.max_vfos):
+        if i < active_vfos:
+            app.push_mods({
+                'vfo'+str(i) : {'style': {'display': 'block'}}
+            })
+        else:
+            app.push_mods({
+                'vfo'+str(i) : {'style': {'display': 'none'}}
+            })
+
+
+    webInterface_inst.module_signal_processor.vfo_bw[0] = int(vfo_0_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[0] = int(vfo_0_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[0] = int(vfo_0_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[1] = int(vfo_1_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[1] = int(vfo_1_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[1] = int(vfo_1_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[2] = int(vfo_2_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[2] = int(vfo_2_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[2] = int(vfo_2_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[3] = int(vfo_3_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[3] = int(vfo_3_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[3] = int(vfo_3_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[4] = int(vfo_4_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[4] = int(vfo_4_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[4] = int(vfo_4_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[5] = int(vfo_5_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[5] = int(vfo_5_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[5] = int(vfo_5_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[6] = int(vfo_6_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[6] = int(vfo_6_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[6] = int(vfo_6_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[7] = int(vfo_7_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[7] = int(vfo_7_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[7] = int(vfo_7_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[8] = int(vfo_8_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[8] = int(vfo_8_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[8] = int(vfo_8_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[9] = int(vfo_9_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[9] = int(vfo_9_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[9] = int(vfo_9_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[10] = int(vfo_10_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[10] = int(vfo_10_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[10] = int(vfo_10_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[11] = int(vfo_11_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[11] = int(vfo_11_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[11] = int(vfo_11_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[12] = int(vfo_12_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[12] = int(vfo_12_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[12] = int(vfo_12_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[13] = int(vfo_13_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[13] = int(vfo_13_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[13] = int(vfo_13_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[14] = int(vfo_14_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[14] = int(vfo_14_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[14] = int(vfo_14_squelch)
+
+    webInterface_inst.module_signal_processor.vfo_bw[15] = int(vfo_15_bw)
+    webInterface_inst.module_signal_processor.vfo_freq[15] = int(vfo_15_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_squelch[15] = int(vfo_15_squelch)
+
 
 
 
@@ -1383,21 +1613,21 @@ def save_config_btn(input_value):
     webInterface_inst.logger.info("Saving DAQ and DSP Configuration")
     webInterface_inst.save_configuration()
 
-@app.callback(
+@app.callback_shared(
     None,
     [Input('spectrum-graph', 'clickData')]
 )
 def click_to_set_freq_spectrum(clickData):
-    webInterface_inst.module_signal_processor.channel_freq = int(clickData["points"][0]["x"])
+    webInterface_inst.module_signal_processor.vfo_freq[0] = int(clickData["points"][0]["x"])
     #print("Processing click data." + str(json.dumps(clickData)))
     #print("Processing click data." + str(clickData["points"][0]["x"]))
 
-@app.callback(
+@app.callback_shared(
     None,
     [Input('waterfall-graph', 'clickData')]
 )
-def click_to_set_freq_spectrum(clickData):
-    webInterface_inst.module_signal_processor.channel_freq = int(clickData["points"][0]["x"])
+def click_to_set_waterfall_spectrum(clickData):
+    webInterface_inst.module_signal_processor.vfo_freq[0] = int(clickData["points"][0]["x"])
 
 def plot_doa():
     global doa_fig
@@ -1497,12 +1727,54 @@ def plot_spectrum():
         for m in range(np.size(webInterface_inst.spectrum, 0)-1):
             spectrum_fig.data[m]['x'] = x
             #spectrum_fig.data[m]['y'] = y
-            """spectrum_fig.add_trace(go.Scattergl(x=x,
+
+        # Hide non active traces
+        for i in range(webInterface_inst.module_signal_processor.max_vfos):
+
+            if i < webInterface_inst.module_signal_processor.active_vfos:
+                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2)]['visible'] = True
+                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2+1)]['visible'] = True
+                spectrum_fig.layout.annotations[i]['visible'] = True
+            else:
+                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2)]['visible'] = False
+                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2+1)]['visible'] = False
+                spectrum_fig.layout.annotations[i]['visible'] = False
+
+
+            #maxIndex = webInterface_inst.spectrum[webInterface_inst.module_receiver.M+3,:].argmax()
+            #maxX = x[maxIndex]
+            #spectrum_fig.layout.annotations[i]['x'] = maxX
+
+
+#        spectrum_fig.update_xaxes( #title_text=freq_label,
+                    #color='rgba(255,255,255,1)',
+                    #title_font_size=20,
+                    #tickfont_size= 15, #figure_font_size,
+#                    range=[np.min(x), np.max(x)],
+                    #rangemode='normal',
+                    #mirror=True,
+                    #ticks='outside',
+                    #showline=True,
+                    #fixedrange=True
+#                    )
+
+
+
+        #spectrum_fig.add_annotation(x=maxX, y=-5,
+        #    text="VFO-0",
+        #    showarrow=False,
+        #    yshift=10)
+
+
+
+
+        """spectrum_fig.add_trace(go.Scattergl(x=x,
                                      y=y, #webInterface_inst.spectrum[m+1, :],
                                      name="Channel {:d}".format(m),
                                      line = dict(color = trace_colors[m],
                                                  width = 1)
-                                    ))"""
+                                    ))
+        """
 
         #spectrum_fig.add_hline(y=webInterface_inst.module_receiver.daq_squelch_th_dB)
 
@@ -1577,6 +1849,8 @@ def plot_spectrum():
 
         #waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], fixedrange=True, showgrid=False)
         #waterfall_fig.update_yaxes(tickfont_size=1, fixedrange=True, showgrid=False)
+        waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], showgrid=False)
+        waterfall_fig.update_yaxes(tickfont_size=1,  showgrid=False)
 
         webInterface_inst.reset_spectrum_graph_flag = False
         app.push_mods({
@@ -1585,6 +1859,28 @@ def plot_spectrum():
         })
 
     else:
+
+        # Update entire graph to update VFO-0 text. There is no way to just update annotations in Dash, but updating the entire spectrum is fast
+        # enough to do on click
+
+        update = False
+        for i in range(webInterface_inst.module_signal_processor.active_vfos):
+            maxIndex = webInterface_inst.spectrum[webInterface_inst.module_receiver.M+(i*2+1),:].argmax()
+            if maxIndex != spectrum_fig.layout.annotations[i]['x']: #webInterface_inst.oldMaxIndex:
+                update = True
+                x = webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6
+                maxX = x[maxIndex]
+                spectrum_fig.layout.annotations[i]['x'] = maxX
+
+        if update:
+            spectrum_fig.data[0]['x'] = x
+            for m in range(1, np.size(webInterface_inst.spectrum, 0)):
+                spectrum_fig.data[m-1]['y'] = webInterface_inst.spectrum[m,:]
+
+            app.push_mods({
+                'spectrum-graph': {'figure': spectrum_fig}
+            })
+
         x_app = []
         y_app = []
         num_r = webInterface_inst.module_receiver.M #np.size(webInterface_inst.spectrum, 0)
@@ -1593,23 +1889,14 @@ def plot_spectrum():
             y_app.append(webInterface_inst.spectrum[m, :])
 
         update_data = dict(x=x_app, y=y_app)
-
         x = webInterface_inst.spectrum[1, :]
-
-        #spectrum_size = 1024
-        #x_resamp = np.ones(spectrum_size, dtype=np.float32)
-        #for i in range(1024):
-        #    x_resamp[i] = np.max(x[i*2:2*(i+1)])
-
-        # Numba is about 5x faster
-        #x_resamp = halve_spectrum(x)
-        x_resamp = x
         app.push_mods({
             'spectrum-graph': {'extendData': [update_data, list(range(0,len(webInterface_inst.spectrum)-1)), len(webInterface_inst.spectrum[0,:])]},
             #'waterfall-graph': {'extendData': [dict(z = [[np.sum(webInterface_inst.spectrum[1:num_r+1, ::4], axis=0)]]), [0], 50]}, #Add up spectrum for waterfall
-            'waterfall-graph': {'extendData': [dict(z = [[x_resamp]]), [0], 50]}, #Add up spectrum for waterfall
+            'waterfall-graph': {'extendData': [dict(z = [[x]]), [0], 50]}, #Add up spectrum for waterfall
             #'waterfall-graph': {'extendData': [dict(z = [[x]]), [0], 50]}, #Add up spectrum for waterfall
         })
+
 
 @app.callback(
     [Output(component_id="body_ant_spacing_wavelength",  component_property='children'),
@@ -1622,10 +1909,11 @@ def plot_spectrum():
     Input(component_id ="ant_spacing_meter"           , component_property='value'),
     Input(component_id ="radio_ant_arrangement"           , component_property='value'),
     Input(component_id ="doa_fig_type"           , component_property='value'),
+    Input(component_id ="spectrum_fig_type"           , component_property='value'),
     Input(component_id ="doa_method"           , component_property='value'),
     Input(component_id ="compass_ofset"           , component_property='value')],
 )
-def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset): #, input_value):
+def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, spectrum_fig_type, doa_method, compass_ofset): #, input_value):
 
     ant_spacing_meter = spacing_meter
     wavelength= 300 / webInterface_inst.daq_center_freq
@@ -1670,6 +1958,10 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
 
     webInterface_inst.module_signal_processor.DOA_ant_alignment=ant_arrangement
     webInterface_inst._doa_fig_type = doa_fig_type
+    webInterface_inst._spectrum_fig_type = spectrum_fig_type
+    webInterface_inst.module_signal_processor.spectrum_fig_type = spectrum_fig_type
+
+
     webInterface_inst.compass_ofset = compass_ofset
 
     return [str(ant_spacing_wavelength), spacing_label, ambiguity_warning, smoothing_possibility]
@@ -2062,17 +2354,6 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.active_daq_ini_cfg = webInterface_inst.daq_ini_cfg_params[0] #webInterface_inst.tmp_daq_ini_cfg
 
     return Output("daq_cfg_files", "value", daq_config_filename), Output("active_daq_ini_cfg", "children", "Active Configuration: " + webInterface_inst.active_daq_ini_cfg)
-
-# Significantly faster with numba once we added nb.prange
-@njit(fastmath=True, cache=True, parallel=True)
-def halve_spectrum(x):
-    spectrum_size = len(x) // 2
-    x_resamp = np.ones(spectrum_size, dtype=np.float32)
-    #group = len(self.spectrum[0,:]) // spectrum_size
-    for i in nb.prange(spectrum_size):
-        x_resamp[i] = np.max(x[i*2:2*(i+1)])
-
-    return x_resamp
 
 if __name__ == "__main__":    
     # For Development only, otherwise use gunicorn    
