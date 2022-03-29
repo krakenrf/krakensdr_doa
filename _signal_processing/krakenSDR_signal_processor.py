@@ -42,9 +42,9 @@ import multiprocessing
 # Math support
 import numpy as np
 import numpy.linalg as lin
-import numexpr as ne
+#import numexpr as ne
 #from numba import jit
-import pyfftw
+#import pyfftw
 
 # Signal processing support
 import scipy
@@ -127,9 +127,9 @@ class SignalProcessor(threading.Thread):
         self.spectrum_fig_type = 0 #0 Single, 1 Full
 
         self.max_vfos = 16
-        self.vfo_bw = [12500] * 16
-        self.vfo_freq = [self.module_receiver.daq_center_freq] * 16
-        self.vfo_squelch = [-120] * 16
+        self.vfo_bw = [12500] * self.max_vfos
+        self.vfo_freq = [self.module_receiver.daq_center_freq] * self.max_vfos
+        self.vfo_squelch = [-120] * self.max_vfos
         
         # Result vectors
         self.DOA_Bartlett_res = np.ones(181)
