@@ -55,12 +55,12 @@ sys.path.insert(0, signal_processor_path)
 sys.path.insert(0, ui_path)
 
 daq_subsystem_path    = os.path.join(
-                            os.path.join(os.path.dirname(root_path),
-                            "heimdall_daq_fw"),
+                        os.path.join(os.path.dirname(root_path),
+                        "heimdall_daq_fw"),
                         "Firmware")
 daq_preconfigs_path   = os.path.join(
-                            os.path.join(os.path.dirname(root_path),
-                            "heimdall_daq_fw"),
+                        os.path.join(os.path.dirname(root_path),
+                        "heimdall_daq_fw"),
                         "config_files")
 daq_config_filename   = os.path.join(daq_subsystem_path, "daq_chain_config.ini")
 daq_stop_filename     = "daq_stop.sh"
@@ -372,7 +372,7 @@ def write_config_file(param_list):
     else:
         with open(daq_config_filename, 'w') as configfile:
             parser.write(configfile)
-        return 0,[]
+        return 0, []
 
 def get_preconfigs(config_files_path):
     parser = ConfigParser()
@@ -398,7 +398,7 @@ webInterface_inst = webInterface()
 
 trace_colors = px.colors.qualitative.Plotly
 trace_colors[3] = 'rgb(255,255,51)'
-valid_fir_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen' , 'bohman', 'blackmanharris', 'nuttall', 'barthann'] 
+valid_fir_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen' , 'bohman', 'blackmanharris', 'nuttall', 'barthann']
 valid_sample_rates = [0.25, 0.900001, 1.024, 1.4, 1.8, 1.92, 2.048, 2.4, 2.56, 3.2]
 valid_daq_buffer_sizes = (2**np.arange(10,21,1)).tolist()
 calibration_tack_modes = [['No tracking',0] , ['Periodic tracking',2]]
@@ -414,54 +414,63 @@ y=np.random.normal(0,1,2**3)
 x=np.arange(2**3)
 
 fig_layout = go.Layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        template='plotly_dark',
-        showlegend=True,
-        margin=go.layout.Margin(
-            t=0 #top margin
-        )
-    )
+                 paper_bgcolor='rgba(0,0,0,0)',
+                 plot_bgcolor='rgba(0,0,0,0)',
+                 template='plotly_dark',
+                 showlegend=True,
+                 margin=go.layout.Margin(
+                     t=0 #top margin
+                 )
+             )
 
 option = [{"label":"", "value": 1}]
 
 spectrum_fig = go.Figure(layout=fig_layout)
 
 for m in range(0, webInterface_inst.module_receiver.M): #+1 for the auto decimation window selection
-    spectrum_fig.add_trace(go.Scattergl(x=x,
-                             y=y,
-                             name="Channel {:d}".format(m),
-                             line = dict(color = trace_colors[m],
-                                         width = 1),
-                             ))
+    spectrum_fig.add_trace(go.Scattergl(
+                               x=x,
+                               y=y,
+                               name="Channel {:d}".format(m),
+                               line = dict(color = trace_colors[m],
+                                           width = 1),
+                               )
+                           )
 
 for i in range(webInterface_inst.module_signal_processor.max_vfos): #webInterface_inst.module_signal_processor.active_vfos):
     m = webInterface_inst.module_receiver.M + 2 #(2*i+1)
-    spectrum_fig.add_trace(go.Scattergl(x=x,
-                       y=y, #webInterface_inst.spectrum[m, :],
-                       name="VFO" + str(i),
-                       line = dict(color = trace_colors[m], width = 0),
-                       opacity = 0.33,
-                       fill='toself',
-                       visible=False
-                               ))
+    spectrum_fig.add_trace(go.Scattergl(
+                               x=x,
+                               y=y,
+                               name="VFO" + str(i),
+                               line = dict(color = trace_colors[m], width = 0),
+                               opacity = 0.33,
+                               fill='toself',
+                               visible=False
+                               )
+                           )
+
     m = webInterface_inst.module_receiver.M + 1 #(2*i+2)
-    spectrum_fig.add_trace(go.Scattergl(x=x,
-                       y=y, #webInterface_inst.spectrum[m, :],
-                       name="VFO" + str(i) +" Squelch",
-                       line = dict(color = trace_colors[m], width = 0),
-                       opacity = 0.33,
-                       fill='toself',
-                       visible=False
-                               ))
+    spectrum_fig.add_trace(go.Scattergl(
+                               x=x,
+                               y=y,
+                               name="VFO" + str(i) +" Squelch",
+                               line = dict(color = trace_colors[m], width = 0),
+                               opacity = 0.33,
+                               fill='toself',
+                               visible=False
+                               )
+                           )
 
-    spectrum_fig.add_annotation(x=415640000, y=-5,
-            text="VFO-" + str(i),
-            showarrow=False,
-            yshift=10,
-            visible=False)
+    spectrum_fig.add_annotation(
+        x=415640000,
+        y=-5,
+        text="VFO-" + str(i),
+        showarrow=False,
+        yshift=10,
+        visible=False)
 
-spectrum_fig.update_xaxes( #title_text=freq_label,
+spectrum_fig.update_xaxes(
                     color='rgba(255,255,255,1)',
                     title_font_size=20,
                     tickfont_size= 15, #figure_font_size,
@@ -490,13 +499,13 @@ waterfall_init_x = list(range(0, webInterface_inst.module_signal_processor.spect
 waterfall_init = [[-80] * webInterface_inst.module_signal_processor.spectrum_plot_size] * 50
 
 waterfall_fig = go.Figure(layout=fig_layout)
-waterfall_fig.add_trace(go.Heatmapgl( #heatmapgl was faster, but it causes weird issues, like the plot suddenly getting tiny at decimation factors above 3
+waterfall_fig.add_trace(go.Heatmapgl(
                          x=waterfall_init_x,
                          z=waterfall_init,
                          zsmooth=False,
                          showscale=False,
                          #hoverinfo='skip',
-                         colorscale=[[0.0, '#000020'], # CREDIT: Youssef color scale
+                         colorscale=[[0.0, '#000020'], # CREDIT: Youssef SDR# color scale
                          [0.0714, '#000030'],
                          [0.1428, '#000050'],
                          [0.2142, '#000091'],
@@ -522,6 +531,7 @@ doa_fig = go.Figure(layout=fig_layout)
 
 #app = dash.Dash(__name__, suppress_callback_exceptions=True, compress=True, update_title="") # cannot use update_title with dash_devices
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app.title = "KrakenSDR DoA"
 
 # app_log = logger.getLogger('werkzeug')
 # app_log.setLevel(settings.logging_level*10)
@@ -2197,7 +2207,7 @@ def reconfig_daq_chain(input_value, freq, gain):
 
 if __name__ == "__main__":
     # For Development only, otherwise use gunicorn
-    # Debug mode does not work when the data interface is set to shared-memory "shmem"!
+    # Debug mode does not work when the data interface is set to shared-memory "shmem"! 
     app.run_server(debug=False, host="0.0.0.0", port=8080)
 
 """
