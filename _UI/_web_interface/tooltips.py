@@ -7,19 +7,19 @@ dsp_config_tooltips = html.Div([
         html.P("ULA - Uniform Linear Array"),
         html.P("Antenna elements placed on a line with having equal distances between each other"),
         html.P("UCA - Uniform Circular Array"),
-        html.P("Antenna elements are placed on circle equaly distributed on 360°")],        
+        html.P("Antenna elements are placed on circle equaly distributed on 360°")],
         target="label_ant_arrangement",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Antenna Spacing
-#    dbc.Tooltip([
-#        html.P("When ULA is selected: Spacing between antenna elements"),
-#        html.P("When UCA is selected: Radius of the circle on which the elements are placed")],
-#        target="label_ant_spacing",
-#        placement="bottom",
-#        className="tooltip"
-#        ),
+    #    dbc.Tooltip([
+    #        html.P("When ULA is selected: Spacing between antenna elements"),
+    #        html.P("When UCA is selected: Radius of the circle on which the elements are placed")],
+    #        target="label_ant_spacing",
+    #        placement="bottom",
+    #        className="tooltip"
+    #        ),
     # Enable F-B averaging
     dbc.Tooltip([
         html.P("Forward-backward averegaing improves the performance of DoA estimation in multipath environment"),
@@ -27,8 +27,8 @@ dsp_config_tooltips = html.Div([
         target="label_en_fb_avg",
         placement="bottom",
         className="tooltip"
-        ),
-        ])
+    ),
+])
 
 daq_ini_config_tooltips = html.Div([
     # DAQ buffer size
@@ -37,28 +37,28 @@ daq_ini_config_tooltips = html.Div([
         target="label_daq_buffer_size",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Sampling frequency
     dbc.Tooltip([
         html.P("Raw - ADC sampling frequency of the realtek chip")],
         target="label_sample_rate",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Enable noise source control
     dbc.Tooltip([
         html.P("Enables the utilization of the built-in noise source for calibration")],
         target="label_en_noise_source_ctr",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Enable squelch mode
     dbc.Tooltip([
         html.P("Enable DAQ-side squelch to capture burst like signals - NOTE DISABLED IN THIS VERSION, THIS VERSION USES DSP SIDE SQUELCH ONLY")],
         target="label_en_squelch",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Squelch threshold
     dbc.Tooltip([
         html.P("Amplitude threshold used for the squelch feature."),
@@ -67,21 +67,21 @@ daq_ini_config_tooltips = html.Div([
         target="label_squelch_init_threshold",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # CPI size
     dbc.Tooltip([
         html.P("Length of the Coherent Processing Interval (CPI) after decimation")],
         target="label_cpi_size",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Decimation raito
     dbc.Tooltip([
         html.P("Decimation factor")],
         target="label_decimation_ratio",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # FIR relative bandwidth
     dbc.Tooltip([
         html.P("Anti-aliasing filter bandwith after decimation"),
@@ -91,7 +91,7 @@ daq_ini_config_tooltips = html.Div([
         target="label_fir_relative_bw",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # FIR tap size
     dbc.Tooltip([
         html.P("Anti-aliasing FIR filter tap size - Do not set too large, or CPU utilization will be 100%"),
@@ -99,7 +99,7 @@ daq_ini_config_tooltips = html.Div([
         target="label_fir_tap_size",
         placement="bottom",
         className="tooltip"
-        ),            
+    ),
     # FIR tap size
     dbc.Tooltip([
         html.P("Window function type for designing the anti-aliasing FIR filter"),
@@ -107,42 +107,42 @@ daq_ini_config_tooltips = html.Div([
         target="label_fir_window",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Enable filter reset
     dbc.Tooltip([
         html.P("If enabled, the memory of the anti-aliasing FIR filter is reseted at the begining of every new CPI")],
         target="label_en_filter_reset",
         placement="bottom",
         className="tooltip"
-        ),  
+    ),
     # Correlation size
     dbc.Tooltip([
         html.P("Number of samples used for the calibration procedure (sample delay and IQ compensation)")],
         target="label_correlation_size",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Standard channel index
     dbc.Tooltip([
         html.P("The selected channel is used as a reference for the IQ compensation")],
         target="label_std_ch_index",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Enable IQ calibration
     dbc.Tooltip([
         html.P("Enables to compensate the amplitude and phase differences of the receiver channels")],
         target="label_en_iq_calibration",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Gain lock interval
     dbc.Tooltip([
         html.P("Minimum number of stable frames before terminating the gain tuning procedure")],
         target="label_gain_lock_interval",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Require track lock intervention
     dbc.Tooltip([
         html.P("When enabled the DAQ firmware waits for manual intervention during the calibraiton procedure"),
@@ -150,7 +150,7 @@ daq_ini_config_tooltips = html.Div([
         target="label_require_track_lock",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Amplitude calibraiton mode
     dbc.Tooltip([
         html.P("Amplitude difference compensation method applied as part of the IQ compensation"),
@@ -160,7 +160,7 @@ daq_ini_config_tooltips = html.Div([
         target="label_amplitude_calibration_mode",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     dbc.Tooltip([
         html.P("When periodic calibration track mode is selected the firmware regularly turn on the noise source for a short burst to\
             check whether the IQ calibration is still valid or not. In case the calibrated state is lost, the firmware automatically\
@@ -168,43 +168,79 @@ daq_ini_config_tooltips = html.Div([
         target="label_calibration_track_mode",
         placement="bottom",
         className="tooltip"
-        ),
-        
+    ),
+
     # Calibration frame interval
     dbc.Tooltip([
         html.P("Number of data frames between two consecutive calibration burst. Used when periodic calibration mode is selected")],
         target="label_calibration_frame_interval",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Calibration frame burst size
     dbc.Tooltip([
         html.P("Number of calibration frames generated in the periodic calibration mode")],
         target="label_calibration_frame_burst_size",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Amplitude tolerance
     dbc.Tooltip([
         html.P("Maximum allowed amplitude difference between the receiver channels")],
         target="label_amplitude_tolerance",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Phase tolerance
     dbc.Tooltip([
         html.P("Maximum allowed phase difference between the receiver channels")],
         target="label_phase_tolerance",
         placement="bottom",
         className="tooltip"
-        ),
+    ),
     # Maximum sync fails
     dbc.Tooltip([
         html.P("Maximum allowed consecutive IQ difference check failures before initiating a recalibration")],
         target="label_max_sync_fails",
         placement="bottom",
         className="tooltip"
-        ),
-    ])
+    ),
+])
 
-        
+station_parameters_tooltips = html.Div([
+    dbc.Tooltip([
+        html.P("Station ID"),
+        html.P("A useful name for your station."),
+        html.P("Allows Alpha-Numberic Characters and Hyphens (-)."),
+        html.P("All other chacters are replaced by hyphens.")],
+        target="station_id_label",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("DOA Data Format"),
+        html.P("Kraken/Pro & Kerberos App: Choose if you are outputting to the KrakenSDR Android App, KrakenSDR Pro, or Legacy KerberosSDR App"),
+        html.P("DF Aggregator: Use for DF Aggregator"),
+        html.P("JSON: Not implemented yet")],
+        target="doa_format_label",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Location Source"),
+        html.P("None: Don't use location data, use this if you're only using the android app."),
+        html.P("Static: A fixed location for a stationary receiver."),
+        html.P("GPS: Uses gpsd and a USB gps. If this is greyed out, the gpsd python library is not installed")],
+        target="location_src_label",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Fixed Heading"),
+        html.P("If you're getting location from a GPS, but aren't moving, use this to set a static heading."),
+        html.P("GPS Heading information is only reliable when you're moving.")],
+        target="fixed_heading_label",
+        placement="bottom",
+        className="tooltip"
+    ),
+])

@@ -336,7 +336,7 @@ class SignalProcessor(threading.Thread):
                         if self.hasgps:
                             self.update_location()
 
-                        if self.DOA_data_format == "Chasemapper":
+                        if self.DOA_data_format == "DF Aggregator":
                             self.wr_xml(self.station_id,
                                         DOA_str,
                                         confidence_str,
@@ -562,14 +562,14 @@ class SignalProcessor(threading.Thread):
     def wr_json(self, station_id, DOA_str, confidence_str, max_power_level_str,
                freq, doa_result_log, latitude, longitude, heading):
         #KrakenSDR Flutter app out
-        #doaString = str('')
-        #for i in range(len(doa_result_log)):
-        #    doaString += "{:.2f}".format(doa_result_log[i] + np.abs(np.min(doa_result_log)))+','
-
         doaString = str('')
-        doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
         for i in range(len(doa_result_log)):
-            doaString += ", " + "{:.2f}".format(doa_result_log[i])
+            doaString += "{:.2f}".format(doa_result_log[i] + np.abs(np.min(doa_result_log)))+','
+
+        #doaString = str('')
+        #doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
+        #for i in range(len(doa_result_log)):
+        #    doaString += ", " + "{:.2f}".format(doa_result_log[i])
 
         jsonDict = {}
         jsonDict["tStamp"] = int(time.time() * 1000)

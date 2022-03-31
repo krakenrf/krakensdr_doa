@@ -61,7 +61,7 @@ doa_fig_type_dict = {"Linear plot": 0, "Polar plot": 1, "Compass": 2}
 if not doa_fig_type in doa_fig_type_dict:
     doa_gfig_type = "Linear plot"
 
-if doa_data_format not in ["Chasemapper", "Kraken App", "Kerberos App", "Kraken Pro App"]:  # Add JSON Later
+if doa_data_format not in ["DF Aggregator", "Kraken App", "Kerberos App", "Kraken Pro App"]:  # Add JSON Later
 	doa_data_format = "Kraken App"
 
 if location_source not in ["None", "Static", "gpsd"]:

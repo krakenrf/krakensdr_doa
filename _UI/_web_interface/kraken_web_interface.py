@@ -951,7 +951,7 @@ def generate_config_page_layout(webInterface_inst):
                                  {'label': 'Kraken App', 'value': 'Kraken App'},
                                  {'label': 'Kraken Pro App', 'value': 'Kraken Pro App'},
                                  {'label': 'Kerberos App', 'value': 'Kerberos App'},
-                                 {'label': 'Chasemapper', 'value': 'Chasemapper'},
+                                 {'label': 'DF Aggregator', 'value': 'DF Aggregator'},
                                  {'label': 'JSON', 'value': 'JSON', 'disabled': True},
                              ],
                              value=webInterface_inst.module_signal_processor.DOA_data_format,
@@ -1138,6 +1138,7 @@ def generate_config_page_layout(webInterface_inst):
     if not webInterface_inst.disable_tooltips:
         config_page_component_list.append(tooltips.dsp_config_tooltips)
         config_page_component_list.append(tooltips.daq_ini_config_tooltips)
+        config_page_component_list.append(tooltips.station_parameters_tooltips)
 
     return html.Div(children=config_page_component_list)
 
