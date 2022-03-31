@@ -31,8 +31,10 @@ input[type="checkbox"]{
   border:0px;
 }
 .Select-value {
-  background-color: rgb(255, 102, 0);
-  color:#000000;
+  /*background-color: rgb(255, 102, 0);*/
+  background-color: antiquewhite;
+  color: black;
+  /*color:#000000;*/
 }
 .Select-menu-outer {
   background-color: rgb(0, 0, 0);
@@ -87,7 +89,7 @@ iframe{
 .btn{
   height: 40px;
   cursor: pointer;
-  background-color: #141414;
+  background-color: green;
   border: 0.1em solid #000000;
   border-radius:0.12em;
   color: white;
