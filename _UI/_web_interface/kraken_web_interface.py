@@ -1863,7 +1863,8 @@ def update_daq_ini_params(
                     cfg_std_ch_ind,en_iq_cal,cfg_gain_lock,en_req_track_lock_intervention, \
                     cfg_cal_track_mode,cfg_amplitude_cal_mode,cfg_cal_frame_interval, \
                     cfg_cal_frame_burst_size, cfg_amplitude_tolerance,cfg_phase_tolerance, \
-                    cfg_max_sync_fails, cfg_data_block_len, cfg_decimated_bw, cfg_recal_interval):
+                    cfg_max_sync_fails, cfg_data_block_len, cfg_decimated_bw, cfg_recal_interval, \
+                    config_fname=daq_config_filename):
     # TODO: Use disctionarry instead of parameter list
 
     ctx = dash.callback_context
