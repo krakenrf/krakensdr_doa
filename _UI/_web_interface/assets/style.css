@@ -7,7 +7,7 @@ body {
   padding: 0px;
 }
 *{
-    font-size:18px;
+    font-size:17px;
     font-family: 'Montserrat', sans-serif;
 }
 h1{
@@ -194,12 +194,12 @@ iframe{
   padding: 0px;
 }
 .field-label{
-  width: 250px;
+  width: 225px;
   display: inline-block;
   vertical-align: top;
 }
 .field-body{
-  width: 120px;
+  width: 165px;
   display: inline-block;
 }
 .field-body-wide{
