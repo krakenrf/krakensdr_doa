@@ -123,6 +123,16 @@ class webInterface():
         #       UI Status and Config variables      #
         #############################################
 
+        # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
+        self.module_signal_processor.DOA_data_format = settings.doa_data_format  # XML, CSV, or JSON
+
+        # Station Information
+        self.module_signal_processor.station_id = settings.station_id
+        self.location_source = settings.location_source
+        self.module_signal_processor.latitude = settings.latitude
+        self.module_signal_processor.longitude = settings.longitude
+        self.module_signal_processor.heading = settings.heading
+
         # DAQ Subsystem status parameters
         self.daq_conn_status       = 0
         self.daq_cfg_iface_status  = 0 # 0- ready, 1-busy
@@ -213,6 +223,17 @@ class webInterface():
         data["en_advanced_daq_cfg"] = self.en_advanced_daq_cfg
         data["logging_level"]       = settings.logging_level
         data["disable_tooltips"]    = settings.disable_tooltips
+
+        # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
+        data["doa_data_format"] = settings.doa_data_format  # XML, CSV, or JSON
+
+        # Station Information
+        data["station_id"] = self.module_signal_processor.station_id
+        data["location_source"] = self.location_source
+        data["latitude"] = self.module_signal_processor.latitude
+        data["longitude"] = self.module_signal_processor.longitude
+        data["heading"] = self.module_signal_processor.heading
+
 
         settings.write(data)
     def start_processing(self):
@@ -582,6 +603,9 @@ def generate_config_page_layout(webInterface_inst):
     en_doa_values         =[1] if webInterface_inst.module_signal_processor.en_DOA_estimation else []
     en_fb_avg_values      =[1] if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []
     en_dsp_squelch_values =[1] if webInterface_inst.module_signal_processor.en_squelch        else []
+
+    en_fixed_heading = [1] if webInterface_inst.module_signal_processor.fixed_heading else []
+
     en_advanced_daq_cfg   =[1] if webInterface_inst.en_advanced_daq_cfg                       else []
     # Calulcate spacings
     wavelength= 300 / webInterface_inst.daq_center_freq
@@ -907,10 +931,101 @@ def generate_config_page_layout(webInterface_inst):
 
     ], className="card")
 
+    #--------------------------------
+    # Misc station config parameters
+    #--------------------------------
+    station_config_card = \
+        html.Div([
+            html.H2("Station Information", id="station_conf_title"),
+            html.Div([
+                html.Div("Station ID:", id="station_id_label", className="field-label"),
+                dcc.Input(id='station_id_input',
+                          value=webInterface_inst.module_signal_processor.station_id,
+                          type='text', className="field-body")
+            ], className="field"),
+            html.Br(),
+            html.Div([
+                html.Div("DOA Data Format:", id="doa_format_label", className="field-label"),
+                dcc.Dropdown(id='doa_format_type',
+                             options=[
+                                 {'label': 'Kraken App', 'value': 'Kraken App'},
+                                 {'label': 'Kraken Pro App', 'value': 'Kraken Pro App'},
+                                 {'label': 'Kerberos App', 'value': 'Kerberos App'},
+                                 {'label': 'Chasemapper', 'value': 'Chasemapper'},
+                                 {'label': 'JSON', 'value': 'JSON', 'disabled': True},
+                             ],
+                             value=webInterface_inst.module_signal_processor.DOA_data_format,
+                             style={"display": "inline-block"}, className="field-body"),
+            ]),
+            html.Br(),
+            html.Div([
+                html.Div("Location Source:", id="location_src_label", className="field-label"),
+                dcc.Dropdown(id='loc_src_dropdown',
+                             options=[
+                                 {'label': 'None', 'value': 'None'},
+                                 {'label': 'Static', 'value': 'Static'},
+                                 {'label': 'GPS', 'value': 'gpsd',
+                                  'disabled': not webInterface_inst.module_signal_processor.hasgps},
+                             ],
+                             value=webInterface_inst.location_source, style={"display": "inline-block"}, className="field-body"),
+            ]),
+            html.Div([
+                html.Div("Fixed Heading", id="fixed_heading_label", className="field-label"),
+                dcc.Checklist(options=option, id="fixed_heading_check",
+                              className="field-body",
+                              value=en_fixed_heading),
+                # html.Div("Fixed Heading:", className="field-label"),
+                # daq.BooleanSwitch(id="fixed_heading_check",
+                #                   on=webInterface_inst.module_signal_processor.fixed_heading,
+                #                   label="Use Fixed Heading",
+                #                   labelPosition="right"),
+            ], className="field", id="fixed_heading_div"),
+            html.Div([
+                html.Div([
+                    html.Div("Latitude:", className="field-label"),
+                    dcc.Input(id='latitude_input',
+                              value=webInterface_inst.module_signal_processor.latitude,
+                              type='number', className="field-body")
+                ], id="latitude_field", className="field"),
+                html.Div([
+                    html.Div("Longitude:", className="field-label"),
+                    dcc.Input(id='longitude_input',
+                              value=webInterface_inst.module_signal_processor.longitude,
+                              type='number', className="field-body")
+                ], id="logitude_field", className="field"),
+            ], id="location_fields"),
+            html.Div([
+                html.Div("Heading:", className="field-label"),
+                dcc.Input(id='heading_input',
+                          value=webInterface_inst.module_signal_processor.heading,
+                          type='number', className="field-body")
+            ], id="heading_field", className="field"),
+            html.Div([
+                html.Div([
+                    html.Div("GPS:", className="field-label"),
+                    html.Div("-", id="gps_status", className="field-body")
+                ], id="gps_status_field", className="field"),
+                html.Div([
+                    html.Div("Latitude:", id="label_gps_latitude", className="field-label"),
+                    html.Div("-", id="body_gps_latitude", className="field-body")
+                ], className="field"),
+                html.Div([
+                    html.Div("Longitude:", id="label_gps_longitude", className="field-label"),
+                    html.Div("-", id="body_gps_longitude", className="field-body")
+                ], className="field"),
+                html.Div([
+                    html.Div("Heading:", id="label_gps_heading", className="field-label"),
+                    html.Div("-", id="body_gps_heading", className="field-body")
+                ], className="field"),
+            ], id="gps_status_info")
+        ], className="card")
+
+
+
     #-----------------------------
     #  Squelch Configuration Card
     #-----------------------------
-    squelch_card = \
+    vfo_config_card = \
     html.Div([
         html.H2("VFO Configuration", id="init_title_sq"),
 
@@ -918,8 +1033,8 @@ def generate_config_page_layout(webInterface_inst):
         html.Div("Spectrum Calculation:", className="field-label"),
         dcc.Dropdown(id='spectrum_fig_type',
                 options=[
-                    {'label': 'Single CH', 'value': 0},
-                    {'label': 'All CH (FOR TEST ONLY)' ,  'value': 1},
+                    {'label': 'Single Ch', 'value': 0},
+                    {'label': 'All Ch (TEST ONLY)' ,  'value': 1},
                     ],
             value=webInterface_inst._spectrum_fig_type, style={"display":"inline-block"},className="field-body"),
         ], className="field"),
@@ -1015,7 +1130,7 @@ def generate_config_page_layout(webInterface_inst):
                 ], className="field"),
         ], id="vfo"+str(i), className="card", style = {'display': 'block'} if i < webInterface_inst.module_signal_processor.active_vfos else {'display': 'none'} )
 
-    config_page_component_list = [daq_config_card, daq_status_card, dsp_config_card, display_options_card,squelch_card]
+    config_page_component_list = [daq_config_card, daq_status_card, dsp_config_card, display_options_card, station_config_card, vfo_config_card]
 
     for i in range(webInterface_inst.module_signal_processor.max_vfos):
         config_page_component_list.append(vfo_card[i])
@@ -1220,6 +1335,18 @@ def fetch_dsp_data():
     webInterface_inst.dsp_timer = Timer(.01, fetch_dsp_data)
     webInterface_inst.dsp_timer.start()
 
+def fetch_gps_data():
+    app.push_mods({
+        'body_gps_latitude': {'children': webInterface_inst.module_signal_processor.latitude},
+        'body_gps_longitude': {'children': webInterface_inst.module_signal_processor.longitude},
+        'body_gps_heading': {'children': webInterface_inst.module_signal_processor.heading}
+    })
+
+    webInterface_inst.gps_timer = Timer(1, fetch_gps_data)
+    webInterface_inst.gps_timer.start()
+
+
+
 def update_daq_status():
 
     #############################################
@@ -1343,6 +1470,101 @@ def update_daq_params(input_value, f0, gain):
     webInterface_inst.daq_center_freq = f0
     webInterface_inst.config_daq_rf(f0,gain)
     return 1
+
+# Set DOA Output Format
+@app.callback_shared(None,
+                     [Input(component_id="doa_format_type", component_property='value')])
+def set_doa_format(doa_format):
+    webInterface_inst.module_signal_processor.DOA_data_format = doa_format
+
+
+# Update Station ID
+@app.callback_shared(Output(component_id='station_header', component_property='children'),
+                     [Input(component_id='station_id_input', component_property='value')])
+def set_station_id(station_id):
+    valid_id = re.sub('[^A-Za-z0-9\-]+', '-', station_id)
+    webInterface_inst.module_signal_processor.station_id = valid_id
+    return valid_id
+
+
+# Enable GPS Relevant fields
+@app.callback([Output('fixed_heading_div', 'style'),
+               Output('gps_status_info', 'style')],
+              [Input('loc_src_dropdown', 'value')])
+def toggle_gps_fields(toggle_value):
+    if toggle_value == "gpsd":
+        return [{'display': 'block'}, {'display': 'block'}]
+    else:
+        return [{'display': 'none'}, {'display': 'none'}]
+
+
+# Enable or Disable Heading Input Fields
+@app.callback(Output('heading_field', 'style'),
+              [Input('loc_src_dropdown', 'value'),
+               Input(component_id='fixed_heading_check', component_property='value')])
+def toggle_location_info(static_loc, fixed_heading):
+    if static_loc == "Static":
+        webInterface_inst.module_signal_processor.fixed_heading = True
+        return {'display': 'block'}
+    elif static_loc == "gpsd" and fixed_heading:
+        return {'display': 'block'}
+    elif static_loc == "None":
+        webInterface_inst.module_signal_processor.fixed_heading = False
+        return {'display': 'none'}
+    else:
+        return {'display': 'none'}
+
+
+# Enable or Disable Location Input Fields
+@app.callback(Output('location_fields', 'style'),
+              [Input('loc_src_dropdown', 'value')])
+def toggle_location_info(toggle_value):
+    webInterface_inst.location_source = toggle_value
+    if toggle_value == "Static":
+        return {'display': 'block'}
+    else:
+        return {'display': 'none'}
+
+
+# Set location data
+@app.callback_shared(None,
+                     [Input(component_id="latitude_input", component_property='value'),
+                      Input(component_id="longitude_input", component_property='value')])
+def set_static_location(lat, lon):
+    webInterface_inst.module_signal_processor.latitude = lat
+    webInterface_inst.module_signal_processor.longitude = lon
+
+
+# Enable Fixed Heading
+@app.callback(None,
+              [Input(component_id='fixed_heading_check', component_property='value')])
+def set_fixed_heading(fixed):
+    if fixed:
+        webInterface_inst.module_signal_processor.fixed_heading = True
+    else:
+        webInterface_inst.module_signal_processor.fixed_heading = False
+
+
+# Set heading data
+@app.callback_shared(None,
+                     [Input(component_id="heading_input", component_property='value')])
+def set_static_location(heading):
+    webInterface_inst.module_signal_processor.heading = heading
+
+
+# Enable GPS
+@app.callback_shared([Output("gps_status", "children"),
+                      Output("gps_status", "style")],
+                     [Input('loc_src_dropdown', 'value')])
+def enable_gps(toggle_value):
+    if toggle_value == "gpsd":
+        status = webInterface_inst.module_signal_processor.enable_gps()
+        if status:
+            return ["Enabled", {"color": "green"}]
+        else:
+            return ["Error", {"color": "red"}]
+    else:
+        return ["-", {"color": "white"}]
 
 @app.callback_shared(
     None,
@@ -2177,6 +2399,18 @@ def reconfig_daq_chain(input_value, freq, gain):
     en_DOA_FB_avg = webInterface_inst.module_signal_processor.en_DOA_FB_avg
     en_squelch = webInterface_inst.module_signal_processor.en_squelch
 
+    doa_format = webInterface_inst.module_signal_processor.DOA_data_format
+    doa_station_id = webInterface_inst.module_signal_processor.station_id
+    doa_lat = webInterface_inst.module_signal_processor.latitude
+    doa_lon = webInterface_inst.module_signal_processor.longitude
+    doa_fixed_heading = webInterface_inst.module_signal_processor.fixed_heading
+    doa_heading = webInterface_inst.module_signal_processor.heading
+    #alt
+    #speed
+    doa_hasgps = webInterface_inst.module_signal_processor.hasgps
+    doa_usegps = webInterface_inst.module_signal_processor.usegps
+    doa_gps_connected = webInterface_inst.module_signal_processor.gps_connected
+
     webInterface_inst.module_receiver = ReceiverRTLSDR(data_que=webInterface_inst.rx_data_que, data_interface=settings.data_interface, logging_level=settings.logging_level*10)
     webInterface_inst.module_receiver.daq_center_freq   = daq_center_freq
     webInterface_inst.module_receiver.daq_rx_gain       = daq_rx_gain #settings.uniform_gain #daq_rx_gain
@@ -2189,6 +2423,24 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.module_signal_processor.en_DOA_estimation    = en_DOA_estimation
     webInterface_inst.module_signal_processor.en_DOA_FB_avg        = en_DOA_FB_avg
     webInterface_inst.module_signal_processor.en_squelch           = en_squelch
+
+    webInterface_inst.module_signal_processor.DOA_data_format = doa_format
+    webInterface_inst.module_signal_processor.station_id = doa_station_id
+    webInterface_inst.module_signal_processor.latitude = doa_lat
+    webInterface_inst.module_signal_processor.longitude = doa_lon
+    webInterface_inst.module_signal_processor.fixed_heading = doa_fixed_heading
+    webInterface_inst.module_signal_processor.heading = doa_heading
+    #alt
+    #speed
+    webInterface_inst.module_signal_processor.hasgps = doa_hasgps
+    webInterface_inst.module_signal_processor.usegps = doa_usegps
+    webInterface_inst.module_signal_processor.gps_connected = doa_gps_connected
+
+
+
+
+
+
 
     webInterface_inst.config_doa_in_signal_processor()
     webInterface_inst.module_signal_processor.start()

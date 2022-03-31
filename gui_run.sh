@@ -14,3 +14,6 @@ python3 _UI/_web_interface/kraken_web_interface.py 2> ui.log &
 echo "Web Interface Running at $IPADDR:8080"
 echo "PHP Data Out Server Running at $IPADDR:$IPPORT"
 sudo php -S $IPADDR:$IPPORT -t _android_web 2> /dev/null &
+
+# Start nodejs server for KrakenSDR Pro App
+node _nodejs/index.js 1> /dev/null &

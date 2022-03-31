@@ -29,6 +29,8 @@ import logging
 import threading
 import queue
 import math
+import xml.etree.ElementTree as ET
+import requests
 
 # Import optimization modules
 import numba as nb
@@ -44,6 +46,16 @@ import scipy
 from scipy import fft
 from scipy import signal
 from pyargus import directionEstimation as de
+
+# Make gpsd an optional component
+try:
+    import gpsd
+    hasgps = True
+    print("gpsd Available")
+except ModuleNotFoundError:
+    hasgps = False
+    print("Can't find gpsd - ok if no external gps used")
+
 
 class SignalProcessor(threading.Thread):
     def __init__(self, data_que, module_receiver, logging_level=10):
@@ -125,6 +137,23 @@ class SignalProcessor(threading.Thread):
         self.DOA_theta =  np.linspace(0,359,360)
         self.spectrum = None #np.ones((self.channel_number+2,N), dtype=np.float32)
         self.corrections = np.zeros((self.channel_number, 16384), dtype=np.complex64)
+
+        self.latency = 100
+
+        # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
+        self.DOA_data_format = "Kraken App"  # XML, CSV, or JSON
+
+        # Location parameters
+        self.station_id = "NOCALL"
+        self.latitude = 0.0
+        self.longitude = 0.0
+        self.fixed_heading = False
+        self.heading = 0.0
+        self.altitude = 0.0
+        self.speed = 0.0
+        self.hasgps = hasgps
+        self.usegps = False
+        self.gps_connected = False
 
     def run(self):
         """
@@ -210,14 +239,11 @@ class SignalProcessor(threading.Thread):
                     que_data_packet.append(['max_amplitude',max_amplitude])
 
                     #-----> DoA PROCESSING <-----
-
-                    single_data_output_vfo = 0
-
                     if self.data_ready:
                         self.squelch_update = False
                         spectrum_window_size = len(self.spectrum[0,:])
                         active_vfos = self.active_vfos if self.vfo_mode == 0 else 1
-
+                        write_freq = 0
                         for i in range(active_vfos):
                             # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
                             if abs(self.vfo_freq[i] - self.module_receiver.daq_center_freq) > sampling_freq/2 :
@@ -225,7 +251,7 @@ class SignalProcessor(threading.Thread):
 
                             freq = self.vfo_freq[i] - self.module_receiver.daq_center_freq #ch_freq is relative to -sample_freq/2 : sample_freq/2, so correct for that and get the actual freq
 
-                            if self.vfo_mode == 1:
+                            if self.vfo_mode == 1: # Mode 1 is Auto Max Mode
                                 max_index = self.spectrum[1,:].argmax()
                                 freq = self.spectrum[0, max_index]
 
@@ -261,7 +287,7 @@ class SignalProcessor(threading.Thread):
                             conf_val = 0
                             theta_0 = 0
                             if self.en_DOA_estimation and self.channel_number > 1 and max_amplitude > self.vfo_squelch[i] and (i == self.output_vfo or self.output_vfo < 0):
-
+                                write_freq = int(self.vfo_freq[i])
                                 # Do channelization
                                 vfo_channel = channelize(self.processed_signal, freq, decimation_factor, sampling_freq)
 
@@ -307,6 +333,54 @@ class SignalProcessor(threading.Thread):
                                 confidence_str = "{:.2f}".format(np.max(conf_val))
                                 max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
 
+                        if self.hasgps:
+                            self.update_location()
+
+                        if self.DOA_data_format == "Chasemapper":
+                            self.wr_xml(self.station_id,
+                                        DOA_str,
+                                        confidence_str,
+                                        max_power_level_str,
+                                        write_freq,
+                                        self.latitude,
+                                        self.longitude,
+                                        self.heading)
+                        elif self.DOA_data_format == "Kraken App":
+                            self.wr_csv(self.station_id,
+                                        DOA_str,
+                                        confidence_str,
+                                        max_power_level_str,
+                                        write_freq,
+                                        doa_result_log,
+                                        self.latitude,
+                                        self.longitude,
+                                        self.heading,
+                                        "Kraken")
+                        elif self.DOA_data_format == "Kerberos App":
+                            self.wr_csv(self.station_id,
+                                        DOA_str,
+                                        confidence_str,
+                                        max_power_level_str,
+                                        write_freq,
+                                        doa_result_log,
+                                        self.latitude,
+                                        self.longitude,
+                                        self.heading,
+                                        "Kerberos")
+                        elif self.DOA_data_format == "Kraken Pro App":
+                            self.wr_json(self.station_id,
+                                        DOA_str,
+                                        confidence_str,
+                                        max_power_level_str,
+                                        write_freq,
+                                        doa_result_log,
+                                        self.latitude,
+                                        self.longitude,
+                                        self.heading)
+
+                        else:
+                            self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
+
 ####################################################
                             # KerberosSDR App compatible message output, this will be redundant soon once the new app is published
 
@@ -320,29 +394,6 @@ class SignalProcessor(threading.Thread):
                             #self.DOA_res_fd.truncate()
                             #self.logger.debug("DoA results writen: {:s}".format(html_str))
 ####################################################
-
-#####################################################
-                        #KrakenSDR Android App Output
-                        #TODO: This will change into a JSON output
-                        freq = str(self.module_receiver.daq_center_freq)
-                        latency = str(100)
-                        message = str(int(time.time() * 1000)) + ", " \
-                                                               + DOA_str + ", " \
-                                                               + confidence_str + ", " \
-                                                               + max_power_level_str + ", " \
-                                                               + freq + ", " \
-                                                               + self.DOA_ant_alignment + ", " \
-                                                               + latency + ", " \
-                                                               + "R, R, R, R, R, R, R, R, R, R" #Reserve 10 entries for other things
-
-                        doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
-                        for i in range(len(doa_result_log)):
-                            message += ", " + "{:.2f}".format(doa_result_log[i])
-
-                        self.DOA_res_fd.seek(0)
-                        self.DOA_res_fd.write(message)
-                        self.DOA_res_fd.truncate()
-                        self.logger.debug("DoA results writen: {:s}".format(message))
 
                     #-----> SPECTRUM PROCESSING <-----
 
@@ -417,6 +468,126 @@ class SignalProcessor(threading.Thread):
             if self.en_DOA_MUSIC:
                 DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
                 self.DOA_MUSIC_res = DOA_MUSIC_res
+
+    # Enable GPS
+    def enable_gps(self):
+        if self.hasgps:
+            if gpsd.state == {}:
+                gpsd.connect()
+                self.logger.info("Connecting to GPS")
+                self.gps_connected = True
+        else:
+            self.logger.error("You're trying to use GPS, but gpsd-py3 isn't installed")
+
+        return self.gps_connected
+
+    # Get GPS Data
+    def update_location(self):
+        if self.gps_connected:
+            try:
+                packet = gpsd.get_current()
+                self.latitude, self.longitude = packet.position()
+                if not self.fixed_heading:
+                    self.heading = round(packet.movement().get('track'), 1)
+            except (gpsd.NoFixError, UserWarning):
+                self.latitude = self.longitude = 0.0
+                self.heading if self.fixed_heading else 0.0
+        else:
+            self.logger.error("Trying to use GPS, but can't connect to gpsd")
+
+    def wr_xml(self, station_id, doa, conf, pwr, freq,
+               latitude, longitude, heading):
+        epoch_time = int(1000 * round(time.time(), 3))
+        # create the file structure
+        data = ET.Element('DATA')
+        xml_st_id = ET.SubElement(data, 'STATION_ID')
+        xml_time = ET.SubElement(data, 'TIME')
+        xml_freq = ET.SubElement(data, 'FREQUENCY')
+        xml_location = ET.SubElement(data, 'LOCATION')
+        xml_latitide = ET.SubElement(xml_location, 'LATITUDE')
+        xml_longitude = ET.SubElement(xml_location, 'LONGITUDE')
+        xml_heading = ET.SubElement(xml_location, 'HEADING')
+        xml_doa = ET.SubElement(data, 'DOA')
+        xml_pwr = ET.SubElement(data, 'PWR')
+        xml_conf = ET.SubElement(data, 'CONF')
+
+        xml_st_id.text = str(station_id)
+        xml_time.text = str(epoch_time)
+        xml_freq.text = str(freq / 1000000)
+        xml_latitide.text = str(latitude)
+        xml_longitude.text = str(longitude)
+        xml_heading.text = str(heading)
+        xml_doa.text = doa
+        xml_pwr.text = pwr
+        xml_conf.text = conf
+
+        # create a new XML file with the results
+        html_str = ET.tostring(data, encoding="unicode")
+        self.DOA_res_fd.seek(0)
+        self.DOA_res_fd.write(html_str)
+        self.DOA_res_fd.truncate()
+        # print("Wrote XML")
+
+    def wr_csv(self, station_id, DOA_str, confidence_str, max_power_level_str,
+               freq, doa_result_log, latitude, longitude, heading, app_type):
+
+        if app_type == "Kraken":
+            epoch_time = int(time.time() * 1000)
+
+            # KrakenSDR Android App Output
+            message = f"{epoch_time}, {DOA_str}, {confidence_str}, {max_power_level_str}, "
+            message += f"{freq}, {self.DOA_ant_alignment}, {self.latency}, {station_id}, "
+            message += f"{latitude}, {longitude}, {heading}, "
+            message += "R, R, R, R, R, R"  # Reserve 6 entries for other things
+
+            doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
+            for i in range(len(doa_result_log)):
+                message += ", " + "{:.2f}".format(doa_result_log[i])
+
+            self.DOA_res_fd.seek(0)
+            self.DOA_res_fd.write(message)
+            self.DOA_res_fd.truncate()
+            self.logger.debug("DoA results writen: {:s}".format(message))
+        else: # Legacy Kerberos app support
+            confidence_str = "{}".format(np.max(int(float(confidence_str)*100)))
+            max_power_level_str = "{:.1f}".format((np.maximum(-100, float(max_power_level_str)+100)))
+
+            message = str(int(time.time() * 1000)) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
+            html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+confidence_str+"</CONF>\n<PWR>"+max_power_level_str+"</PWR>\n</DATA>"
+            self.DOA_res_fd.seek(0)
+            self.DOA_res_fd.write(html_str)
+            self.DOA_res_fd.truncate()
+            self.logger.debug("DoA results writen: {:s}".format(html_str))
+
+    def wr_json(self, station_id, DOA_str, confidence_str, max_power_level_str,
+               freq, doa_result_log, latitude, longitude, heading):
+        #KrakenSDR Flutter app out
+        #doaString = str('')
+        #for i in range(len(doa_result_log)):
+        #    doaString += "{:.2f}".format(doa_result_log[i] + np.abs(np.min(doa_result_log)))+','
+
+        doaString = str('')
+        doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
+        for i in range(len(doa_result_log)):
+            doaString += ", " + "{:.2f}".format(doa_result_log[i])
+
+        jsonDict = {}
+        jsonDict["tStamp"] = int(time.time() * 1000)
+        jsonDict["latitude"] = 0
+        jsonDict["longitude"] = 0
+        jsonDict["gpsBearing"] = 0
+        jsonDict["radioBearing"] = DOA_str
+        jsonDict["conf"] = confidence_str
+        jsonDict["power"] = max_power_level_str
+        jsonDict["freq"] = self.module_receiver.daq_center_freq
+        jsonDict["antType"] = self.DOA_ant_alignment
+        jsonDict["latency"] = self.latency
+        jsonDict["doaArray"] = doaString
+
+        try:
+            r = requests.post('http://127.0.0.1:8042/doapost', json=jsonDict)
+        except requests.exceptions.RequestException as e:
+            self.logger.error("Error while posting to local websocket server")
 
 
 def calc_sync(iq_samples):
