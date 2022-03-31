@@ -22,10 +22,13 @@ input[type="checkbox"]{
   background:white;
   border-radius:5px;
   border:2px solid #555;
-  vertical-align: text-bottom;
+  vertical-align: middle;
 }
 .Select-control {
   background-color:#000000;
+  vertical-align:middle;
+  border-radius:0px;
+  border:0px;
 }
 .Select-value {
   background-color: rgb(255, 102, 0);
@@ -194,7 +197,7 @@ iframe{
   vertical-align: top;
 }
 .field-body{
-  width: 144px;
+  width: 120px;
   display: inline-block;
 }
 .field-body-wide{
