@@ -567,11 +567,6 @@ app.layout = html.Div([
             html.A("Spectrum"       , className="header_inactive" , id="header_spectrum",href="/spectrum"),
             html.A("DoA Estimation" , className="header_inactive" , id="header_doa"     ,href="/doa"),
             ], className="header"),
-    html.Div([html.Div([html.Button('Start Processing', id='btn-start_proc', className="btn_start", n_clicks=0)], className="ctr_toolbar_item"),
-              html.Div([html.Button('Stop Processing', id='btn-stop_proc', className="btn_stop", n_clicks=0)], className="ctr_toolbar_item"),
-              html.Div([html.Button('Save Configuration', id='btn-save_cfg', className="btn_save_cfg", n_clicks=0)], className="ctr_toolbar_item")
-            ], className="ctr_toolbar"),
-
     html.Div(id="placeholder_start"                , style={"display":"none"}),
     html.Div(id="placeholder_stop"                 , style={"display":"none"}),
     html.Div(id="placeholder_save"                 , style={"display":"none"}),
@@ -625,6 +620,17 @@ def generate_config_page_layout(webInterface_inst):
         cfg_recal_interval = 1
 
     #-----------------------------
+    #   Start/Stop Configuration Card
+    #-----------------------------
+    start_stop_card = \
+    html.Div([
+        html.Div([html.Div([html.Button('Start Processing', id='btn-start_proc', className="btn_start", n_clicks=0)], className="ctr_toolbar_item"),
+              html.Div([html.Button('Stop Processing', id='btn-stop_proc', className="btn_stop", n_clicks=0)], className="ctr_toolbar_item"),
+              html.Div([html.Button('Save Configuration', id='btn-save_cfg', className="btn_save_cfg", n_clicks=0)], className="ctr_toolbar_item")
+            ], className="ctr_toolbar"),
+            #], className="field"),
+    ])
+    #-----------------------------
     #   DAQ Configuration Card
     #-----------------------------
     # -- > Main Card Layout < --
@@ -636,7 +642,7 @@ def generate_config_page_layout(webInterface_inst):
                 dcc.Input(id='daq_center_freq', value=webInterface_inst.module_receiver.daq_center_freq/10**6, type='number', debounce=True, className="field-body-textbox")
                 ], className="field"),
         html.Div([
-                html.Div("Receiver gain", className="field-label"),
+                html.Div("Receiver Gain", className="field-label"),
                 dcc.Dropdown(id='daq_rx_gain',
                         options=[
                             {'label': '0 dB',    'value': 0},
@@ -675,7 +681,7 @@ def generate_config_page_layout(webInterface_inst):
             html.Button('Update Receiver Parameters', id='btn-update_rx_param', className="btn"),
         ], className="field"),
 
-        html.Div([html.Div("Basic Custom DAQ Configuration", id="label_en_advanced_daq_cfg"     , className="field-label"),
+        html.Div([html.Div("Basic DAQ Configuration", id="label_en_basic_daq_cfg"     , className="field-label"),
                 dcc.Checklist(options=option     , id="en_basic_daq_cfg"     ,  className="field-body", value=en_basic_daq_cfg),
         ], className="field"),
 
@@ -884,7 +890,7 @@ def generate_config_page_layout(webInterface_inst):
     dsp_config_card = \
     html.Div([
         html.H2("DoA Configuration", id="init_title_d"),
-        html.Div([html.Div("Antenna configuration:"              , id="label_ant_arrangement"   , className="field-label"),
+        html.Div([html.Div("Array configuration:"              , id="label_ant_arrangement"   , className="field-label"),
         dcc.RadioItems(
             options=[
                 {'label': "ULA", 'value': "ULA"},
@@ -1145,7 +1151,7 @@ def generate_config_page_layout(webInterface_inst):
                 ], className="field"),
         ], id="vfo"+str(i), className="card", style = {'display': 'block'} if i < webInterface_inst.module_signal_processor.active_vfos else {'display': 'none'} )
 
-    config_page_component_list = [daq_config_card, daq_status_card, dsp_config_card, display_options_card, station_config_card, vfo_config_card]
+    config_page_component_list = [start_stop_card, daq_status_card, daq_config_card, vfo_config_card, dsp_config_card, display_options_card, station_config_card]
 
     for i in range(webInterface_inst.module_signal_processor.max_vfos):
         config_page_component_list.append(vfo_card[i])
@@ -1361,8 +1367,6 @@ def fetch_gps_data():
     webInterface_inst.gps_timer = Timer(1, fetch_gps_data)
     webInterface_inst.gps_timer.start()
 
-
-
 def update_daq_status():
 
     #############################################
@@ -1476,7 +1480,7 @@ def update_daq_status():
     })
 
 
-@app.callback(
+@app.callback_shared(
     Output(component_id="placeholder_update_freq", component_property="children"),
     [Input(component_id ="btn-update_rx_param"   , component_property="n_clicks")],
     [State(component_id ="daq_center_freq"       , component_property='value'),
@@ -2036,7 +2040,7 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
         spacing_label = "Array Radius (meters)"
 
     if max_phase_diff > 0.5:
-        ambiguity_warning= "WARNING: Array size is too large. DoA estimation is ambiguous. Max phase difference:{:.1f}°.".format(np.rad2deg(2*np.pi*max_phase_diff))
+        ambiguity_warning= "WARNING: Array size is too large for this frequency. DoA estimation is ambiguous. Max phase difference:{:.1f}°.".format(np.rad2deg(2*np.pi*max_phase_diff))
     elif max_phase_diff < 0.1:
         ambiguity_warning= "WARNING: Array size may be too small.".format(np.rad2deg(2*np.pi*max_phase_diff))
     else:
