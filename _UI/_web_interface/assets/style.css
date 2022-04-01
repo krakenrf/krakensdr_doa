@@ -24,6 +24,10 @@ input[type="checkbox"]{
   border:2px solid #555;
   vertical-align: middle;
 }
+.Select div {
+  box-sizing:content-box !important;
+  padding-right:7px;
+}
 .Select-control {
   background-color:#000000;
   vertical-align:middle;
