@@ -560,7 +560,8 @@ app.title = "KrakenSDR DoA"
 app.layout = html.Div([
     dcc.Location(id='url', children='/config',refresh=False),
 
-    html.Div([html.H1('KrakenSDR - Direction of Arrival Estimation')], style={"text-align": "center"}, className="main_title"),
+    #html.Div([html.H1('KrakenSDR - Direction of Arrival Estimation')], style={"text-align": "center"}, className="main_title"),
+    html.Div([html.Img(src="assets/kraken_interface_bw.png", style={"display": "block", "margin-left": "auto", "margin-right": "auto", "height": "60px"})]),
     html.Div([html.A("Configuration", className="header_active"   , id="header_config"  ,href="/config"),
             html.A("Spectrum"       , className="header_inactive" , id="header_spectrum",href="/spectrum"),
             html.A("DoA Estimation" , className="header_inactive" , id="header_doa"     ,href="/doa"),
@@ -943,7 +944,7 @@ def generate_config_page_layout(webInterface_inst):
                           value=webInterface_inst.module_signal_processor.station_id,
                           type='text', className="field-body")
             ], className="field"),
-            html.Br(),
+            #html.Br(),
             html.Div([
                 html.Div("DOA Data Format:", id="doa_format_label", className="field-label"),
                 dcc.Dropdown(id='doa_format_type',
@@ -956,8 +957,8 @@ def generate_config_page_layout(webInterface_inst):
                              ],
                              value=webInterface_inst.module_signal_processor.DOA_data_format,
                              style={"display": "inline-block"}, className="field-body"),
-            ]),
-            html.Br(),
+            ], className="field"),
+            #html.Br(),
             html.Div([
                 html.Div("Location Source:", id="location_src_label", className="field-label"),
                 dcc.Dropdown(id='loc_src_dropdown',
@@ -968,7 +969,7 @@ def generate_config_page_layout(webInterface_inst):
                                   'disabled': not webInterface_inst.module_signal_processor.hasgps},
                              ],
                              value=webInterface_inst.location_source, style={"display": "inline-block"}, className="field-body"),
-            ]),
+            ], className="field"),
             html.Div([
                 html.Div("Fixed Heading", id="fixed_heading_label", className="field-label"),
                 dcc.Checklist(options=option, id="fixed_heading_check",
