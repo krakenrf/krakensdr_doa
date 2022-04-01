@@ -631,7 +631,7 @@ def generate_config_page_layout(webInterface_inst):
         html.H2("RF Receiver Configuration", id="init_title_c"),
         html.Div([
                 html.Div("Center Frequency [MHz]", className="field-label"),
-                dcc.Input(id='daq_center_freq', value=webInterface_inst.module_receiver.daq_center_freq/10**6, type='number', debounce=True, className="field-body")
+                dcc.Input(id='daq_center_freq', value=webInterface_inst.module_receiver.daq_center_freq/10**6, type='number', debounce=True, className="field-body-textbox")
                 ], className="field"),
         html.Div([
                 html.Div("Receiver gain", className="field-label"),
@@ -689,21 +689,21 @@ def generate_config_page_layout(webInterface_inst):
             html.Div("Active Configuration: " + webInterface_inst.active_daq_ini_cfg, id="active_daq_ini_cfg", className="field-label"),
         ], className="field"),
         html.Div([
-                html.Div(webInterface_inst.daq_cfg_ini_error , id="daq_ini_check", className="field-label", style={"color":"red"}),
+                html.Div(webInterface_inst.daq_cfg_ini_error , id="daq_ini_check", className="field-label", style={"color":"#e74c3c"}),
         ], className="field"),
 
         html.Div([html.Div("Basic Custom DAQ Configuration", id="label_en_basic_daq_cfg"     , className="field-label")]),
             html.Div([
                 html.Div("Data Block Length (ms):", className="field-label"),
-                dcc.Input(id='cfg_data_block_len', value=cfg_data_block_len, type='number', debounce=True, className="field-body")
+                dcc.Input(id='cfg_data_block_len', value=cfg_data_block_len, type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                 html.Div("Decimated Bandwidth (kHz):", className="field-label"),
-                dcc.Input(id='cfg_decimated_bw', value=cfg_decimated_bw, type='number', debounce=True, className="field-body")
+                dcc.Input(id='cfg_decimated_bw', value=cfg_decimated_bw, type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                 html.Div("Recalibration Interval (mins):", className="field-label"),
-                dcc.Input(id='cfg_recal_interval', value=cfg_recal_interval, type='number', debounce=True, className="field-body")
+                dcc.Input(id='cfg_recal_interval', value=cfg_recal_interval, type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
 
         html.Div([html.Div("Advanced Custom DAQ Configuration", id="label_en_advanced_daq_cfg"     , className="field-label"),
@@ -718,7 +718,7 @@ def generate_config_page_layout(webInterface_inst):
             html.H3("HW", id="cfg_group_hw"),
             html.Div([
                     html.Div("# RX Channels:", className="field-label"),
-                    dcc.Input(id='cfg_rx_channels', value=daq_cfg_params[1], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_rx_channels', value=daq_cfg_params[1], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.H3("DAQ", id="cfg_group_daq"),
             html.Div([
@@ -744,19 +744,19 @@ def generate_config_page_layout(webInterface_inst):
             html.H3("Pre Processing"),
             html.Div([
                     html.Div("CPI Size [sample]:", className="field-label", id="label_cpi_size"),
-                    dcc.Input(id='cfg_cpi_size', value=daq_cfg_params[7], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_cpi_size', value=daq_cfg_params[7], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                     html.Div("Decimation Ratio:", className="field-label", id="label_decimation_ratio"),
-                    dcc.Input(id='cfg_decimation_ratio', value=daq_cfg_params[8], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_decimation_ratio', value=daq_cfg_params[8], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                     html.Div("FIR Relative Bandwidth:", className="field-label", id="label_fir_relative_bw"),
-                    dcc.Input(id='cfg_fir_bw', value=daq_cfg_params[9], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_fir_bw', value=daq_cfg_params[9], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                     html.Div("FIR Tap Size:", className="field-label", id="label_fir_tap_size"),
-                    dcc.Input(id='cfg_fir_tap_size', value=daq_cfg_params[10], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_fir_tap_size', value=daq_cfg_params[10], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                 html.Div("FIR Window:", className="field-label", id="label_fir_window"),
@@ -773,11 +773,11 @@ def generate_config_page_layout(webInterface_inst):
             html.H3("Calibration"),
             html.Div([
                     html.Div("Correlation Size [sample]:", className="field-label", id="label_correlation_size"),
-                    dcc.Input(id='cfg_corr_size', value=daq_cfg_params[13], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_corr_size', value=daq_cfg_params[13], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                     html.Div("Standard Channel Index:", className="field-label", id="label_std_ch_index"),
-                    dcc.Input(id='cfg_std_ch_ind', value=daq_cfg_params[14], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_std_ch_ind', value=daq_cfg_params[14], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                     html.Div("Enable IQ Calibration:", className="field-label", id="label_en_iq_calibration"),
@@ -785,7 +785,7 @@ def generate_config_page_layout(webInterface_inst):
             ], className="field"),
             html.Div([
                     html.Div("Gain Lock Interval [frame]:", className="field-label", id="label_gain_lock_interval"),
-                    dcc.Input(id='cfg_gain_lock', value=daq_cfg_params[16], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_gain_lock', value=daq_cfg_params[16], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                     html.Div("Require Track Lock Intervention (For Kerberos):", className="field-label", id="label_require_track_lock"),
@@ -811,23 +811,23 @@ def generate_config_page_layout(webInterface_inst):
             ], className="field"),
             html.Div([
                     html.Div("Calibration Frame Interval:", className="field-label", id="label_calibration_frame_interval"),
-                    dcc.Input(id='cfg_cal_frame_interval', value=daq_cfg_params[20], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_cal_frame_interval', value=daq_cfg_params[20], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                     html.Div("Calibration Frame Burst Size:", className="field-label", id="label_calibration_frame_burst_size"),
-                    dcc.Input(id='cfg_cal_frame_burst_size', value=daq_cfg_params[21], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_cal_frame_burst_size', value=daq_cfg_params[21], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                     html.Div("Amplitude Tolerance [dB]:", className="field-label", id="label_amplitude_tolerance"),
-                    dcc.Input(id='cfg_amplitude_tolerance', value=daq_cfg_params[22], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_amplitude_tolerance', value=daq_cfg_params[22], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                     html.Div("Phase Tolerance [deg]:", className="field-label", id="label_phase_tolerance"),
-                    dcc.Input(id='cfg_phase_tolerance', value=daq_cfg_params[23], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_phase_tolerance', value=daq_cfg_params[23], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
                     html.Div("Maximum Sync Fails:", className="field-label", id="label_max_sync_fails"),
-                    dcc.Input(id='cfg_max_sync_fails', value=daq_cfg_params[24], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='cfg_max_sync_fails', value=daq_cfg_params[24], type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
         ], style={'width': '100%'}, id='adv-cfg-container'),
 
@@ -850,12 +850,12 @@ def generate_config_page_layout(webInterface_inst):
         html.Div([html.Div("Latency:"                  , id="label_daq_dsp_latency"   , className="field-label"), html.Div("- ms"        , id="body_daq_dsp_latency"   , className="field-body")], className="field"),
         html.Div([html.Div("Frame index:"              , id="label_daq_frame_index"   , className="field-label"), html.Div("-"           , id="body_daq_frame_index"   , className="field-body")], className="field"),
         html.Div([html.Div("Frame type:"               , id="label_daq_frame_type"    , className="field-label"), html.Div("-"           , id="body_daq_frame_type"    , className="field-body")], className="field"),
-        html.Div([html.Div("Frame sync:"               , id="label_daq_frame_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_frame_sync"    , className="field-body", style={"color": "red"})], className="field"),
+        html.Div([html.Div("Frame sync:"               , id="label_daq_frame_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_frame_sync"    , className="field-body", style={"color": "#e74c3c"})], className="field"),
         html.Div([html.Div("Power level:"              , id="label_daq_power_level"   , className="field-label"), html.Div("-"           , id="body_daq_power_level"   , className="field-body")], className="field"),
-        html.Div([html.Div("Connection status:"        , id="label_daq_conn_status"   , className="field-label"), html.Div("Disconnected", id="body_daq_conn_status"   , className="field-body", style={"color": "red"})], className="field"),
-        html.Div([html.Div("Sample delay snyc:"        , id="label_daq_delay_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_delay_sync"    , className="field-body", style={"color": "red"})], className="field"),
-        html.Div([html.Div("IQ snyc:"                  , id="label_daq_iq_sync"       , className="field-label"), html.Div("LOSS"        , id="body_daq_iq_sync"       , className="field-body", style={"color": "red"})], className="field"),
-        html.Div([html.Div("Noise source state:"       , id="label_daq_noise_source"  , className="field-label"), html.Div("Disabled"    , id="body_daq_noise_source"  , className="field-body", style={"color": "green"})], className="field"),
+        html.Div([html.Div("Connection status:"        , id="label_daq_conn_status"   , className="field-label"), html.Div("Disconnected", id="body_daq_conn_status"   , className="field-body", style={"color": "#e74c3c"})], className="field"),
+        html.Div([html.Div("Sample delay snyc:"        , id="label_daq_delay_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_delay_sync"    , className="field-body", style={"color": "#e74c3c"})], className="field"),
+        html.Div([html.Div("IQ snyc:"                  , id="label_daq_iq_sync"       , className="field-label"), html.Div("LOSS"        , id="body_daq_iq_sync"       , className="field-body", style={"color": "#e74c3c"})], className="field"),
+        html.Div([html.Div("Noise source state:"       , id="label_daq_noise_source"  , className="field-label"), html.Div("Disabled"    , id="body_daq_noise_source"  , className="field-body", style={"color": "#7ccc63"})], className="field"),
         html.Div([html.Div("RF center frequecy [MHz]:" , id="label_daq_rf_center_freq", className="field-label"), html.Div("- MHz"       , id="body_daq_rf_center_freq", className="field-body")], className="field"),
         html.Div([html.Div("Sampling frequency [MHz]:" , id="label_daq_sampling_freq" , className="field-label"), html.Div("- MHz"       , id="body_daq_sampling_freq" , className="field-body")], className="field"),
         html.Div([html.Div("Data block length [ms]:"   , id="label_daq_cpi"           , className="field-label"), html.Div("- ms"        , id="body_daq_cpi"           , className="field-body")], className="field"),
@@ -875,16 +875,16 @@ def generate_config_page_layout(webInterface_inst):
             options=[
                 {'label': "ULA", 'value': "ULA"},
                 {'label': "UCA", 'value': "UCA"},
-            ], value=webInterface_inst.module_signal_processor.DOA_ant_alignment, className="field-body", labelStyle={'display': 'inline-block'}, id="radio_ant_arrangement")
+            ], value=webInterface_inst.module_signal_processor.DOA_ant_alignment, className="field-body", labelStyle={'display': 'inline-block', 'vertical-align': 'middle'}, id="radio_ant_arrangement")
         ], className="field"),
 
         html.Div([
         html.Div([html.Div("[meter]:"             , id="label_ant_spacing_meter"  , className="field-label"),
-                    dcc.Input(id="ant_spacing_meter", value=ant_spacing_meter, type='number', debounce=True, className="field-body")]),
+                    dcc.Input(id="ant_spacing_meter", value=ant_spacing_meter, type='number', debounce=True, className="field-body-textbox")]),
         html.Div([html.Div("Wavelength Multiplier"         , id="label_ant_spacing_wavelength"        , className="field-label"), html.Div("1"      , id="body_ant_spacing_wavelength"        , className="field-body")], className="field"),
         ], className="field"),
 
-        html.Div([html.Div("", id="ambiguity_warning" , className="field", style={"color":"orange"})]),
+        html.Div([html.Div("", id="ambiguity_warning" , className="field", style={"color":"#f39c12"})]),
 
         # --> DoA estimation configuration checkboxes <--
 
@@ -927,7 +927,7 @@ def generate_config_page_layout(webInterface_inst):
 
         html.Div([
         html.Div("Compass Offset [deg]:", className="field-label"),
-        dcc.Input(id="compass_ofset", value=webInterface_inst.compass_ofset, type='number', debounce=True, className="field-body"),
+        dcc.Input(id="compass_ofset", value=webInterface_inst.compass_ofset, type='number', debounce=True, className="field-body-textbox"),
         ], className="field"),
 
     ], className="card")
@@ -942,7 +942,7 @@ def generate_config_page_layout(webInterface_inst):
                 html.Div("Station ID:", id="station_id_label", className="field-label"),
                 dcc.Input(id='station_id_input',
                           value=webInterface_inst.module_signal_processor.station_id,
-                          type='text', className="field-body")
+                          type='text', className="field-body-textbox")
             ], className="field"),
             #html.Br(),
             html.Div([
@@ -1008,15 +1008,15 @@ def generate_config_page_layout(webInterface_inst):
                 ], id="gps_status_field", className="field"),
                 html.Div([
                     html.Div("Latitude:", id="label_gps_latitude", className="field-label"),
-                    html.Div("-", id="body_gps_latitude", className="field-body")
+                    html.Div("-", id="body_gps_latitude", className="field-body-textbox")
                 ], className="field"),
                 html.Div([
                     html.Div("Longitude:", id="label_gps_longitude", className="field-label"),
-                    html.Div("-", id="body_gps_longitude", className="field-body")
+                    html.Div("-", id="body_gps_longitude", className="field-body-textbox")
                 ], className="field"),
                 html.Div([
                     html.Div("Heading:", id="label_gps_heading", className="field-label"),
-                    html.Div("-", id="body_gps_heading", className="field-body")
+                    html.Div("-", id="body_gps_heading", className="field-body-textbox")
                 ], className="field"),
             ], id="gps_status_info")
         ], className="card")
@@ -1103,7 +1103,7 @@ def generate_config_page_layout(webInterface_inst):
 
         html.Div([
                 html.Div("DSP Side Decimation:", className="field-label"),
-                dcc.Input(id='dsp_decimation', value=webInterface_inst.module_signal_processor.dsp_decimation, type='number', debounce=True, className="field-body")
+                dcc.Input(id='dsp_decimation', value=webInterface_inst.module_signal_processor.dsp_decimation, type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
     ], className="card")
 
@@ -1117,17 +1117,17 @@ def generate_config_page_layout(webInterface_inst):
         html.Div([
             html.Div([
                     html.Div("VFO-" + str(i) + " Frequency (MHz):", className="field-label"),
-                    dcc.Input(id='vfo_' + str(i) + '_freq', value=webInterface_inst.module_signal_processor.vfo_freq[i] / 10**6, type='number', debounce=True, className="field-body")
+                    dcc.Input(id='vfo_' + str(i) + '_freq', value=webInterface_inst.module_signal_processor.vfo_freq[i] / 10**6, type='number', debounce=True, className="field-body-textbox")
                 ], className="field"),
 
             html.Div([
                     html.Div("VFO-" + str(i) + " Bandwidth (Hz):", className="field-label"),
-                    dcc.Input(id='vfo_' + str(i) + '_bw', value=webInterface_inst.module_signal_processor.vfo_bw[i], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='vfo_' + str(i) + '_bw', value=webInterface_inst.module_signal_processor.vfo_bw[i], type='number', debounce=True, className="field-body-textbox")
                 ], className="field"),
 
             html.Div([
                     html.Div("VFO-" + str(i) + " Squelch (dB) :", className="field-label"),
-                    dcc.Input(id='vfo_' +str(i) + '_squelch', value=webInterface_inst.module_signal_processor.vfo_squelch[i], type='number', debounce=True, className="field-body")
+                    dcc.Input(id='vfo_' +str(i) + '_squelch', value=webInterface_inst.module_signal_processor.vfo_squelch[i], type='number', debounce=True, className="field-body-textbox")
                 ], className="field"),
         ], id="vfo"+str(i), className="card", style = {'display': 'block'} if i < webInterface_inst.module_signal_processor.active_vfos else {'display': 'none'} )
 
@@ -1359,17 +1359,17 @@ def update_daq_status():
 
         if not webInterface_inst.daq_cfg_iface_status:
             daq_conn_status_str = "Connected"
-            conn_status_style={"color": "green"}
+            conn_status_style={"color": "#7ccc63"}
         else: # Config interface is busy
             daq_conn_status_str = "Reconfiguration.."
-            conn_status_style={"color": "orange"}
+            conn_status_style={"color": "#f39c12"}
     else:
         daq_conn_status_str = "Disconnected"
-        conn_status_style={"color": "red"}
+        conn_status_style={"color": "#e74c3c"}
 
     if webInterface_inst.daq_restart:
         daq_conn_status_str = "Restarting.."
-        conn_status_style={"color": "orange"}
+        conn_status_style={"color": "#f39c12"}
 
     if webInterface_inst.daq_update_rate < 1:
         daq_update_rate_str    = "{:d} ms".format(round(webInterface_inst.daq_update_rate*1000))
@@ -1381,49 +1381,49 @@ def update_daq_status():
 
     daq_frame_type_str =  webInterface_inst.daq_frame_type
     if webInterface_inst.daq_frame_type == "Data":
-        frame_type_style   = frame_type_style={"color": "green"}
+        frame_type_style   = frame_type_style={"color": "#7ccc63"}
     elif webInterface_inst.daq_frame_type == "Dummy":
         frame_type_style   = frame_type_style={"color": "white"}
     elif webInterface_inst.daq_frame_type == "Calibration":
-        frame_type_style   = frame_type_style={"color": "orange"}
+        frame_type_style   = frame_type_style={"color": "#f39c12"}
     elif webInterface_inst.daq_frame_type == "Trigger wait":
-        frame_type_style   = frame_type_style={"color": "yellow"}
+        frame_type_style   = frame_type_style={"color": "#f39c12"}
     else:
-        frame_type_style   = frame_type_style={"color": "red"}
+        frame_type_style   = frame_type_style={"color": "#e74c3c"}
 
     if webInterface_inst.daq_frame_sync:
         daq_frame_sync_str = "LOSS"
-        frame_sync_style={"color": "red"}
+        frame_sync_style={"color": "#e74c3c"}
     else:
         daq_frame_sync_str = "Ok"
-        frame_sync_style={"color": "green"}
+        frame_sync_style={"color": "#7ccc63"}
     if webInterface_inst.daq_sample_delay_sync:
         daq_delay_sync_str     = "Ok"
-        delay_sync_style={"color": "green"}
+        delay_sync_style={"color": "#7ccc63"}
     else:
         daq_delay_sync_str     = "LOSS"
-        delay_sync_style={"color": "red"}
+        delay_sync_style={"color": "#e74c3c"}
 
     if webInterface_inst.daq_iq_sync:
         daq_iq_sync_str        = "Ok"
-        iq_sync_style={"color": "green"}
+        iq_sync_style={"color": "#7ccc63"}
     else:
         daq_iq_sync_str        = "LOSS"
-        iq_sync_style={"color": "red"}
+        iq_sync_style={"color": "#e74c3c"}
 
     if webInterface_inst.daq_noise_source_state:
         daq_noise_source_str   = "Enabled"
-        noise_source_style={"color": "red"}
+        noise_source_style={"color": "#e74c3c"}
     else:
         daq_noise_source_str   = "Disabled"
-        noise_source_style={"color": "green"}
+        noise_source_style={"color": "#7ccc63"}
 
     if webInterface_inst.daq_power_level:
         daq_power_level_str = "Overdrive"
-        daq_power_level_style={"color": "red"}
+        daq_power_level_style={"color": "#e74c3c"}
     else:
         daq_power_level_str = "OK"
-        daq_power_level_style={"color": "green"}
+        daq_power_level_style={"color": "#7ccc63"}
 
     daq_rf_center_freq_str = str(webInterface_inst.daq_center_freq)
     daq_sampling_freq_str  = str(webInterface_inst.daq_fs)
@@ -1562,9 +1562,9 @@ def enable_gps(toggle_value):
     if toggle_value == "gpsd":
         status = webInterface_inst.module_signal_processor.enable_gps()
         if status:
-            return ["Enabled", {"color": "green"}]
+            return ["Enabled", {"color": "#7ccc63"}]
         else:
-            return ["Error", {"color": "red"}]
+            return ["Error", {"color": "#e74c3c"}]
     else:
         return ["-", {"color": "white"}]
 
@@ -2022,7 +2022,9 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
         spacing_label = "Array Radius (meters)"
 
     if max_phase_diff > 0.5:
-        ambiguity_warning= "Warning: DoA estimation is ambiguous, max phase difference:{:.1f}°".format(np.rad2deg(2*np.pi*max_phase_diff))
+        ambiguity_warning= "Warning: Array size is too large. DoA estimation is ambiguous. Max phase difference:{:.1f}°.".format(np.rad2deg(2*np.pi*max_phase_diff))
+    elif max_phase_diff < 0.1:
+        ambiguity_warning= "Warning: Array size may be too small.".format(np.rad2deg(2*np.pi*max_phase_diff))
     else:
         ambiguity_warning= ""
 
