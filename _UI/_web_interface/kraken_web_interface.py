@@ -151,6 +151,7 @@ class webInterface():
         self.daq_cpi               = "-"
         self.daq_if_gains          ="[,,,,]"
         self.en_advanced_daq_cfg   = False
+        self.en_basic_daq_cfg   = False
         self.daq_ini_cfg_params    = read_config_file()
         self.active_daq_ini_cfg    = self.daq_ini_cfg_params[0] #"Default" # Holds the string identifier of the actively loaded DAQ ini configuration
         self.tmp_daq_ini_cfg       = "Default"
@@ -608,6 +609,7 @@ def generate_config_page_layout(webInterface_inst):
     en_fixed_heading = [1] if webInterface_inst.module_signal_processor.fixed_heading else []
 
     en_advanced_daq_cfg   =[1] if webInterface_inst.en_advanced_daq_cfg                       else []
+    en_basic_daq_cfg   =[1] if webInterface_inst.en_basic_daq_cfg                       else []
     # Calulcate spacings
     wavelength= 300 / webInterface_inst.daq_center_freq
     ant_spacing_wavelength = webInterface_inst.module_signal_processor.DOA_inter_elem_space
@@ -673,6 +675,13 @@ def generate_config_page_layout(webInterface_inst):
             html.Button('Update Receiver Parameters', id='btn-update_rx_param', className="btn"),
         ], className="field"),
 
+        html.Div([html.Div("Basic Custom DAQ Configuration", id="label_en_advanced_daq_cfg"     , className="field-label"),
+                dcc.Checklist(options=option     , id="en_basic_daq_cfg"     ,  className="field-body", value=en_basic_daq_cfg),
+        ], className="field"),
+
+        html.Div([
+
+
         html.Div([
             html.Div("Preconfigured DAQ Files", className="field-label"),
             dcc.Dropdown(id='daq_cfg_files',
@@ -709,10 +718,9 @@ def generate_config_page_layout(webInterface_inst):
         html.Div([html.Div("Advanced Custom DAQ Configuration", id="label_en_advanced_daq_cfg"     , className="field-label"),
                 dcc.Checklist(options=option     , id="en_advanced_daq_cfg"     ,  className="field-body", value=en_advanced_daq_cfg),
         ], className="field"),
-    ]
 
     # --> Optional DAQ Subsystem reconfiguration fields <--
-    daq_subsystem_reconfiguration_options = [ \
+    #daq_subsystem_reconfiguration_options = [ \
         html.Div([
             html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"),
             html.H3("HW", id="cfg_group_hw"),
@@ -835,9 +843,15 @@ def generate_config_page_layout(webInterface_inst):
         html.Div([
             html.Button('Reconfigure & Restart DAQ chain', id='btn_reconfig_daq_chain', className="btn"),
         ], className="field"),
+    #]
+    #], id='basic-cfg-container')
+
+    ], id='basic-cfg-container'),
     ]
-    for i in range(len(daq_subsystem_reconfiguration_options)):
-        daq_config_card_list.append(daq_subsystem_reconfiguration_options[i])
+
+
+    #for i in range(len(daq_subsystem_reconfiguration_options)):
+    #    daq_config_card_list.append(daq_subsystem_reconfiguration_options[i])
 
     daq_config_card = html.Div(daq_config_card_list, className="card")
     #-----------------------------
@@ -2022,9 +2036,9 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
         spacing_label = "Array Radius (meters)"
 
     if max_phase_diff > 0.5:
-        ambiguity_warning= "Warning: Array size is too large. DoA estimation is ambiguous. Max phase difference:{:.1f}°.".format(np.rad2deg(2*np.pi*max_phase_diff))
+        ambiguity_warning= "WARNING: Array size is too large. DoA estimation is ambiguous. Max phase difference:{:.1f}°.".format(np.rad2deg(2*np.pi*max_phase_diff))
     elif max_phase_diff < 0.1:
-        ambiguity_warning= "Warning: Array size may be too small.".format(np.rad2deg(2*np.pi*max_phase_diff))
+        ambiguity_warning= "WARNING: Array size may be too small.".format(np.rad2deg(2*np.pi*max_phase_diff))
     else:
         ambiguity_warning= ""
 
@@ -2118,6 +2132,7 @@ def update_daq_ini_params(
             en_pr_values          =[1] if webInterface_inst.module_signal_processor.en_PR else []
 
             en_advanced_daq_cfg   =[1] if webInterface_inst.en_advanced_daq_cfg                       else []
+            en_basic_daq_cfg   =[1] if webInterface_inst.en_basic_daq_cfg                       else []
 
             cfg_decimated_bw = ((daq_cfg_params[3]) / daq_cfg_params[8]) / 10**3
             cfg_data_block_len = ( daq_cfg_params[7] / (cfg_decimated_bw) )
@@ -2313,6 +2328,18 @@ def toggle_adv_daq(toggle_value):
         return {'display': 'block'}
     else:
         return {'display': 'none'}
+
+
+@app.callback(Output('basic-cfg-container', 'style'),
+             [Input("en_basic_daq_cfg", "value")]
+)
+def toggle_basic_daq(toggle_value):
+    webInterface_inst.en_basic_daq_cfg = toggle_value
+    if toggle_value:
+        return {'display': 'block'}
+    else:
+        return {'display': 'none'}
+
 
 @app.callback([Output("url"                     , "pathname")],
               [Input("daq_cfg_files"            , "value"),

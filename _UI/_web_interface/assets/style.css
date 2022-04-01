@@ -39,6 +39,7 @@ input[type="checkbox"]{
   border:1px solid;
   border-color: #bdc3c7;
   color:white !important;
+  height:33px;
 }
 .Select-value {
   /*background-color: rgb(255, 102, 0);*/
@@ -220,6 +221,7 @@ iframe{
   border-color: #bdc3c7;
   color: white;
   padding-left: 10px;
+  height: 33px;
 }
 .field-body-wide{
   width: 400px;
