@@ -56,7 +56,6 @@ except ModuleNotFoundError:
     hasgps = False
     print("Can't find gpsd - ok if no external gps used")
 
-
 class SignalProcessor(threading.Thread):
     def __init__(self, data_que, module_receiver, logging_level=10):
 
@@ -84,13 +83,6 @@ class SignalProcessor(threading.Thread):
 
         # Squelch feature
         self.data_ready = False
-        self.en_squelch = False
-        self.squelch_update = True
-        self.squelch_threshold = 0.1
-        self.squelch_trigger_channel = 0
-        self.raw_signal_amplitude = np.empty(0)
-        self.filt_signal = np.empty(0)
-        self.squelch_mask = np.empty(0)
 
         self.dsp_decimation = 0
 
@@ -119,7 +111,7 @@ class SignalProcessor(threading.Thread):
         self.DOA_Capon_res = np.ones(181)
         self.DOA_MEM_res = np.ones(181)
         self.DOA_MUSIC_res = np.ones(181)
-        self.DOA_theta = np.arange(0,181,1)
+        #self.DOA_theta = np.arange(0,181,1)
 
         # VFO settings
         self.max_vfos = 16
@@ -127,16 +119,12 @@ class SignalProcessor(threading.Thread):
         self.vfo_freq = [self.module_receiver.daq_center_freq] * self.max_vfos
         self.vfo_squelch = [-120] * self.max_vfos
 
-        self.ch_center_pt = 0
-        self.max_frequency = 0
-        self.ch_width_pts = 0
-        self.active_vfos = 2
+        self.active_vfos = 1
         self.output_vfo = 0
         self.vfo_mode = 0
 
-        self.DOA_theta =  np.linspace(0,359,360)
+        #self.DOA_theta =  np.linspace(0,359,360)
         self.spectrum = None #np.ones((self.channel_number+2,N), dtype=np.float32)
-        self.corrections = np.zeros((self.channel_number, 16384), dtype=np.complex64)
 
         self.latency = 100
 
@@ -159,7 +147,7 @@ class SignalProcessor(threading.Thread):
         """
             Main processing thread
         """
-        scipy.fft.set_workers(4)
+        #scipy.fft.set_workers(4)
         while True:
             self.is_running = False
             time.sleep(1)
@@ -186,9 +174,7 @@ class SignalProcessor(threading.Thread):
                     self.channel_number = self.module_receiver.iq_header.active_ant_chs
                     self.spectrum = np.ones((self.channel_number+4, self.spectrum_window_size), dtype=np.float32)
                     self.first_frame = 0
-                    self.corrections = np.zeros((self.channel_number, 1048576), dtype=np.complex64)
 
-                decimation_factor = 1
                 self.data_ready = False
 
                 if en_proc:
@@ -198,13 +184,11 @@ class SignalProcessor(threading.Thread):
                     global_decimation_factor = max(int(self.dsp_decimation), 1) #max(int(self.phasetest[0]), 1) #ps_len // 65536 #int(self.phasetest[0]) + 1
  
                     if global_decimation_factor > 1:
-                        self.processed_signal = signal.decimate(self.processed_signal, global_decimation_factor, n = global_decimation_factor * 2, ftype='fir')
+                        self.processed_signal = signal.decimate(self.processed_signal, global_decimation_factor, n = global_decimation_factor * 5, ftype='fir')
                         sampling_freq = sampling_freq//global_decimation_factor
 
-                    ps_len = len(self.processed_signal[0,:])
-
                     self.data_ready = True
-                    max_amplitude = -100
+                    #max_amplitude = -100
 
                     if self.spectrum_fig_type == 0:
                         m = 0
@@ -240,7 +224,6 @@ class SignalProcessor(threading.Thread):
 
                     #-----> DoA PROCESSING <-----
                     if self.data_ready:
-                        self.squelch_update = False
                         spectrum_window_size = len(self.spectrum[0,:])
                         active_vfos = self.active_vfos if self.vfo_mode == 0 else 1
                         write_freq = 0
@@ -259,28 +242,30 @@ class SignalProcessor(threading.Thread):
 
                             # Get max amplitude of the channel from the FFT for squelching
                             # From channel frequency determine array index of channel
-                            ch_width_pts = int((spectrum_window_size * self.vfo_bw[i]) / (sampling_freq)) # Width of channel in array indexes based on FFT size
+                            vfo_width_idx = int((spectrum_window_size * self.vfo_bw[i]) / (sampling_freq)) # Width of channel in array indexes based on FFT size
                             freqMin = -sampling_freq/2
 
-                            ch_center_pt = int((((freq - freqMin) * spectrum_window_size) / sampling_freq))
+                            vfo_center_idx = int((((freq - freqMin) * spectrum_window_size) / sampling_freq))
+
+                            vfo_upper_bound = vfo_center_idx + vfo_width_idx//2
+                            vfo_lower_bound = vfo_center_idx - vfo_width_idx//2
 
                             if self.spectrum_fig_type == 0: # Do CH1 only (or make channel selectable)
-                                spectrum_channel = self.spectrum[1, max(ch_center_pt - ch_width_pts//2, 0) : min(ch_center_pt + ch_width_pts//2, spectrum_window_size)]
+                                spectrum_channel = self.spectrum[1, max(vfo_lower_bound, 0) : min(vfo_upper_bound, spectrum_window_size)]
                                 max_amplitude = np.max(spectrum_channel)
                             else:
-                                spectrum_channel = self.spectrum[:, max(ch_center_pt - ch_width_pts//2, 0) : min(ch_center_pt + ch_width_pts//2, spectrum_window_size)]
+                                spectrum_channel = self.spectrum[:, max(vfo_lower_bound, 0) : min(vfo_upper_bound, spectrum_window_size)]
                                 max_amplitude = np.max(spectrum_channel[1:self.module_receiver.iq_header.active_ant_chs+1, :])
 
                             # *** HERE WE NEED TO PERFORM THE SPECTRUM UPDATE TOO ***
                             if self.en_spectrum:
                                 # Selected Channel Window
-                                signal_window = np.ones(spectrum_window_size) * -120
-                                signal_window[max(ch_center_pt - ch_width_pts//2, 4) : min(ch_center_pt + ch_width_pts//2, spectrum_window_size-4)] = 0 #max_amplitude
+                                signal_window = np.zeros(spectrum_window_size) - 120
+                                signal_window[max(vfo_lower_bound, 4) : min(vfo_upper_bound, spectrum_window_size-4)] = 0 #max_amplitude
                                 self.spectrum[self.channel_number+(2*i+1), :] = signal_window #np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
 
                                 # Squelch Window
-                                signal_window = np.ones(spectrum_window_size) * -120
-                                signal_window[max(ch_center_pt - ch_width_pts//2, 4) : min(ch_center_pt + ch_width_pts//2, spectrum_window_size-4)] = self.vfo_squelch[i]
+                                signal_window[max(vfo_lower_bound, 4) : min(vfo_upper_bound, spectrum_window_size-4)] = self.vfo_squelch[i]
                                 self.spectrum[self.channel_number+(2*i+2), :] = signal_window #np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
 
                             #-----> DoA ESIMATION <-----
@@ -296,7 +281,6 @@ class SignalProcessor(threading.Thread):
                                 #print("IQ DIFFS: " + str(iq_diffs))
                                 #print("IQ DIFFS ANGLE: " + str(np.rad2deg(np.angle(iq_diffs))))
                                 ##########################
-
                                 self.estimate_DOA(vfo_channel)
 
                                 que_data_packet.append(['doa_thetas', self.DOA_theta])
@@ -381,29 +365,10 @@ class SignalProcessor(threading.Thread):
                         else:
                             self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
 
-####################################################
-                            # KerberosSDR App compatible message output, this will be redundant soon once the new app is published
-
-                            #confidence_str = "{}".format(np.max(int(conf_val*100)))
-                            #max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude+100)))
-
-                            #message = str(int(time.time() * 1000)) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
-                            #html_str = "<DATA>\n<DOA>"+DOA_str+"</DOA>\n<CONF>"+confidence_str+"</CONF>\n<PWR>"+max_power_level_str+"</PWR>\n</DATA>"
-                            #self.DOA_res_fd.seek(0)
-                            #self.DOA_res_fd.write(html_str)
-                            #self.DOA_res_fd.truncate()
-                            #self.logger.debug("DoA results writen: {:s}".format(html_str))
-####################################################
-
                     #-----> SPECTRUM PROCESSING <-----
-
                     if self.en_spectrum and self.data_ready:
-
-                        spectrum_size = len(self.spectrum[0,:])
                         spectrum_plot_data = reduce_spectrum(self.spectrum, self.spectrum_plot_size, self.channel_number)
                         que_data_packet.append(['spectrum', spectrum_plot_data])
-
-######################################################
 
                     # Record IQ samples
                     if self.en_record:
@@ -564,7 +529,7 @@ class SignalProcessor(threading.Thread):
         #KrakenSDR Flutter app out
         doaString = str('')
         for i in range(len(doa_result_log)):
-            doaString += "{:.2f}".format(doa_result_log[i] + np.abs(np.min(doa_result_log)))+','
+            doaString += "{:.2f}".format(doa_result_log[i] + np.abs(np.min(doa_result_log)))+',' #TODO: After confirmed to work, optimize
 
         #doaString = str('')
         #doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
@@ -579,9 +544,9 @@ class SignalProcessor(threading.Thread):
         jsonDict["radioBearing"] = DOA_str
         jsonDict["conf"] = confidence_str
         jsonDict["power"] = max_power_level_str
-        jsonDict["freq"] = self.module_receiver.daq_center_freq
+        jsonDict["freq"] = freq #self.module_receiver.daq_center_freq
         jsonDict["antType"] = self.DOA_ant_alignment
-        jsonDict["latency"] = self.latency
+        jsonDict["latency"] = 100
         jsonDict["doaArray"] = doaString
 
         try:
@@ -622,12 +587,12 @@ def reduce_spectrum(spectrum, spectrum_size, channel_number):
     return spectrum_plot_data
 
 # Get the FIR filter
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=32)
 def get_fir(n, q, padd):
     return signal.dlti(signal.firwin(n+1, 1. / (q * padd), window='hann'), 1.)
 
 # Get the frequency rotation exponential
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=32)
 def get_exponential(freq, sample_freq, sig_len):
     # Auto shift peak frequency center of spectrum, this frequency will be decimated:
     # https://pysdr.org/content/filters.html
@@ -643,7 +608,7 @@ def numba_mult(a,b):
     return a*b
 
 # Memoize the total shift filter
-@lru_cache(maxsize=24)
+@lru_cache(maxsize=32)
 def shift_filter(decimation_factor, freq, sampling_freq, padd):
     system = get_fir(decimation_factor*2, decimation_factor, padd)
     b = system.num
@@ -697,21 +662,21 @@ def DOA_MUSIC(R, scanning_vectors, signal_dimension, angle_resolution=1):
     sigmai = np.abs(sigmai)
 
     idx = sigmai.argsort()[::1] # Sort eigenvectors by eigenvalues, smallest to largest
-    #sigmai = sigmai[idx] # Eigenvalues not used again
     vi = vi[:,idx]
 
     # Generate noise subspace matrix
     noise_dimension = M - signal_dimension
-    #E = np.zeros((M, noise_dimension),dtype=np.complex)
+
     E = np.zeros((M, noise_dimension),dtype=np.complex64)
     for i in range(noise_dimension):
         E[:,i] = vi[:,i]
 
+    E_ct = E @ E.conj().T
     theta_index=0
     for i in range(scanning_vectors[0,:].size):
         S_theta_ = scanning_vectors[:, i]
         S_theta_  = S_theta_.T
-        ADORT[theta_index] = 1/np.abs(S_theta_.conj().T @ (E @ E.conj().T) @ S_theta_)
+        ADORT[theta_index] = 1/np.abs(S_theta_.conj().T @ E_ct @ S_theta_)
         theta_index += 1
 
     return ADORT
@@ -725,9 +690,8 @@ def corr_matrix(X):
     return R
 
 # LRU cache memoize about 1000x faster.
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=32)
 def gen_scanning_vectors(M, DOA_inter_elem_space, type):
-
     thetas =  np.linspace(0,359,360) # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
     if type == "UCA":
         x = DOA_inter_elem_space * np.cos(2*np.pi/M * np.arange(M))

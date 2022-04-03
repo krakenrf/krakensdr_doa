@@ -26,7 +26,7 @@ import queue
 import time
 import subprocess
 #import orjson
-import json
+#import json
 
 import dash_core_components as dcc
 import dash_html_components as html
@@ -1172,7 +1172,7 @@ spectrum_page_layout = html.Div([
     ),
     dcc.Graph(
         id="waterfall-graph",
-        style={'width': '100%', 'height': '60%'},
+        style={'width': '100%', 'height': '65%'},
         figure=waterfall_fig #waterfall fig remains unchanged always due to slow speed to update entire graph #fig_dummy #spectrum_fig #fig_dummy
     ),
 ], style={'width': '100%', 'height': '80vh'}),
