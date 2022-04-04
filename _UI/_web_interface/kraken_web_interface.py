@@ -69,7 +69,6 @@ daq_start_filename    = "daq_start_sm.sh"
 sys.path.insert(0, daq_subsystem_path)
 
 settings_file_path = os.path.join(root_path, "settings.json")
-
 # Load settings file
 settings_found = False
 if os.path.exists(settings_file_path):
@@ -78,10 +77,8 @@ if os.path.exists(settings_file_path):
         dsp_settings = json.loads(myfile.read())
 
 import ini_checker
-#import save_settings as settings
 from krakenSDR_receiver import ReceiverRTLSDR
 from krakenSDR_signal_processor import SignalProcessor
-
 import tooltips
 
 class webInterface():
@@ -92,7 +89,7 @@ class webInterface():
         logging_level = dsp_settings.get("logging_level", 0)*10
         logging.basicConfig(level=logging_level)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging_level) #settings.logging_level*10)
+        self.logger.setLevel(logging_level)
         self.logger.info("Inititalizing web interface ")
 
         if not settings_found:
@@ -134,7 +131,7 @@ class webInterface():
         #       UI Status and Config variables      #
         #############################################
 
-        # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
+        # Output Data format.
         self.module_signal_processor.DOA_data_format = dsp_settings.get("doa_data_format", "Kraken App")
 
         # Station Information
@@ -579,7 +576,6 @@ app.title = "KrakenSDR DoA"
 app.layout = html.Div([
     dcc.Location(id='url', children='/config',refresh=False),
 
-    #html.Div([html.H1('KrakenSDR - Direction of Arrival Estimation')], style={"text-align": "center"}, className="main_title"),
     html.Div([html.Img(src="assets/kraken_interface_bw.png", style={"display": "block", "margin-left": "auto", "margin-right": "auto", "height": "60px"})]),
     html.Div([html.A("Configuration", className="header_active"   , id="header_config"  ,href="/config"),
             html.A("Spectrum"       , className="header_inactive" , id="header_spectrum",href="/spectrum"),
@@ -646,7 +642,6 @@ def generate_config_page_layout(webInterface_inst):
               html.Div([html.Button('Stop Processing', id='btn-stop_proc', className="btn_stop", n_clicks=0)], className="ctr_toolbar_item"),
               html.Div([html.Button('Save Configuration', id='btn-save_cfg', className="btn_save_cfg", n_clicks=0)], className="ctr_toolbar_item")
             ], className="ctr_toolbar"),
-            #], className="field"),
     ])
     #-----------------------------
     #   DAQ Configuration Card
@@ -1081,7 +1076,6 @@ def generate_config_page_layout(webInterface_inst):
             value=webInterface_inst.module_signal_processor.vfo_mode, style={"display":"inline-block"},className="field-body"),
         ], className="field"),
 
-
         html.Div([
         html.Div("Active VFOs:", className="field-label"),
         dcc.Dropdown(id='active_vfos',
@@ -1198,13 +1192,13 @@ def generate_doa_page_layout(webInterface_inst):
                  className="field-body")],
                  className="field"),
 
-        html.Div([
+        #html.Div([
         dcc.Graph(
             style={"height": "inherit"},
             id="doa-graph",
             figure=doa_fig, #fig_dummy #doa_fig #fig_dummy
-        )], className="monitor_card"),
-    ])
+        ),
+    ], style={'width': '100%', 'height': '80vh'})
     return doa_page_layout
 
 #============================================
@@ -1555,7 +1549,6 @@ def toggle_location_info(toggle_value):
     else:
         return {'display': 'none'}
 
-
 # Set location data
 @app.callback_shared(None,
                      [Input(component_id="latitude_input", component_property='value'),
@@ -1598,11 +1591,11 @@ def enable_gps(toggle_value):
 
 @app.callback_shared(
     None,
-    [Input(component_id ="spectrum_fig_type"           , component_property='value'),
+    [Input(component_id ="spectrum_fig_type"      , component_property='value'),
     Input(component_id ="vfo_mode"                , component_property="value"),
-    Input(component_id ="dsp_decimation"                , component_property="value"),
-    Input(component_id ="active_vfos"                , component_property="value"),
-    Input(component_id ="output_vfo"                , component_property="value"),
+    Input(component_id ="dsp_decimation"          , component_property="value"),
+    Input(component_id ="active_vfos"             , component_property="value"),
+    Input(component_id ="output_vfo"              , component_property="value"),
 
     Input(component_id ="vfo_0_bw"                , component_property="value"),
     Input(component_id ="vfo_0_freq"              , component_property="value"),
@@ -1644,29 +1637,29 @@ def enable_gps(toggle_value):
     Input(component_id ="vfo_9_freq"              , component_property="value"),
     Input(component_id ="vfo_9_squelch"           , component_property="value"),
 
-    Input(component_id ="vfo_10_bw"                , component_property="value"),
-    Input(component_id ="vfo_10_freq"              , component_property="value"),
-    Input(component_id ="vfo_10_squelch"           , component_property="value"),
+    Input(component_id ="vfo_10_bw"               , component_property="value"),
+    Input(component_id ="vfo_10_freq"             , component_property="value"),
+    Input(component_id ="vfo_10_squelch"          , component_property="value"),
 
-    Input(component_id ="vfo_11_bw"                , component_property="value"),
-    Input(component_id ="vfo_11_freq"              , component_property="value"),
-    Input(component_id ="vfo_11_squelch"           , component_property="value"),
+    Input(component_id ="vfo_11_bw"               , component_property="value"),
+    Input(component_id ="vfo_11_freq"             , component_property="value"),
+    Input(component_id ="vfo_11_squelch"          , component_property="value"),
 
-    Input(component_id ="vfo_12_bw"                , component_property="value"),
-    Input(component_id ="vfo_12_freq"              , component_property="value"),
-    Input(component_id ="vfo_12_squelch"           , component_property="value"),
+    Input(component_id ="vfo_12_bw"               , component_property="value"),
+    Input(component_id ="vfo_12_freq"             , component_property="value"),
+    Input(component_id ="vfo_12_squelch"          , component_property="value"),
 
-    Input(component_id ="vfo_13_bw"                , component_property="value"),
-    Input(component_id ="vfo_13_freq"              , component_property="value"),
-    Input(component_id ="vfo_13_squelch"           , component_property="value"),
+    Input(component_id ="vfo_13_bw"               , component_property="value"),
+    Input(component_id ="vfo_13_freq"             , component_property="value"),
+    Input(component_id ="vfo_13_squelch"          , component_property="value"),
 
-    Input(component_id ="vfo_14_bw"                , component_property="value"),
-    Input(component_id ="vfo_14_freq"              , component_property="value"),
-    Input(component_id ="vfo_14_squelch"           , component_property="value"),
+    Input(component_id ="vfo_14_bw"               , component_property="value"),
+    Input(component_id ="vfo_14_freq"             , component_property="value"),
+    Input(component_id ="vfo_14_squelch"          , component_property="value"),
 
-    Input(component_id ="vfo_15_bw"                , component_property="value"),
-    Input(component_id ="vfo_15_freq"              , component_property="value"),
-    Input(component_id ="vfo_15_squelch"           , component_property="value"),
+    Input(component_id ="vfo_15_bw"               , component_property="value"),
+    Input(component_id ="vfo_15_freq"             , component_property="value"),
+    Input(component_id ="vfo_15_squelch"          , component_property="value"),
     ],
 )
 # TODO: This is dumb, can we set these callback parameters as an array somehow?
@@ -2370,6 +2363,8 @@ def reconfig_daq_chain(input_value, freq, gain):
 
     os.chdir(root_path)
 
+    #TODO: Try this reinit method again, if it works it would save us needing to restore variable states
+
     # Reinitialize receiver data interface
     #if webInterface_inst.module_receiver.init_data_iface() == -1:
     #    webInterface_inst.logger.critical("Failed to restart the DAQ data interface")
@@ -2435,13 +2430,11 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.module_signal_processor.usegps = doa_usegps
     webInterface_inst.module_signal_processor.gps_connected = doa_gps_connected
 
-
     webInterface_inst.config_doa_in_signal_processor()
     webInterface_inst.module_signal_processor.start()
 
     # This must be here, otherwise the gains dont reinit properly?
     webInterface_inst.module_receiver.M = webInterface_inst.daq_ini_cfg_dict['num_ch']
-
 
     # Restart signal processing
     webInterface_inst.start_processing()
@@ -2454,7 +2447,6 @@ def reconfig_daq_chain(input_value, freq, gain):
     return Output("daq_cfg_files", "value", daq_config_filename), Output("active_daq_ini_cfg", "children", "Active Configuration: " + webInterface_inst.active_daq_ini_cfg)
 
 if __name__ == "__main__":
-    # For Development only, otherwise use gunicorn
     # Debug mode does not work when the data interface is set to shared-memory "shmem"! 
     app.run_server(debug=False, host="0.0.0.0", port=8080)
 
