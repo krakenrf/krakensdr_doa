@@ -104,7 +104,7 @@ class SignalProcessor(threading.Thread):
         self.run_processing = False
         self.is_running = False
         self.channel_number = 4  # Update from header
-        self.spectrum_fig_type = 0 #0 Single, 1 Full
+        self.spectrum_fig_type = 'Single' #0 Single, 1 Full
 
         # Result vectors
         self.DOA_Bartlett_res = np.ones(181)
@@ -121,7 +121,7 @@ class SignalProcessor(threading.Thread):
 
         self.active_vfos = 1
         self.output_vfo = 0
-        self.vfo_mode = 0
+        self.vfo_mode = 'Standard'
 
         #self.DOA_theta =  np.linspace(0,359,360)
         self.spectrum = None #np.ones((self.channel_number+2,N), dtype=np.float32)
@@ -190,7 +190,7 @@ class SignalProcessor(threading.Thread):
                     self.data_ready = True
                     #max_amplitude = -100
 
-                    if self.spectrum_fig_type == 0:
+                    if self.spectrum_fig_type == 'Single':
                         m = 0
                         N = self.spectrum_window_size
                         self.spectrum = np.ones((self.channel_number+(self.active_vfos*2+1), N), dtype=np.float32) # Only 0.1 ms, not performance bottleneck
@@ -225,7 +225,7 @@ class SignalProcessor(threading.Thread):
                     #-----> DoA PROCESSING <-----
                     if self.data_ready:
                         spectrum_window_size = len(self.spectrum[0,:])
-                        active_vfos = self.active_vfos if self.vfo_mode == 0 else 1
+                        active_vfos = self.active_vfos if self.vfo_mode == 'Standard' else 1
                         write_freq = 0
                         for i in range(active_vfos):
                             # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
@@ -234,7 +234,7 @@ class SignalProcessor(threading.Thread):
 
                             freq = self.vfo_freq[i] - self.module_receiver.daq_center_freq #ch_freq is relative to -sample_freq/2 : sample_freq/2, so correct for that and get the actual freq
 
-                            if self.vfo_mode == 1: # Mode 1 is Auto Max Mode
+                            if self.vfo_mode == 'Auto': # Mode 1 is Auto Max Mode
                                 max_index = self.spectrum[1,:].argmax()
                                 freq = self.spectrum[0, max_index]
 
@@ -250,7 +250,7 @@ class SignalProcessor(threading.Thread):
                             vfo_upper_bound = vfo_center_idx + vfo_width_idx//2
                             vfo_lower_bound = vfo_center_idx - vfo_width_idx//2
 
-                            if self.spectrum_fig_type == 0: # Do CH1 only (or make channel selectable)
+                            if self.spectrum_fig_type == 'Single': # Do CH1 only (or make channel selectable)
                                 spectrum_channel = self.spectrum[1, max(vfo_lower_bound, 0) : min(vfo_upper_bound, spectrum_window_size)]
                                 max_amplitude = np.max(spectrum_channel)
                             else:

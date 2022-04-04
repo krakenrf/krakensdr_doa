@@ -26,7 +26,7 @@ import queue
 import time
 import subprocess
 #import orjson
-#import json
+import json
 
 import dash_core_components as dcc
 import dash_html_components as html
@@ -68,8 +68,17 @@ daq_start_filename    = "daq_start_sm.sh"
 #daq_start_filename    = "daq_synthetic_start.sh"
 sys.path.insert(0, daq_subsystem_path)
 
+settings_file_path = os.path.join(root_path, "settings.json")
+
+# Load settings file
+settings_found = False
+if os.path.exists(settings_file_path):
+    settings_found = True
+    with open(settings_file_path, 'r') as myfile:
+        dsp_settings = json.loads(myfile.read())
+
 import ini_checker
-import save_settings as settings
+#import save_settings as settings
 from krakenSDR_receiver import ReceiverRTLSDR
 from krakenSDR_signal_processor import SignalProcessor
 
@@ -80,11 +89,13 @@ class webInterface():
     def __init__(self):
         self.user_interface = None
 
-        logging.basicConfig(level=settings.logging_level*10)
+        logging_level = dsp_settings.get("logging_level", 0)*10
+        logging.basicConfig(level=logging_level)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(settings.logging_level*10)
+        self.logger.setLevel(logging_level) #settings.logging_level*10)
         self.logger.info("Inititalizing web interface ")
-        if not settings.settings_found:
+
+        if not settings_found:
             self.logger.warning("Web Interface settings file is not found!")
 
         #############################################
@@ -92,30 +103,30 @@ class webInterface():
         #############################################
 
         # Web interface internal
-        self.disable_tooltips = settings.disable_tooltips
+        self.disable_tooltips = dsp_settings.get("disable_tooltips", 0)
         self.page_update_rate = 1
         self._avg_win_size = 10
         self._update_rate_arr = None
-        self._doa_method   = settings.doa_method_dict[settings.doa_method]
-        self._doa_fig_type = settings.doa_fig_type_dict[settings.doa_fig_type]
-        self._spectrum_fig_type = 0
+
+        self._doa_method = dsp_settings.get("doa_method", "MUSIC")
+        self._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
 
         self.sp_data_que = queue.Queue(8) # Que to communicate with the signal processing module
         self.rx_data_que = queue.Queue(8) # Que to communicate with the receiver modules
 
         # Instantiate and configure Kraken SDR modules
-        self.module_receiver = ReceiverRTLSDR(data_que=self.rx_data_que, data_interface=settings.data_interface, logging_level=settings.logging_level*10)
-        self.module_receiver.daq_center_freq   = settings.center_freq*10**6
-        self.module_receiver.daq_rx_gain       = settings.uniform_gain
-        self.module_receiver.daq_squelch_th_dB = settings.squelch_threshold_dB
-        self.module_receiver.rec_ip_addr       = settings.default_ip
+        self.module_receiver = ReceiverRTLSDR(data_que=self.rx_data_que, data_interface=dsp_settings.get("data_interface", "shmem"), logging_level=logging_level)
+        self.module_receiver.daq_center_freq   = dsp_settings.get("center_freq", 100.0) * 10**6
+        self.module_receiver.daq_rx_gain       = dsp_settings.get("uniform_gain", 1.4)
+        self.module_receiver.daq_squelch_th_dB = dsp_settings.get("squelch_threshold_dB", 0.0)
+        self.module_receiver.rec_ip_addr       = dsp_settings.get("default_ip", "0.0.0.0")
 
-        self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=settings.logging_level*10)
-        self.module_signal_processor.DOA_ant_alignment    = settings.ant_arrangement
-        self.module_signal_processor.DOA_inter_elem_space = settings.ant_spacing
-        self.module_signal_processor.en_DOA_estimation    = settings.en_doa
-        self.module_signal_processor.en_DOA_FB_avg        = settings.en_fbavg
-        self.module_signal_processor.en_squelch           = settings.en_squelch
+        self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=logging_level)
+        self.module_signal_processor.DOA_ant_alignment    = dsp_settings.get("ant_arrangement", "ULA")
+        self.module_signal_processor.DOA_inter_elem_space = dsp_settings.get("ant_spacing", 0.5)
+        self.module_signal_processor.en_DOA_estimation    = dsp_settings.get("en_doa", 0)
+        self.module_signal_processor.en_DOA_FB_avg        = dsp_settings.get("en_fbavg", 0)
+        self.module_signal_processor.en_squelch           = dsp_settings.get("en_squelch", 0)
         self.config_doa_in_signal_processor()
         self.module_signal_processor.start()
 
@@ -124,14 +135,26 @@ class webInterface():
         #############################################
 
         # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
-        self.module_signal_processor.DOA_data_format = settings.doa_data_format  # XML, CSV, or JSON
+        self.module_signal_processor.DOA_data_format = dsp_settings.get("doa_data_format", "Kraken App")
 
         # Station Information
-        self.module_signal_processor.station_id = settings.station_id
-        self.location_source = settings.location_source
-        self.module_signal_processor.latitude = settings.latitude
-        self.module_signal_processor.longitude = settings.longitude
-        self.module_signal_processor.heading = settings.heading
+        self.module_signal_processor.station_id    = dsp_settings.get("station_id", "NO-CALL")
+        self.location_source                       = dsp_settings.get("location_source", "None")
+        self.module_signal_processor.latitude      = dsp_settings.get("latitude", 0.0)
+        self.module_signal_processor.longitude     = dsp_settings.get("longitude", 0.0)
+        self.module_signal_processor.heading       = dsp_settings.get("heading", 0.0)
+
+        # VFO Configuration
+        self.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
+        self.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", 'Standard')
+        self.module_signal_processor.dsp_decimation = dsp_settings.get("dsp_decimation", 0)
+        self.module_signal_processor.active_vfos = dsp_settings.get("active_vfos", 0)
+        self.module_signal_processor.output_vfo = dsp_settings.get("output_vfo", 0)
+
+        for i in range(self.module_signal_processor.max_vfos):
+            self.module_signal_processor.vfo_bw[i] = dsp_settings.get("vfo_bw_" + str(i), 0)
+            self.module_signal_processor.vfo_freq[i] = dsp_settings.get("vfo_freq_" + str(i), 0)
+            self.module_signal_processor.vfo_squelch[i] = dsp_settings.get("vfo_squelch_" + str(i), 0)
 
         # DAQ Subsystem status parameters
         self.daq_conn_status       = 0
@@ -145,7 +168,7 @@ class webInterface():
         self.daq_sample_delay_sync = 0
         self.daq_iq_sync           = 0
         self.daq_noise_source_state= 0
-        self.daq_center_freq       = settings.center_freq
+        self.daq_center_freq       = dsp_settings.get("center_freq", 100.0)
         self.daq_adc_fs            = "-"
         self.daq_fs                = "-"
         self.daq_cpi               = "-"
@@ -153,7 +176,7 @@ class webInterface():
         self.en_advanced_daq_cfg   = False
         self.en_basic_daq_cfg   = False
         self.daq_ini_cfg_dict      = read_config_file_dict()
-        self.active_daq_ini_cfg    = self.daq_ini_cfg_dict['config_name'] #self.daq_ini_cfg_params[0] #"Default" # Holds the string identifier of the actively loaded DAQ ini configuration
+        self.active_daq_ini_cfg    = self.daq_ini_cfg_dict['config_name'] #"Default" # Holds the string identifier of the actively loaded DAQ ini configuration
         self.tmp_daq_ini_cfg       = "Default"
         self.daq_cfg_ini_error     = ""
 
@@ -164,7 +187,7 @@ class webInterface():
         self.doa_labels            = []
         self.doas                  = [] # Final measured DoAs [deg]
         self.doa_confidences       = []
-        self.compass_ofset         = settings.compass_offset
+        self.compass_ofset         = dsp_settings.get("compass_offset", 0)
         self.daq_dsp_latency       = 0 # [ms]
         self.max_amplitude         = 0 # Used to help setting the threshold level of the squelch
         self.avg_powers            = []
@@ -194,39 +217,31 @@ class webInterface():
         # DAQ Configuration
         data["center_freq"]    = self.module_receiver.daq_center_freq/10**6
         data["uniform_gain"]   = self.module_receiver.daq_rx_gain
-        data["data_interface"] = settings.data_interface
-        data["default_ip"]     = settings.default_ip
+        data["data_interface"] = dsp_settings.get("data_interface", "shmem")
+        data["default_ip"]     = dsp_settings.get("default_ip", "0.0.0.0")
 
         # DOA Estimation
         data["en_doa"]          = self.module_signal_processor.en_DOA_estimation
         data["ant_arrangement"] = self.module_signal_processor.DOA_ant_alignment
         data["ant_spacing"]     = self.module_signal_processor.DOA_inter_elem_space
-        doa_method = "MUSIC"
-        for key, val in (settings.doa_method_dict).items():
-            if val == self._doa_method:
-                doa_method = key
-        data["doa_method"]      = doa_method
+
+        data["doa_method"]      = self._doa_method
         data["en_fbavg"]        = self.module_signal_processor.en_DOA_FB_avg
         data["compass_offset"]  = self.compass_ofset
-        doa_fig_type = "Linear plot"
-        for key, val in (settings.doa_fig_type_dict).items():
-            if val == self._doa_fig_type:
-                doa_fig_type = key
-
-        data["doa_fig_type"]    = doa_fig_type
+        data["doa_fig_type"]    = self._doa_fig_type
 
         # DSP misc
         data["en_squelch"]            = self.module_signal_processor.en_squelch
         data["squelch_threshold_dB"]  = self.module_receiver.daq_squelch_th_dB
 
         # Web Interface
-        data["en_hw_check"]         = settings.en_hw_check
-        data["en_advanced_daq_cfg"] = self.en_advanced_daq_cfg
-        data["logging_level"]       = settings.logging_level
-        data["disable_tooltips"]    = settings.disable_tooltips
+        data["en_hw_check"]         = dsp_settings.get("en_hw_check", 0)
+        data["en_advanced_daq_cfg"] = dsp_settings.get("en_advanced_daq_cfg", 0)
+        data["logging_level"]       = dsp_settings.get("logging_level", 0)
+        data["disable_tooltips"]    = dsp_settings.get("disable_tooltips", 0)
 
         # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
-        data["doa_data_format"] = settings.doa_data_format  # XML, CSV, or JSON
+        data["doa_data_format"] = self.module_signal_processor.DOA_data_format # XML, CSV, or JSON
 
         # Station Information
         data["station_id"] = self.module_signal_processor.station_id
@@ -235,7 +250,22 @@ class webInterface():
         data["longitude"] = self.module_signal_processor.longitude
         data["heading"] = self.module_signal_processor.heading
 
-        settings.write(data)
+        # VFO Information
+        data["spectrum_calculation"] = self.module_signal_processor.spectrum_fig_type
+        data["vfo_mode"] = self.module_signal_processor.vfo_mode
+        data["dsp_decimation"] = self.module_signal_processor.dsp_decimation
+        data["active_vfos"] = self.module_signal_processor.active_vfos
+        data["output_vfo"] = self.module_signal_processor.output_vfo
+
+        for i in range(webInterface_inst.module_signal_processor.max_vfos):
+            data["vfo_bw_" + str(i)] = self.module_signal_processor.vfo_bw[i]
+            data["vfo_freq_" + str(i)] = self.module_signal_processor.vfo_freq[i]
+            data["vfo_squelch_" + str(i)] = self.module_signal_processor.vfo_squelch[i]
+
+        #settings.write(data)
+        with open(settings_file_path, 'w') as outfile:
+            json.dump(data, outfile, indent=2)
+
     def start_processing(self):
         """
             Starts data processing
@@ -257,22 +287,22 @@ class webInterface():
     def close(self):
         pass
     def config_doa_in_signal_processor(self):
-        if self._doa_method == 0:
+        if self._doa_method == "Bartlett":
             self.module_signal_processor.en_DOA_Bartlett = True
             self.module_signal_processor.en_DOA_Capon    = False
             self.module_signal_processor.en_DOA_MEM      = False
             self.module_signal_processor.en_DOA_MUSIC    = False
-        elif self._doa_method == 1:
+        elif self._doa_method == "Capon":
             self.module_signal_processor.en_DOA_Bartlett = False
             self.module_signal_processor.en_DOA_Capon    = True
             self.module_signal_processor.en_DOA_MEM      = False
             self.module_signal_processor.en_DOA_MUSIC    = False
-        elif self._doa_method == 2:
+        elif self._doa_method == "MEM":
             self.module_signal_processor.en_DOA_Bartlett = False
             self.module_signal_processor.en_DOA_Capon    = False
             self.module_signal_processor.en_DOA_MEM      = True
             self.module_signal_processor.en_DOA_MUSIC    = False
-        elif self._doa_method == 3:
+        elif self._doa_method == "MUSIC":
             self.module_signal_processor.en_DOA_Bartlett = False
             self.module_signal_processor.en_DOA_Capon    = False
             self.module_signal_processor.en_DOA_MEM      = False
@@ -897,10 +927,10 @@ def generate_config_page_layout(webInterface_inst):
         html.Div([html.Div("DoA Algorithm", id="label_doa_method"     , className="field-label"),
         dcc.Dropdown(id='doa_method',
             options=[
-                {'label': 'Bartlett', 'value': 0},
-                {'label': 'Capon'   , 'value': 1},
-                {'label': 'MEM'     , 'value': 2},
-                {'label': 'MUSIC'   , 'value': 3}
+                {'label': 'Bartlett', 'value': 'Bartlett'},
+                {'label': 'Capon'   , 'value': 'Capon'},
+                {'label': 'MEM'     , 'value': 'MEM'},
+                {'label': 'MUSIC'   , 'value': 'MUSIC'}
                 ],
         value=webInterface_inst._doa_method, style={"display":"inline-block"},className="field-body")
         ], className="field"),
@@ -920,9 +950,9 @@ def generate_config_page_layout(webInterface_inst):
         html.Div("DoA Graph Type:", className="field-label"),
         dcc.Dropdown(id='doa_fig_type',
                 options=[
-                    {'label': 'Linear plot', 'value': 0},
-                    {'label': 'Polar plot' ,  'value': 1},
-                    {'label': 'Compass'    ,  'value': 2},
+                    {'label': 'Linear', 'value': 'Linear'},
+                    {'label': 'Polar' ,  'value': 'Polar'},
+                    {'label': 'Compass'    ,  'value': 'Compass'},
                     ],
             value=webInterface_inst._doa_fig_type, style={"display":"inline-block"},className="field-body"),
         ], className="field"),
@@ -1034,10 +1064,10 @@ def generate_config_page_layout(webInterface_inst):
         html.Div("Spectrum Calculation:", className="field-label"),
         dcc.Dropdown(id='spectrum_fig_type',
                 options=[
-                    {'label': 'Single Ch', 'value': 0},
-                    {'label': 'All Ch (TEST ONLY)' ,  'value': 1},
+                    {'label': 'Single Ch', 'value': 'Single'},
+                    {'label': 'All Ch (TEST ONLY)' ,  'value': 'All'},
                     ],
-            value=webInterface_inst._spectrum_fig_type, style={"display":"inline-block"},className="field-body"),
+            value=webInterface_inst.module_signal_processor.spectrum_fig_type, style={"display":"inline-block"},className="field-body"),
         ], className="field"),
 
 
@@ -1045,8 +1075,8 @@ def generate_config_page_layout(webInterface_inst):
         html.Div("VFO Mode:", className="field-label"),
         dcc.Dropdown(id='vfo_mode',
                 options=[
-                    {'label': 'Standard', 'value': 0},
-                    {'label': 'VFO-0 Auto Max' ,  'value': 1},
+                    {'label': 'Standard', 'value': 'Standard'},
+                    {'label': 'VFO-0 Auto Max' ,  'value': 'Auto'},
                     ],
             value=webInterface_inst.module_signal_processor.vfo_mode, style={"display":"inline-block"},className="field-body"),
         ], className="field"),
@@ -1568,7 +1598,8 @@ def enable_gps(toggle_value):
 
 @app.callback_shared(
     None,
-    [Input(component_id ="vfo_mode"                , component_property="value"),
+    [Input(component_id ="spectrum_fig_type"           , component_property='value'),
+    Input(component_id ="vfo_mode"                , component_property="value"),
     Input(component_id ="dsp_decimation"                , component_property="value"),
     Input(component_id ="active_vfos"                , component_property="value"),
     Input(component_id ="output_vfo"                , component_property="value"),
@@ -1639,7 +1670,7 @@ def enable_gps(toggle_value):
     ],
 )
 # TODO: This is dumb, can we set these callback parameters as an array somehow?
-def update_squelch_params(vfo_mode, dsp_decimation, active_vfos, output_vfo,
+def update_squelch_params(spectrum_fig_type, vfo_mode, dsp_decimation, active_vfos, output_vfo,
                                           vfo_0_bw, vfo_0_freq, vfo_0_squelch,
                                           vfo_1_bw, vfo_1_freq, vfo_1_squelch,
                                           vfo_2_bw, vfo_2_freq, vfo_2_squelch,
@@ -1658,10 +1689,11 @@ def update_squelch_params(vfo_mode, dsp_decimation, active_vfos, output_vfo,
                                           vfo_15_bw, vfo_15_freq, vfo_15_squelch,
                                           ):
 
+    webInterface_inst.module_signal_processor.spectrum_fig_type = spectrum_fig_type
     webInterface_inst.module_signal_processor.vfo_mode = vfo_mode
 
     # If VFO mode is in the VFO-0 Auto Max mode, we active VFOs to 1 only
-    if vfo_mode == 1:
+    if vfo_mode == 'Auto':
         active_vfos = 1
         app.push_mods({
             'active_vfos' : {'value': 1}
@@ -1824,7 +1856,7 @@ def plot_doa():
         #Just generate with junk data initially, as the spectrum array may not be ready yet if we have sqeulching active etc.
         if True: #webInterface_inst.doa_thetas is not None:
             # --- Linear plot ---
-            if webInterface_inst._doa_fig_type == 0 :
+            if webInterface_inst._doa_fig_type == 'Linear':
                 # Plot traces
                 doa_fig.add_trace(go.Scattergl(x=x, #webInterface_inst.doa_thetas,
                                   y=y,
@@ -1846,7 +1878,7 @@ def plot_doa():
                             ticks='outside',
                             showline=True)
 # --- Polar plot ---
-            elif webInterface_inst._doa_fig_type == 1:
+            elif webInterface_inst._doa_fig_type == 'Polar':
 
                 label = "DOA Angle" #webInterface_inst.doa_labels[i]
                 doa_fig.add_trace(go.Scatterpolargl(theta=x, #webInterface_inst.doa_thetas,
@@ -1862,7 +1894,7 @@ def plot_doa():
                                      )
 
             # --- Compass  ---
-            elif webInterface_inst._doa_fig_type == 2 :
+            elif webInterface_inst._doa_fig_type == 'Compass' :
                 doa_fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
                                         angularaxis = dict(rotation=90+webInterface_inst.compass_ofset,
                                                             direction="clockwise",
@@ -1888,9 +1920,9 @@ def plot_doa():
             doa_max_str = str(webInterface_inst.doas[0])+"°"
             update_data = dict(x=[webInterface_inst.doa_thetas], y=[webInterface_inst.doa_results[0]])
 
-            if webInterface_inst._doa_fig_type == 1 :
+            if webInterface_inst._doa_fig_type == 'Polar' :
                 update_data = dict(theta=[webInterface_inst.doa_thetas], r=[webInterface_inst.doa_results[0]])
-            elif webInterface_inst._doa_fig_type == 2 :
+            elif webInterface_inst._doa_fig_type == 'Compass' :
                 doa_max_str = (360-webInterface_inst.doas[0]+webInterface_inst.compass_ofset)%360
                 update_data = dict(theta=[(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360], r=[webInterface_inst.doa_results[0]])
 
@@ -1988,11 +2020,10 @@ def plot_spectrum():
     Input(component_id ="ant_spacing_meter"           , component_property='value'),
     Input(component_id ="radio_ant_arrangement"           , component_property='value'),
     Input(component_id ="doa_fig_type"           , component_property='value'),
-    Input(component_id ="spectrum_fig_type"           , component_property='value'),
     Input(component_id ="doa_method"           , component_property='value'),
     Input(component_id ="compass_ofset"           , component_property='value')],
 )
-def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, spectrum_fig_type, doa_method, compass_ofset): #, input_value):
+def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset): #, input_value):
 
     ant_spacing_meter = spacing_meter
     wavelength= 300 / webInterface_inst.daq_center_freq
@@ -2039,10 +2070,6 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
 
     webInterface_inst.module_signal_processor.DOA_ant_alignment=ant_arrangement
     webInterface_inst._doa_fig_type = doa_fig_type
-    webInterface_inst._spectrum_fig_type = spectrum_fig_type
-    webInterface_inst.module_signal_processor.spectrum_fig_type = spectrum_fig_type
-
-
     webInterface_inst.compass_ofset = compass_ofset
 
     return [str(ant_spacing_wavelength), spacing_label, ambiguity_warning, smoothing_possibility]
@@ -2308,8 +2335,6 @@ def reconfig_daq_chain(input_value, freq, gain):
 
     # TODO: Check data interface mode here !
     #    Update DAQ Subsystem config file
-
-#    config_res, config_err = write_config_file(webInterface_inst.daq_ini_cfg_params)
     config_res, config_err = write_config_file_dict(webInterface_inst.daq_ini_cfg_dict)
     if config_res:
         webInterface_inst.daq_cfg_ini_error = config_err[0]
