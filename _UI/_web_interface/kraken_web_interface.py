@@ -885,6 +885,7 @@ def generate_config_page_layout(webInterface_inst):
         html.Div([html.Div("Noise source state:"       , id="label_daq_noise_source"  , className="field-label"), html.Div("Disabled"    , id="body_daq_noise_source"  , className="field-body", style={"color": "#7ccc63"})], className="field"),
         html.Div([html.Div("RF center frequecy [MHz]:" , id="label_daq_rf_center_freq", className="field-label"), html.Div("- MHz"       , id="body_daq_rf_center_freq", className="field-body")], className="field"),
         html.Div([html.Div("Sampling frequency [MHz]:" , id="label_daq_sampling_freq" , className="field-label"), html.Div("- MHz"       , id="body_daq_sampling_freq" , className="field-body")], className="field"),
+        html.Div([html.Div("VFO Range [MHz]:"          , id="label_vfo_range"         , className="field-label"), html.Div("- MHz"       , id="body_vfo_range"         , className="field-body")], className="field"),
         html.Div([html.Div("Data block length [ms]:"   , id="label_daq_cpi"           , className="field-label"), html.Div("- ms"        , id="body_daq_cpi"           , className="field-body")], className="field"),
         html.Div([html.Div("IF gains [dB]:"            , id="label_daq_if_gain"       , className="field-label"), html.Div("[,] dB"      , id="body_daq_if_gain"       , className="field-body")], className="field"),
         html.Div([html.Div("Max amplitude-CH0 [dB]:"   , id="label_max_amp"           , className="field-label"), html.Div("-"           , id="body_max_amp"           , className="field-body")], className="field"),
@@ -1049,7 +1050,7 @@ def generate_config_page_layout(webInterface_inst):
 
 
     #-----------------------------
-    #  Squelch Configuration Card
+    #  VFO Configuration Card
     #-----------------------------
     vfo_config_card = \
     html.Div([
@@ -1206,7 +1207,6 @@ def generate_doa_page_layout(webInterface_inst):
 #============================================
 @app.callback_connect
 def func(client, connect):
-    #print(client, connect, len(app.clients))
     if connect and len(app.clients)==1:
         fetch_dsp_data()
     elif not connect and len(app.clients)==0:
@@ -1449,6 +1449,7 @@ def update_daq_status():
 
     daq_rf_center_freq_str = str(webInterface_inst.daq_center_freq)
     daq_sampling_freq_str  = str(webInterface_inst.daq_fs)
+    vfo_range_str          = '{0:.3f}'.format(webInterface_inst.daq_center_freq - webInterface_inst.daq_fs/2) + " - " + '{0:.3f}'.format(webInterface_inst.daq_center_freq + webInterface_inst.daq_fs/2)
     daq_cpi_str            = str(webInterface_inst.daq_cpi)
     daq_max_amp_str        = "{:.1f}".format(webInterface_inst.max_amplitude)
     daq_avg_powers_str     = webInterface_inst.avg_powers
@@ -1467,6 +1468,7 @@ def update_daq_status():
            'body_daq_noise_source': {'children': daq_noise_source_str},
            'body_daq_rf_center_freq': {'children': daq_rf_center_freq_str},
            'body_daq_sampling_freq': {'children': daq_sampling_freq_str},
+           'body_vfo_range': {'children': vfo_range_str},
            'body_daq_cpi': {'children': daq_cpi_str},
            'body_daq_if_gain': {'children': webInterface_inst.daq_if_gains},
            'body_max_amp': {'children': daq_max_amp_str},
@@ -1706,73 +1708,73 @@ def update_squelch_params(spectrum_fig_type, vfo_mode, dsp_decimation, active_vf
                 'vfo'+str(i) : {'style': {'display': 'none'}}
             })
 
+    vfo_min = webInterface_inst.daq_center_freq - webInterface_inst.daq_fs/2
+    vfo_max = webInterface_inst.daq_center_freq + webInterface_inst.daq_fs/2
 
-    webInterface_inst.module_signal_processor.vfo_bw[0] = int(vfo_0_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[0] = int(vfo_0_freq * 10**6)
+#    webInterface_inst.module_signal_processor.vfo_bw[0] = int(vfo_0_bw)
+    webInterface_inst.module_signal_processor.vfo_bw[0] = int(min(vfo_0_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[0] = int(max(min(vfo_0_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[0] = int(vfo_0_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[1] = int(vfo_1_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[1] = int(vfo_1_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[1] = int(min(vfo_1_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[1] = int(max(min(vfo_1_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[1] = int(vfo_1_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[2] = int(vfo_2_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[2] = int(vfo_2_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[2] = int(min(vfo_2_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[2] = int(max(min(vfo_2_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[2] = int(vfo_2_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[3] = int(vfo_3_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[3] = int(vfo_3_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[3] = int(min(vfo_3_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[3] = int(max(min(vfo_3_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[3] = int(vfo_3_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[4] = int(vfo_4_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[4] = int(vfo_4_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[4] = int(min(vfo_4_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[4] = int(max(min(vfo_4_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[4] = int(vfo_4_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[5] = int(vfo_5_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[5] = int(vfo_5_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[5] = int(min(vfo_5_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[5] = int(max(min(vfo_5_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[5] = int(vfo_5_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[6] = int(vfo_6_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[6] = int(vfo_6_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[6] = int(min(vfo_6_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[6] = int(max(min(vfo_6_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[6] = int(vfo_6_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[7] = int(vfo_7_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[7] = int(vfo_7_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[7] = int(min(vfo_7_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[7] = int(max(min(vfo_7_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[7] = int(vfo_7_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[8] = int(vfo_8_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[8] = int(vfo_8_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[8] = int(min(vfo_8_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[8] = int(max(min(vfo_8_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[8] = int(vfo_8_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[9] = int(vfo_9_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[9] = int(vfo_9_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[9] = int(min(vfo_9_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[9] = int(max(min(vfo_9_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[9] = int(vfo_9_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[10] = int(vfo_10_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[10] = int(vfo_10_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[10] = int(min(vfo_10_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[10] = int(max(min(vfo_10_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[10] = int(vfo_10_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[11] = int(vfo_11_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[11] = int(vfo_11_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[11] = int(min(vfo_11_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[11] = int(max(min(vfo_11_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[11] = int(vfo_11_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[12] = int(vfo_12_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[12] = int(vfo_12_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[12] = int(min(vfo_12_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[12] = int(max(min(vfo_12_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[12] = int(vfo_12_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[13] = int(vfo_13_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[13] = int(vfo_13_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[13] = int(min(vfo_13_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[13] = int(max(min(vfo_13_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[13] = int(vfo_13_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[14] = int(vfo_14_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[14] = int(vfo_14_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[14] = int(min(vfo_14_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[14] = int(max(min(vfo_14_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[14] = int(vfo_14_squelch)
 
-    webInterface_inst.module_signal_processor.vfo_bw[15] = int(vfo_15_bw)
-    webInterface_inst.module_signal_processor.vfo_freq[15] = int(vfo_15_freq * 10**6)
+    webInterface_inst.module_signal_processor.vfo_bw[15] = int(min(vfo_15_bw, webInterface_inst.daq_fs * 10**6))
+    webInterface_inst.module_signal_processor.vfo_freq[15] = int(max(min(vfo_15_freq, vfo_max), vfo_min) * 10**6)
     webInterface_inst.module_signal_processor.vfo_squelch[15] = int(vfo_15_squelch)
-
-
-
 
 @app.callback([Output("page-content"   , "children"),
               Output("header_config"  ,"className"),

@@ -243,12 +243,19 @@ class SignalProcessor(threading.Thread):
                             # Get max amplitude of the channel from the FFT for squelching
                             # From channel frequency determine array index of channel
                             vfo_width_idx = int((spectrum_window_size * self.vfo_bw[i]) / (sampling_freq)) # Width of channel in array indexes based on FFT size
+                            vfo_width_idx = max(vfo_width_idx, 2)
+
                             freqMin = -sampling_freq/2
 
                             vfo_center_idx = int((((freq - freqMin) * spectrum_window_size) / sampling_freq))
 
                             vfo_upper_bound = vfo_center_idx + vfo_width_idx//2
                             vfo_lower_bound = vfo_center_idx - vfo_width_idx//2
+
+                            print("vfo_upper_bound: " + str(vfo_upper_bound))
+                            print("vfo_lower_bound: " + str(vfo_lower_bound))
+
+                            print("vfo_width_idx: " + str(vfo_width_idx))
 
                             if self.spectrum_fig_type == 'Single': # Do CH1 only (or make channel selectable)
                                 spectrum_channel = self.spectrum[1, max(vfo_lower_bound, 0) : min(vfo_upper_bound, spectrum_window_size)]
