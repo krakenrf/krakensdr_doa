@@ -84,7 +84,7 @@ class SignalProcessor(threading.Thread):
         # Squelch feature
         self.data_ready = False
 
-        self.dsp_decimation = 0
+        self.dsp_decimation = 1
 
         # DOA processing options
         self.en_DOA_Bartlett = False
@@ -251,11 +251,6 @@ class SignalProcessor(threading.Thread):
 
                             vfo_upper_bound = vfo_center_idx + vfo_width_idx//2
                             vfo_lower_bound = vfo_center_idx - vfo_width_idx//2
-
-                            print("vfo_upper_bound: " + str(vfo_upper_bound))
-                            print("vfo_lower_bound: " + str(vfo_lower_bound))
-
-                            print("vfo_width_idx: " + str(vfo_width_idx))
 
                             if self.spectrum_fig_type == 'Single': # Do CH1 only (or make channel selectable)
                                 spectrum_channel = self.spectrum[1, max(vfo_lower_bound, 0) : min(vfo_upper_bound, spectrum_window_size)]
