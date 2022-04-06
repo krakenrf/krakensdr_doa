@@ -96,6 +96,9 @@ class SignalProcessor(threading.Thread):
         self.DOA_inter_elem_space = 0.5
         self.DOA_ant_alignment    = "ULA"
         self.DOA_theta =  np.linspace(0,359,360)
+        self.custom_array_x = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
+        self.custom_array_y = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
+
 
         # Processing parameters
         self.spectrum_window_size = fft.next_fast_len(4096)
@@ -401,40 +404,25 @@ class SignalProcessor(threading.Thread):
             R=de.forward_backward_avg(R)
 
         M = self.channel_number
-        if self.DOA_ant_alignment == "UCA":
+        scanning_vectors = []
+        if self.DOA_ant_alignment == "UCA" or self.DOA_ant_alignment == "ULA":
             scanning_vectors = gen_scanning_vectors(M, self.DOA_inter_elem_space, self.DOA_ant_alignment)
+        elif self.DOA_ant_alignment == "Custom":
+            scanning_vectors = gen_scanning_vectors_custom(M, self.custom_array_x, self.custom_array_y)
 
-            # DOA estimation
-            if self.en_DOA_Bartlett:
-                DOA_Bartlett_res = de.DOA_Bartlett(R, scanning_vectors)
-                self.DOA_Bartlett_res = DOA_Bartlett_res
-            if self.en_DOA_Capon:
-                DOA_Capon_res = de.DOA_Capon(R, scanning_vectors)
-                self.DOA_Capon_res = DOA_Capon_res
-            if self.en_DOA_MEM:
-                DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)
-                self.DOA_MEM_res = DOA_MEM_res
-            if self.en_DOA_MUSIC:
-                DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1) #de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
-                self.DOA_MUSIC_res = DOA_MUSIC_res
-
-        elif self.DOA_ant_alignment == "ULA":
-
-            scanning_vectors = gen_scanning_vectors(M, self.DOA_inter_elem_space, self.DOA_ant_alignment)
-
-            # DOA estimation
-            if self.en_DOA_Bartlett:
-                DOA_Bartlett_res = de.DOA_Bartlett(R, scanning_vectors)
-                self.DOA_Bartlett_res = DOA_Bartlett_res
-            if self.en_DOA_Capon:
-                DOA_Capon_res = de.DOA_Capon(R, scanning_vectors)
-                self.DOA_Capon_res = DOA_Capon_res
-            if self.en_DOA_MEM:
-                DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)
-                self.DOA_MEM_res = DOA_MEM_res
-            if self.en_DOA_MUSIC:
-                DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
-                self.DOA_MUSIC_res = DOA_MUSIC_res
+        # DOA estimation
+        if self.en_DOA_Bartlett:
+            DOA_Bartlett_res = de.DOA_Bartlett(R, scanning_vectors)
+            self.DOA_Bartlett_res = DOA_Bartlett_res
+        if self.en_DOA_Capon:
+            DOA_Capon_res = de.DOA_Capon(R, scanning_vectors)
+            self.DOA_Capon_res = DOA_Capon_res
+        if self.en_DOA_MEM:
+            DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)
+            self.DOA_MEM_res = DOA_MEM_res
+        if self.en_DOA_MUSIC:
+            DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1) #de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
+            self.DOA_MUSIC_res = DOA_MUSIC_res
 
     # Enable GPS
     def enable_gps(self):
@@ -698,13 +686,28 @@ def gen_scanning_vectors(M, DOA_inter_elem_space, type):
     if type == "UCA":
         x = DOA_inter_elem_space * np.cos(2*np.pi/M * np.arange(M))
         y = -DOA_inter_elem_space * np.sin(2*np.pi/M * np.arange(M)) # For this specific array only
-    else: #"ULA"
+    elif "ULA":
         x = np.zeros(M)
         y = -np.arange(M) * DOA_inter_elem_space
 
     scanning_vectors = np.zeros((M, thetas.size), dtype=np.complex64)
     for i in range(thetas.size):
         scanning_vectors[:,i] = np.exp(1j*2*np.pi* (x*np.cos(np.deg2rad(thetas[i])) + y*np.sin(np.deg2rad(thetas[i]))))
+
+    return np.ascontiguousarray(scanning_vectors)
+
+#@lru_cache(maxsize=32)
+@njit(fastmath=True, cache=True)
+def gen_scanning_vectors_custom(M, custom_x, custom_y):
+    thetas =  np.linspace(0,359,360) # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
+#    x = np.array(custom_x)
+#    y = np.array(custom_y)
+    x = custom_x
+    y = custom_y
+    scanning_vectors = np.zeros((M, thetas.size), dtype=np.complex64)
+    complex_pi = 1j*2*np.pi
+    for i in range(thetas.size):
+        scanning_vectors[:,i] = np.exp(complex_pi * (x*np.cos(np.deg2rad(thetas[i])) + y*np.sin(np.deg2rad(thetas[i]))))
 
     return np.ascontiguousarray(scanning_vectors)
 

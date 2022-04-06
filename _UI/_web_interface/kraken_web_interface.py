@@ -27,6 +27,7 @@ import time
 import subprocess
 #import orjson
 import json
+import csv
 
 import dash_core_components as dcc
 import dash_html_components as html
@@ -120,7 +121,14 @@ class webInterface():
 
         self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=logging_level)
         self.module_signal_processor.DOA_ant_alignment    = dsp_settings.get("ant_arrangement", "ULA")
-        self.module_signal_processor.DOA_inter_elem_space = dsp_settings.get("ant_spacing", 0.5)
+        self.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
+        self.module_signal_processor.DOA_inter_elem_space = self.ant_spacing_meters / (300 / self.module_receiver.daq_center_freq)
+
+        self.custom_array_x_meters = np.float_(dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
+        self.custom_array_y_meters = np.float_(dsp_settings.get("custom_array_y_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
+        self.module_signal_processor.custom_array_x = self.custom_array_x_meters / (300 / self.module_receiver.daq_center_freq)
+        self.module_signal_processor.custom_array_y = self.custom_array_y_meters / (300 / self.module_receiver.daq_center_freq)
+
         self.module_signal_processor.en_DOA_estimation    = dsp_settings.get("en_doa", 0)
         self.module_signal_processor.en_DOA_FB_avg        = dsp_settings.get("en_fbavg", 0)
         self.module_signal_processor.en_squelch           = dsp_settings.get("en_squelch", 0)
@@ -144,14 +152,14 @@ class webInterface():
         # VFO Configuration
         self.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
         self.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", 'Standard')
-        self.module_signal_processor.dsp_decimation = dsp_settings.get("dsp_decimation", 0)
-        self.module_signal_processor.active_vfos = dsp_settings.get("active_vfos", 0)
-        self.module_signal_processor.output_vfo = dsp_settings.get("output_vfo", 0)
+        self.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
+        self.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
+        self.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
 
         for i in range(self.module_signal_processor.max_vfos):
-            self.module_signal_processor.vfo_bw[i] = dsp_settings.get("vfo_bw_" + str(i), 0)
-            self.module_signal_processor.vfo_freq[i] = dsp_settings.get("vfo_freq_" + str(i), 0)
-            self.module_signal_processor.vfo_squelch[i] = dsp_settings.get("vfo_squelch_" + str(i), 0)
+            self.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
+            self.module_signal_processor.vfo_freq[i] = float(dsp_settings.get("vfo_freq_" + str(i), 0))
+            self.module_signal_processor.vfo_squelch[i] = int(dsp_settings.get("vfo_squelch_" + str(i), 0))
 
         # DAQ Subsystem status parameters
         self.daq_conn_status       = 0
@@ -166,9 +174,9 @@ class webInterface():
         self.daq_iq_sync           = 0
         self.daq_noise_source_state= 0
         self.daq_center_freq       = dsp_settings.get("center_freq", 100.0)
-        self.daq_adc_fs            = "-"
-        self.daq_fs                = "-"
-        self.daq_cpi               = "-"
+        self.daq_adc_fs            = 0 #"-"
+        self.daq_fs                = 0 #"-"
+        self.daq_cpi               = 0 #"-"
         self.daq_if_gains          ="[,,,,]"
         self.en_advanced_daq_cfg   = False
         self.en_basic_daq_cfg   = False
@@ -233,7 +241,9 @@ class webInterface():
         # DOA Estimation
         data["en_doa"]          = self.module_signal_processor.en_DOA_estimation
         data["ant_arrangement"] = self.module_signal_processor.DOA_ant_alignment
-        data["ant_spacing"]     = self.module_signal_processor.DOA_inter_elem_space
+        data["ant_spacing_meters"]     = self.ant_spacing_meters #self.module_signal_processor.DOA_inter_elem_space
+        data["custom_array_x_meters"]     = ','.join(['%.2f' % num for num in self.custom_array_x_meters])
+        data["custom_array_y_meters"]     = ','.join(['%.2f' % num for num in self.custom_array_y_meters])
 
         data["doa_method"]      = self._doa_method
         data["en_fbavg"]        = self.module_signal_processor.en_DOA_FB_avg
@@ -246,7 +256,7 @@ class webInterface():
 
         # Web Interface
         data["en_hw_check"]         = dsp_settings.get("en_hw_check", 0)
-        data["en_advanced_daq_cfg"] = dsp_settings.get("en_advanced_daq_cfg", 0)
+        #data["en_advanced_daq_cfg"] = dsp_settings.get("en_advanced_daq_cfg", 0)
         data["logging_level"]       = dsp_settings.get("logging_level", 0)
         data["disable_tooltips"]    = dsp_settings.get("disable_tooltips", 0)
 
@@ -635,9 +645,9 @@ def generate_config_page_layout(webInterface_inst):
     # Calulcate spacings
     wavelength= 300 / webInterface_inst.daq_center_freq
     ant_spacing_wavelength = webInterface_inst.module_signal_processor.DOA_inter_elem_space
-    ant_spacing_meter = round(wavelength * ant_spacing_wavelength, 3)
-    ant_spacing_feet  = ant_spacing_meter*3.2808399
-    ant_spacing_inch  = ant_spacing_meter*39.3700787
+    ant_spacing_meter = webInterface_inst.ant_spacing_meters #round(wavelength * ant_spacing_wavelength, 3)
+    #ant_spacing_feet  = ant_spacing_meter*3.2808399
+    #ant_spacing_inch  = ant_spacing_meter*39.3700787
 
     cfg_decimated_bw = ((daq_cfg_dict['sample_rate']) / daq_cfg_dict['decimation_ratio']) / 10**3
     cfg_data_block_len = ( daq_cfg_dict['cpi_size'] / (cfg_decimated_bw) )
@@ -912,19 +922,30 @@ def generate_config_page_layout(webInterface_inst):
     dsp_config_card = \
     html.Div([
         html.H2("DoA Configuration", id="init_title_d"),
-        html.Div([html.Div("Array configuration:"              , id="label_ant_arrangement"   , className="field-label"),
+        html.Div([html.Span("Array Configuration: "             , id="label_ant_arrangement"   , className="field-label"),
         dcc.RadioItems(
             options=[
                 {'label': "ULA", 'value': "ULA"},
                 {'label': "UCA", 'value': "UCA"},
+                {'label': "Custom", 'value': "Custom"},
             ], value=webInterface_inst.module_signal_processor.DOA_ant_alignment, className="field-body", labelStyle={'display': 'inline-block', 'vertical-align': 'middle'}, id="radio_ant_arrangement")
         ], className="field"),
+
+        html.Div([
+                html.Div("Custom X (m):", className="field-label"),
+                dcc.Input(id='custom_array_x_meters', value=','.join(['%.2f' % num for num in webInterface_inst.custom_array_x_meters]), type='text', debounce=True, className="field-body-textbox")
+        ], id="customx", className="field"),
+
+        html.Div([
+                html.Div("Custom Y (m):", className="field-label"),
+                dcc.Input(id='custom_array_y_meters', value=','.join(['%.2f' % num for num in webInterface_inst.custom_array_y_meters]), type='text', debounce=True, className="field-body-textbox")
+        ], id="customy", className="field"),
 
         html.Div([
         html.Div([html.Div("[meter]:"             , id="label_ant_spacing_meter"  , className="field-label"),
                     dcc.Input(id="ant_spacing_meter", value=ant_spacing_meter, type='number', debounce=True, className="field-body-textbox")]),
         html.Div([html.Div("Wavelength Multiplier"         , id="label_ant_spacing_wavelength"        , className="field-label"), html.Div("1"      , id="body_ant_spacing_wavelength"        , className="field-body")], className="field"),
-        ], className="field"),
+        ], id="antspacing", className="field"),
 
         html.Div([html.Div("", id="ambiguity_warning" , className="field", style={"color":"#f39c12"})]),
 
@@ -1071,7 +1092,7 @@ def generate_config_page_layout(webInterface_inst):
         html.H2("VFO Configuration", id="init_title_sq"),
 
         html.Div([
-        html.Div("Spectrum Calculation:", className="field-label"),
+        html.Div("Spectrum Calculation:", id="label_spectrum_calculation", className="field-label"),
         dcc.Dropdown(id='spectrum_fig_type',
                 options=[
                     {'label': 'Single Ch', 'value': 'Single'},
@@ -1880,6 +1901,17 @@ def plot_spectrum():
         })
 
 
+# Enable custom input fields
+@app.callback([Output('customx', 'style'),
+               Output('customy', 'style'),
+               Output('antspacing', 'style')],
+              [Input('radio_ant_arrangement', 'value')])
+def toggle_gps_fields(toggle_value):
+    if toggle_value == "UCA" or toggle_value == "ULA":
+        return [{'display': 'none'}, {'display': 'none'}, {'display': 'block'}]
+    else:
+        return [{'display': 'block'}, {'display': 'block'}, {'display': 'none'}]
+
 @app.callback(
     [Output(component_id="body_ant_spacing_wavelength",  component_property='children'),
     Output(component_id="label_ant_spacing_meter",  component_property='children'),
@@ -1892,12 +1924,14 @@ def plot_spectrum():
     Input(component_id ="radio_ant_arrangement"           , component_property='value'),
     Input(component_id ="doa_fig_type"           , component_property='value'),
     Input(component_id ="doa_method"           , component_property='value'),
-    Input(component_id ="compass_ofset"           , component_property='value')],
+    Input(component_id ="compass_ofset"           , component_property='value'),
+    Input(component_id ="custom_array_x_meters"           , component_property='value'),
+    Input(component_id ="custom_array_y_meters"           , component_property='value')],
 )
-def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset): #, input_value):
+def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset, custom_array_x_meters, custom_array_y_meters): #, input_value):
 
     ant_spacing_meter = spacing_meter
-    wavelength= 300 / webInterface_inst.daq_center_freq
+    wavelength = 300 / webInterface_inst.daq_center_freq
 
     webInterface_inst.module_signal_processor.DOA_inter_elem_space = ant_spacing_meter / wavelength
     ant_spacing_feet = round(ant_spacing_meter * 3.2808399,3)
@@ -1906,16 +1940,29 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
 
     spacing_label = ""
 
+
+    # Split CSV input in custom array
+
+    webInterface_inst.custom_array_x_meters = np.float_(custom_array_x_meters.split(","))
+    webInterface_inst.custom_array_y_meters = np.float_(custom_array_y_meters.split(","))
+
+    webInterface_inst.module_signal_processor.custom_array_x = webInterface_inst.custom_array_x_meters / wavelength
+    webInterface_inst.module_signal_processor.custom_array_y = webInterface_inst.custom_array_y_meters / wavelength
+
     # Max phase diff and ambiguity warning and Spatial smoothing control
     if ant_arrangement == "ULA":
         max_phase_diff = ant_spacing_meter / wavelength
-        smoothing_possibility = [{"label":"", "value": 1, "disabled": False}] # Disables the checkbox
+        smoothing_possibility = [{"label":"", "value": 1, "disabled": False}] # Enables the checkbox
         spacing_label = "Interelement Spacing (meters)"
     elif ant_arrangement == "UCA":
         UCA_ant_spacing = (np.sqrt(2)*ant_spacing_meter*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
         max_phase_diff = UCA_ant_spacing/wavelength
-        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Enables the checkbox
+        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
         spacing_label = "Array Radius (meters)"
+    elif ant_arrangement == "Custom":
+        max_phase_diff = 0.25 #ant_spacing_meter / wavelength
+        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
+        spacing_label = "Interelement Spacing (meters)"
 
     if max_phase_diff > 0.5:
         ambiguity_warning= "WARNING: Array size is too large for this frequency. DoA estimation is ambiguous. Max phase difference:{:.1f}°.".format(np.rad2deg(2*np.pi*max_phase_diff))

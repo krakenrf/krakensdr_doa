@@ -5,13 +5,44 @@ dsp_config_tooltips = html.Div([
     # Antenna arrangement selection
     dbc.Tooltip([
         html.P("ULA - Uniform Linear Array"),
-        html.P("Antenna elements placed on a line with having equal distances between each other"),
+        html.P("Antenna elements placed on a line with equal distances between each other."),
         html.P("UCA - Uniform Circular Array"),
-        html.P("Antenna elements are placed on circle equaly distributed on 360°")],
+        html.P("Antenna elements are placed on circle equaly distributed around 360°."),
+        html.P("Custom - Custom Array"),
+        html.P("Input custom array coordinates in meters as comma seperated values.")],
         target="label_ant_arrangement",
         placement="bottom",
         className="tooltip"
     ),
+    dbc.Tooltip([
+        html.P("Spacing of the array specified in meters.")],
+        target="label_ant_spacing_meter",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Spacing of the array in wavelength. Depends on frequency and array size."),
+        html.P("This must  be kept under 0.5 to avoid ambiguities. Closer to 0.5 results in better angular resolution.")],
+        target="label_ant_spacing_wavelength",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Various DoA Algorithms. MUSIC works the best in almost all situations.")],
+        target="label_doa_method",
+        placement="bottom",
+        className="tooltip"
+    ),
+
+    dbc.Tooltip([
+        html.P("Single Ch - Normal use. You must use this for intermittant signals."),
+        html.P("All Ch - Only use to test. Will allow you to view all channels in the spectrum graph. Will NOT work with intermittant signals.")],
+        target="label_spectrum_calculation",
+        placement="bottom",
+        className="tooltip"
+    ),
+
+
     # Antenna Spacing
     #    dbc.Tooltip([
     #        html.P("When ULA is selected: Spacing between antenna elements"),
@@ -22,7 +53,7 @@ dsp_config_tooltips = html.Div([
     #        ),
     # Enable F-B averaging
     dbc.Tooltip([
-        html.P("Forward-backward averegaing improves the performance of DoA estimation in multipath environment"),
+        html.P("Forward-backward averegaing improves the performance of DoA estimation in multipath environments"),
         html.P("(Available only for ULA antenna systems)")],
         target="label_en_fb_avg",
         placement="bottom",
