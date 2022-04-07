@@ -5,43 +5,78 @@ dsp_config_tooltips = html.Div([
     # Antenna arrangement selection
     dbc.Tooltip([
         html.P("ULA - Uniform Linear Array"),
-        html.P("Antenna elements placed on a line with equal distances between each other."),
+        html.P("Antenna elements placed on a line with equal distances between each other. Cannot determine if the source is behind or in front of array without additional information."),
         html.P("UCA - Uniform Circular Array"),
-        html.P("Antenna elements are placed on circle equaly distributed around 360°."),
+        html.P("Antenna elements are placed on a circle equaly distributed at some radius around 360°. UCA is the most common array."),
         html.P("Custom - Custom Array"),
-        html.P("Input custom array coordinates in meters as comma seperated values.")],
+        html.P("Input custom array coordinates in meters as comma seperated values. Useful for irregular arrays.")],
         target="label_ant_arrangement",
         placement="bottom",
         className="tooltip"
     ),
     dbc.Tooltip([
-        html.P("Spacing of the array specified in meters.")],
+        html.P("Spacing of the array specified in meters. For ULA the interelement spacing. For UCA the radius.")],
         target="label_ant_spacing_meter",
         placement="bottom",
         className="tooltip"
     ),
     dbc.Tooltip([
-        html.P("Spacing of the array in wavelength. Depends on frequency and array size."),
-        html.P("This must  be kept under 0.5 to avoid ambiguities. Closer to 0.5 results in better angular resolution.")],
+        html.P("Calculation of the array spacing in wavelength. Depends on frequency and array size."),
+        html.P("This must be kept under 0.5 to avoid ambiguities (more than one valid bearing). Closer to 0.5 results in better angular resolution.")],
         target="label_ant_spacing_wavelength",
         placement="bottom",
         className="tooltip"
     ),
     dbc.Tooltip([
-        html.P("Various DoA Algorithms. MUSIC works the best in almost all situations.")],
+        html.P("DoA Algorithms. MUSIC works the best in almost all situations.")],
         target="label_doa_method",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("The number of active VFO channels available to use in the active spectrum.")],
+        target="label_active_vfos",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Choose which VFO channel is output to the DOA graphs and data stream. In the spectrum graph this chooses what VFO channel click to tune will move."),
+        html.P("ALL - Outputs data from all active VFOs to the Kraken Pro App data stream for simultaenous channel monitoring (NOT YET IMPLEMENTED)."),
+        html.P("Note that outputting more than 3 active VFOs on a Pi 4 may result in slow computation, resulting in intermittant signal squelch misses. To get around this, you can apply decimation to make computation more efficient.")],
+        target="label_output_vfo",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Decimate the spectrum. Reduces spectrum bandwidth for zooming in on signals. If you will always decimate, it is more efficient to apply decimation in the DAQ settings. ")],
+        target="label_dsp_side_decimation",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Linear - A simple line plot of the DoA data. "),
+        html.P("Polar - A circular plot in polar form. "),
+        html.P("Compass - The same as the polar plot, but axis in the compass convention with 90 degrees clockwise from zero. Can be offset by some degrees in order to align the graph with the array heading. ")],
+        target="label_doa_graph_type",
         placement="bottom",
         className="tooltip"
     ),
 
     dbc.Tooltip([
-        html.P("Single Ch - Normal use. You must use this for intermittant signals."),
-        html.P("All Ch - Only use to test. Will allow you to view all channels in the spectrum graph. Will NOT work with intermittant signals.")],
+        html.P("Single Ch - Normal use. You must use this for intermittant signal squelching to work correctly."),
+        html.P("All Ch - Only ever use this to test your antenna array connections. This mode will allow you to view all channels in the spectrum graph. Will NOT work with intermittant signals.")],
         target="label_spectrum_calculation",
         placement="bottom",
         className="tooltip"
     ),
 
+    dbc.Tooltip([
+        html.P("Standard - VFOs are set manually."),
+        html.P("VFO-0 Auto Max - VFO-0 will auto tune to the strongest signal in the spectrum. Only supports a single VFO.")],
+        target="label_vfo_mode",
+        placement="bottom",
+        className="tooltip"
+    ),
 
     # Antenna Spacing
     #    dbc.Tooltip([
@@ -53,15 +88,141 @@ dsp_config_tooltips = html.Div([
     #        ),
     # Enable F-B averaging
     dbc.Tooltip([
-        html.P("Forward-backward averegaing improves the performance of DoA estimation in multipath environments"),
-        html.P("(Available only for ULA antenna systems)")],
+        html.P("Forward-backward averaging improves the performance of DoA estimation in multipath environments"),
+        html.P("(Available only for ULA antenna arrays)")],
         target="label_en_fb_avg",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("How long it takes to compute. Should be faster than the data block length, so that no frames are dropped. ")],
+        target="label_daq_update_rate",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Time taken from signal entry to data output.")],
+        target="label_daq_dsp_latency",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Frame counter. Each frame contains one block of sampled IQ data. If it's incrementing by more than one each time, then we're dropping frames.")],
+        target="label_daq_frame_index",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Frame type indicates if the frame contains data, or is used for calibration, or a dummy frame for flushing buffers.")],
+        target="label_daq_frame_type",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("If OK, we are receiving frames successfully.")],
+        target="label_daq_frame_sync",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("If Overdrive, the signal strength may be too strong. Try reducing the gain. Operating in overdrive is fine in most situations.")],
+        target="label_daq_power_level",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Are we connected to the DAQ.")],
+        target="label_daq_conn_status",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Do we have sample level coherent sync.")],
+        target="label_daq_delay_sync",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Do we have phase level coherent sync.")],
+        target="label_daq_iq_sync",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("The noise source will automatically enable during calibration.")],
+        target="label_daq_noise_source",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("The currently tuned center frequency. Change in the RF Receiver Configuration card.")],
+        target="label_daq_rf_center_freq",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Total RF bandwidth from the DAQ.")],
+        target="label_daq_sampling_freq",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Total bandwidth after DSP side decimation.")],
+        target="label_dsp_decimated_bw",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Minimum and maximum possible VFO frequencies in available bandwidth.")],
+        target="label_vfo_range",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Length of time IQ data is collected for in each frame. Longer results in more processing gain, but slower update rates. Also affects computation time.")],
+        target="label_daq_cpi",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Currently set RF gains on each channel. Set in RF Receiver Configuration settings.")],
+        target="label_daq_if_gain",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Signal power of VFO-0 in dB.")],
+        target="label_max_amp",
         placement="bottom",
         className="tooltip"
     ),
 ])
 
 daq_ini_config_tooltips = html.Div([
+    dbc.Tooltip([
+        html.P("Edit DAQ settings. For most users these settings should never be touched.")],
+        target="label_en_basic_daq_cfg",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Length of IQ data collection time for each frame. Modifies the CPI size in advanced settings.")],
+        target="label_daq_config_data_block_len",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Choose a sampling bandwidth. Can only be an integer division of the RTL-SDR sampling rate.")],
+        target="label_daq_decimated_bw",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("How often should the system check on coherence calibration. Checks take a few seconds, and a reasonable time is every 5-10 minutes.")],
+        target="label_recal_interval",
+        placement="bottom",
+        className="tooltip"
+    ),
     # DAQ buffer size
     dbc.Tooltip([
         html.P("Buffer size of the realtek driver")],

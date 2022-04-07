@@ -87,10 +87,10 @@ class webInterface():
     def __init__(self):
         self.user_interface = None
 
-        logging_level = dsp_settings.get("logging_level", 0)*10
-        logging.basicConfig(level=logging_level)
+        self.logging_level = dsp_settings.get("logging_level", 0)*10
+        logging.basicConfig(level=self.logging_level)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging_level)
+        self.logger.setLevel(self.logging_level)
         self.logger.info("Inititalizing web interface ")
 
         if not settings_found:
@@ -112,14 +112,16 @@ class webInterface():
         self.sp_data_que = queue.Queue(8) # Que to communicate with the signal processing module
         self.rx_data_que = queue.Queue(8) # Que to communicate with the receiver modules
 
+        self.data_interface = dsp_settings.get("data_interface", "shmem")
+
         # Instantiate and configure Kraken SDR modules
-        self.module_receiver = ReceiverRTLSDR(data_que=self.rx_data_que, data_interface=dsp_settings.get("data_interface", "shmem"), logging_level=logging_level)
+        self.module_receiver = ReceiverRTLSDR(data_que=self.rx_data_que, data_interface=self.data_interface, logging_level=self.logging_level)
         self.module_receiver.daq_center_freq   = dsp_settings.get("center_freq", 100.0) * 10**6
         self.module_receiver.daq_rx_gain       = dsp_settings.get("uniform_gain", 1.4)
         self.module_receiver.daq_squelch_th_dB = dsp_settings.get("squelch_threshold_dB", 0.0)
         self.module_receiver.rec_ip_addr       = dsp_settings.get("default_ip", "0.0.0.0")
 
-        self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=logging_level)
+        self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=self.logging_level)
         self.module_signal_processor.DOA_ant_alignment    = dsp_settings.get("ant_arrangement", "ULA")
         self.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
         self.module_signal_processor.DOA_inter_elem_space = self.ant_spacing_meters / (300 / self.module_receiver.daq_center_freq)
@@ -424,7 +426,9 @@ def write_config_file_dict(param_dict):
     parser['calibration']['maximum_sync_fails']=str(param_dict['maximum_sync_fails'])
 
     ini_parameters = parser._sections
-    error_list = ini_checker.check_ini(ini_parameters, settings.en_hw_check)
+
+    error_list = ini_checker.check_ini(ini_parameters, dsp_settings.get("en_hw_check", 0)) #settings.en_hw_check)
+
     if len(error_list):
         for e in error_list:
             webInterface_inst.logger.error(e)
@@ -674,11 +678,11 @@ def generate_config_page_layout(webInterface_inst):
     [
         html.H2("RF Receiver Configuration", id="init_title_c"),
         html.Div([
-                html.Div("Center Frequency [MHz]", className="field-label"),
+                html.Div("Center Frequency [MHz]:", className="field-label"),
                 dcc.Input(id='daq_center_freq', value=webInterface_inst.module_receiver.daq_center_freq/10**6, type='number', debounce=True, className="field-body-textbox")
                 ], className="field"),
         html.Div([
-                html.Div("Receiver Gain", className="field-label"),
+                html.Div("Receiver Gain:", className="field-label"),
                 dcc.Dropdown(id='daq_rx_gain',
                         options=[
                             {'label': '0 dB',    'value': 0},
@@ -745,15 +749,15 @@ def generate_config_page_layout(webInterface_inst):
 
         html.Div([html.Div("Basic Custom DAQ Configuration", id="label_en_basic_daq_cfg"     , className="field-label")]),
             html.Div([
-                html.Div("Data Block Length (ms):", className="field-label"),
+                html.Div("Data Block Length [ms]:", id="label_daq_config_data_block_len", className="field-label"),
                 dcc.Input(id='cfg_data_block_len', value=cfg_data_block_len, type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
-                html.Div("Decimated Bandwidth (kHz):", className="field-label"),
+                html.Div("Decimated Bandwidth [kHz]:", id="label_daq_decimated_bw", className="field-label"),
                 dcc.Input(id='cfg_decimated_bw', value=cfg_decimated_bw, type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
             html.Div([
-                html.Div("Recalibration Interval (mins):", className="field-label"),
+                html.Div("Recalibration Interval [mins]:", id="label_recal_interval", className="field-label"),
                 dcc.Input(id='cfg_recal_interval', value=cfg_recal_interval, type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
 
@@ -896,23 +900,23 @@ def generate_config_page_layout(webInterface_inst):
     daq_status_card = \
     html.Div([
         html.H2("DAQ Subsystem Status", id="init_title_s"),
-        html.Div([html.Div("Update rate:"              , id="label_daq_update_rate"   , className="field-label"), html.Div("- ms"        , id="body_daq_update_rate"   , className="field-body")], className="field"),
+        html.Div([html.Div("Update Rate:"              , id="label_daq_update_rate"   , className="field-label"), html.Div("- ms"        , id="body_daq_update_rate"   , className="field-body")], className="field"),
         html.Div([html.Div("Latency:"                  , id="label_daq_dsp_latency"   , className="field-label"), html.Div("- ms"        , id="body_daq_dsp_latency"   , className="field-body")], className="field"),
-        html.Div([html.Div("Frame index:"              , id="label_daq_frame_index"   , className="field-label"), html.Div("-"           , id="body_daq_frame_index"   , className="field-body")], className="field"),
-        html.Div([html.Div("Frame type:"               , id="label_daq_frame_type"    , className="field-label"), html.Div("-"           , id="body_daq_frame_type"    , className="field-body")], className="field"),
-        html.Div([html.Div("Frame sync:"               , id="label_daq_frame_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_frame_sync"    , className="field-body", style={"color": "#e74c3c"})], className="field"),
-        html.Div([html.Div("Power level:"              , id="label_daq_power_level"   , className="field-label"), html.Div("-"           , id="body_daq_power_level"   , className="field-body")], className="field"),
-        html.Div([html.Div("Connection status:"        , id="label_daq_conn_status"   , className="field-label"), html.Div("Disconnected", id="body_daq_conn_status"   , className="field-body", style={"color": "#e74c3c"})], className="field"),
-        html.Div([html.Div("Sample delay snyc:"        , id="label_daq_delay_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_delay_sync"    , className="field-body", style={"color": "#e74c3c"})], className="field"),
-        html.Div([html.Div("IQ snyc:"                  , id="label_daq_iq_sync"       , className="field-label"), html.Div("LOSS"        , id="body_daq_iq_sync"       , className="field-body", style={"color": "#e74c3c"})], className="field"),
-        html.Div([html.Div("Noise source state:"       , id="label_daq_noise_source"  , className="field-label"), html.Div("Disabled"    , id="body_daq_noise_source"  , className="field-body", style={"color": "#7ccc63"})], className="field"),
-        html.Div([html.Div("Center frequecy [MHz]:"    , id="label_daq_rf_center_freq", className="field-label"), html.Div("- MHz"       , id="body_daq_rf_center_freq", className="field-body")], className="field"),
-        html.Div([html.Div("Sampling frequency [MHz]:" , id="label_daq_sampling_freq" , className="field-label"), html.Div("- MHz"       , id="body_daq_sampling_freq" , className="field-body")], className="field"),
-        html.Div([html.Div("DSP decimated BW [MHz]:"   , id="label_dsp_decimated_bw"  , className="field-label"), html.Div("- MHz"       , id="body_dsp_decimated_bw"  , className="field-body")], className="field"),
-        html.Div([html.Div("VFO range [MHz]:"          , id="label_vfo_range"         , className="field-label"), html.Div("- MHz"       , id="body_vfo_range"         , className="field-body")], className="field"),
-        html.Div([html.Div("Data block length [ms]:"   , id="label_daq_cpi"           , className="field-label"), html.Div("- ms"        , id="body_daq_cpi"           , className="field-body")], className="field"),
-        html.Div([html.Div("IF gains [dB]:"            , id="label_daq_if_gain"       , className="field-label"), html.Div("[,] dB"      , id="body_daq_if_gain"       , className="field-body")], className="field"),
-        html.Div([html.Div("Max amplitude-CH0 [dB]:"   , id="label_max_amp"           , className="field-label"), html.Div("-"           , id="body_max_amp"           , className="field-body")], className="field"),
+        html.Div([html.Div("Frame Index:"              , id="label_daq_frame_index"   , className="field-label"), html.Div("-"           , id="body_daq_frame_index"   , className="field-body")], className="field"),
+        html.Div([html.Div("Frame Type:"               , id="label_daq_frame_type"    , className="field-label"), html.Div("-"           , id="body_daq_frame_type"    , className="field-body")], className="field"),
+        html.Div([html.Div("Frame Sync:"               , id="label_daq_frame_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_frame_sync"    , className="field-body", style={"color": "#e74c3c"})], className="field"),
+        html.Div([html.Div("Power Level:"              , id="label_daq_power_level"   , className="field-label"), html.Div("-"           , id="body_daq_power_level"   , className="field-body")], className="field"),
+        html.Div([html.Div("Connection Status:"        , id="label_daq_conn_status"   , className="field-label"), html.Div("Disconnected", id="body_daq_conn_status"   , className="field-body", style={"color": "#e74c3c"})], className="field"),
+        html.Div([html.Div("Sample Delay Sync:"        , id="label_daq_delay_sync"    , className="field-label"), html.Div("LOSS"        , id="body_daq_delay_sync"    , className="field-body", style={"color": "#e74c3c"})], className="field"),
+        html.Div([html.Div("IQ Sync:"                  , id="label_daq_iq_sync"       , className="field-label"), html.Div("LOSS"        , id="body_daq_iq_sync"       , className="field-body", style={"color": "#e74c3c"})], className="field"),
+        html.Div([html.Div("Noise Source State:"       , id="label_daq_noise_source"  , className="field-label"), html.Div("Disabled"    , id="body_daq_noise_source"  , className="field-body", style={"color": "#7ccc63"})], className="field"),
+        html.Div([html.Div("Center Frequecy [MHz]:"    , id="label_daq_rf_center_freq", className="field-label"), html.Div("- MHz"       , id="body_daq_rf_center_freq", className="field-body")], className="field"),
+        html.Div([html.Div("Sampling Frequency [MHz]:" , id="label_daq_sampling_freq" , className="field-label"), html.Div("- MHz"       , id="body_daq_sampling_freq" , className="field-body")], className="field"),
+        html.Div([html.Div("DSP Decimated BW [MHz]:"   , id="label_dsp_decimated_bw"  , className="field-label"), html.Div("- MHz"       , id="body_dsp_decimated_bw"  , className="field-body")], className="field"),
+        html.Div([html.Div("VFO Range [MHz]:"          , id="label_vfo_range"         , className="field-label"), html.Div("- MHz"       , id="body_vfo_range"         , className="field-body")], className="field"),
+        html.Div([html.Div("Data Block Length [ms]:"   , id="label_daq_cpi"           , className="field-label"), html.Div("- ms"        , id="body_daq_cpi"           , className="field-body")], className="field"),
+        html.Div([html.Div("RF Gains [dB]:"            , id="label_daq_if_gain"       , className="field-label"), html.Div("[,] dB"      , id="body_daq_if_gain"       , className="field-body")], className="field"),
+        html.Div([html.Div("VFO-0 Power [dB]:"         , id="label_max_amp"           , className="field-label"), html.Div("-"           , id="body_max_amp"           , className="field-body")], className="field"),
     ], className="card")
 
     #-----------------------------
@@ -944,7 +948,7 @@ def generate_config_page_layout(webInterface_inst):
         html.Div([
         html.Div([html.Div("[meter]:"             , id="label_ant_spacing_meter"  , className="field-label"),
                     dcc.Input(id="ant_spacing_meter", value=ant_spacing_meter, type='number', debounce=True, className="field-body-textbox")]),
-        html.Div([html.Div("Wavelength Multiplier"         , id="label_ant_spacing_wavelength"        , className="field-label"), html.Div("1"      , id="body_ant_spacing_wavelength"        , className="field-body")], className="field"),
+        html.Div([html.Div("Wavelength Multiplier:"         , id="label_ant_spacing_wavelength"        , className="field-label"), html.Div("1"      , id="body_ant_spacing_wavelength"        , className="field-body")], className="field"),
         ], id="antspacing", className="field"),
 
         html.Div([html.Div("", id="ambiguity_warning" , className="field", style={"color":"#f39c12"})]),
@@ -952,10 +956,10 @@ def generate_config_page_layout(webInterface_inst):
         # --> DoA estimation configuration checkboxes <--
 
         # Note: Individual checkboxes are created due to layout considerations, correct if extist a better solution
-        html.Div([html.Div("Enable DoA Estimation", id="label_en_doa"     , className="field-label"),
+        html.Div([html.Div("Enable DoA Estimation:", id="label_en_doa"     , className="field-label"),
                 dcc.Checklist(options=option     , id="en_doa_check"     , className="field-body", value=en_doa_values),
         ], className="field"),
-        html.Div([html.Div("DoA Algorithm", id="label_doa_method"     , className="field-label"),
+        html.Div([html.Div("DoA Algorithm:", id="label_doa_method"     , className="field-label"),
         dcc.Dropdown(id='doa_method',
             options=[
                 {'label': 'Bartlett', 'value': 'Bartlett'},
@@ -965,7 +969,7 @@ def generate_config_page_layout(webInterface_inst):
                 ],
         value=webInterface_inst._doa_method, style={"display":"inline-block"},className="field-body")
         ], className="field"),
-        html.Div([html.Div("Enable F-B averaging", id="label_en_fb_avg"   , className="field-label"),
+        html.Div([html.Div("Enable F-B Averaging:", id="label_en_fb_avg"   , className="field-label"),
                 dcc.Checklist(options=option     , id="en_fb_avg_check"   , className="field-body", value=en_fb_avg_values),
         ], className="field"),
     ], className="card")
@@ -978,7 +982,7 @@ def generate_config_page_layout(webInterface_inst):
         html.H2("Display Options", id="init_title_disp"),
 
         html.Div([
-        html.Div("DoA Graph Type:", className="field-label"),
+        html.Div("DoA Graph Type:", id="label_doa_graph_type", className="field-label"),
         dcc.Dropdown(id='doa_fig_type',
                 options=[
                     {'label': 'Linear', 'value': 'Linear'},
@@ -1103,7 +1107,7 @@ def generate_config_page_layout(webInterface_inst):
 
 
         html.Div([
-        html.Div("VFO Mode:", className="field-label"),
+        html.Div("VFO Mode:", id="label_vfo_mode", className="field-label"),
         dcc.Dropdown(id='vfo_mode',
                 options=[
                     {'label': 'Standard', 'value': 'Standard'},
@@ -1113,7 +1117,7 @@ def generate_config_page_layout(webInterface_inst):
         ], className="field"),
 
         html.Div([
-        html.Div("Active VFOs:", className="field-label"),
+        html.Div("Active VFOs:", id="label_active_vfos", className="field-label"),
         dcc.Dropdown(id='active_vfos',
                 options=[
                     {'label': '1', 'value': 1},
@@ -1137,7 +1141,7 @@ def generate_config_page_layout(webInterface_inst):
         ], className="field"),
 
         html.Div([
-        html.Div("Output VFO:", className="field-label"),
+        html.Div("Output VFO:", id="label_output_vfo", className="field-label"),
         dcc.Dropdown(id='output_vfo',
                 options=[
                     {'label': 'ALL', 'value': -1},
@@ -1162,7 +1166,7 @@ def generate_config_page_layout(webInterface_inst):
         ], className="field"),
 
         html.Div([
-                html.Div("DSP Side Decimation:", className="field-label"),
+                html.Div("DSP Side Decimation:", id="label_dsp_side_decimation", className="field-label"),
                 dcc.Input(id='dsp_decimation', value=webInterface_inst.module_signal_processor.dsp_decimation, type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
     ], className="card")
@@ -1525,7 +1529,10 @@ def update_daq_status():
 
 
 @app.callback_shared(
-    Output(component_id="placeholder_update_freq", component_property="children"),
+    #Output(component_id="placeholder_update_freq", component_property="children"),
+    #None,
+#    Output(component_id="body_ant_spacing_wavelength",  component_property='children'),
+    None,
     [Input(component_id ="btn-update_rx_param"   , component_property="n_clicks")],
     [State(component_id ="daq_center_freq"       , component_property='value'),
     State(component_id ="daq_rx_gain"           , component_property='value')],
@@ -1533,7 +1540,18 @@ def update_daq_status():
 def update_daq_params(input_value, f0, gain):
     webInterface_inst.daq_center_freq = f0
     webInterface_inst.config_daq_rf(f0,gain)
-    return 1
+
+    wavelength = 300 / webInterface_inst.daq_center_freq
+    webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
+    ant_spacing_wavelength = round(webInterface_inst.ant_spacing_meters / wavelength, 3)
+    app.push_mods({
+           'body_ant_spacing_wavelength': {'children': str(ant_spacing_wavelength)},
+    })
+
+#    return str(ant_spacing_wavelength)
+
+    #webInterface_inst.daq_center_freq
+    #return '1'
 
 # Set DOA Output Format
 @app.callback_shared(None,
@@ -1917,7 +1935,7 @@ def toggle_gps_fields(toggle_value):
     Output(component_id="label_ant_spacing_meter",  component_property='children'),
     Output(component_id="ambiguity_warning",  component_property='children'),
     Output(component_id="en_fb_avg_check",  component_property="options")],
-    [Input(component_id ="placeholder_update_freq"       , component_property='children'),
+    [Input(component_id ="placeholder_update_freq"       , component_property='value'),
     Input(component_id ="en_doa_check"       , component_property='value'),
     Input(component_id ="en_fb_avg_check"           , component_property='value'),
     Input(component_id ="ant_spacing_meter"           , component_property='value'),
@@ -1929,17 +1947,13 @@ def toggle_gps_fields(toggle_value):
     Input(component_id ="custom_array_y_meters"           , component_property='value')],
 )
 def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset, custom_array_x_meters, custom_array_y_meters): #, input_value):
-
-    ant_spacing_meter = spacing_meter
+    webInterface_inst.ant_spacing_meters = spacing_meter
     wavelength = 300 / webInterface_inst.daq_center_freq
 
-    webInterface_inst.module_signal_processor.DOA_inter_elem_space = ant_spacing_meter / wavelength
-    ant_spacing_feet = round(ant_spacing_meter * 3.2808399,3)
-    ant_spacing_inch = round(ant_spacing_meter * 39.3700787,3)
-    ant_spacing_wavelength = round(ant_spacing_meter / wavelength,3)
+    webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
+    ant_spacing_wavelength = round(webInterface_inst.ant_spacing_meters / wavelength, 3)
 
     spacing_label = ""
-
 
     # Split CSV input in custom array
 
@@ -1951,14 +1965,14 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
 
     # Max phase diff and ambiguity warning and Spatial smoothing control
     if ant_arrangement == "ULA":
-        max_phase_diff = ant_spacing_meter / wavelength
+        max_phase_diff = webInterface_inst.ant_spacing_meters / wavelength
         smoothing_possibility = [{"label":"", "value": 1, "disabled": False}] # Enables the checkbox
-        spacing_label = "Interelement Spacing (meters)"
+        spacing_label = "Interelement Spacing (m):"
     elif ant_arrangement == "UCA":
-        UCA_ant_spacing = (np.sqrt(2)*ant_spacing_meter*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
+        UCA_ant_spacing = (np.sqrt(2)*webInterface_inst.ant_spacing_meters*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
         max_phase_diff = UCA_ant_spacing/wavelength
         smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
-        spacing_label = "Array Radius (meters)"
+        spacing_label = "Array Radius (m):"
     elif ant_arrangement == "Custom":
         max_phase_diff = 0.25 #ant_spacing_meter / wavelength
         smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
@@ -2022,7 +2036,6 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
 )
 def update_daq_ini_params(
                     cfg_rx_channels,cfg_daq_buffer_size,cfg_sample_rate,en_noise_source_ctr, \
-                    #en_squelch_mode,cfg_squelch_init_th,cfg_cpi_size,cfg_decimation_ratio, \
                     cfg_cpi_size,cfg_decimation_ratio, \
                     cfg_fir_bw,cfg_fir_tap_size,cfg_fir_window,en_filter_reset,cfg_corr_size, \
                     cfg_std_ch_ind,en_iq_cal,cfg_gain_lock,en_req_track_lock_intervention, \
@@ -2030,7 +2043,6 @@ def update_daq_ini_params(
                     cfg_cal_frame_burst_size, cfg_amplitude_tolerance,cfg_phase_tolerance, \
                     cfg_max_sync_fails, cfg_data_block_len, cfg_decimated_bw, cfg_recal_interval, \
                     config_fname=daq_config_filename):
-    # TODO: Use disctionarry instead of parameter list
 
     ctx = dash.callback_context
     component_id = ctx.triggered[0]['prop_id'].split('.')[0]
@@ -2227,7 +2239,6 @@ def toggle_basic_daq(toggle_value):
     else:
         return {'display': 'none'}
 
-
 @app.callback([Output("url"                     , "pathname")],
               [Input("daq_cfg_files"            , "value"),
               Input("placeholder_recofnig_daq" , "children"),
@@ -2236,7 +2247,6 @@ def toggle_basic_daq(toggle_value):
 def reload_cfg_page(config_fname, dummy_0, dummy_1):
     webInterface_inst.daq_ini_cfg_dict = read_config_file_dict(config_fname)
     webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_dict['config_name']
-
 
     return ["/config"]
 
@@ -2331,14 +2341,16 @@ def reconfig_daq_chain(input_value, freq, gain):
     doa_hasgps = webInterface_inst.module_signal_processor.hasgps
     doa_usegps = webInterface_inst.module_signal_processor.usegps
     doa_gps_connected = webInterface_inst.module_signal_processor.gps_connected
+    logging_level = webInterface_inst.logging_level
+    data_interface = webInterface_inst.data_interface
 
-    webInterface_inst.module_receiver = ReceiverRTLSDR(data_que=webInterface_inst.rx_data_que, data_interface=settings.data_interface, logging_level=settings.logging_level*10)
+    webInterface_inst.module_receiver = ReceiverRTLSDR(data_que=webInterface_inst.rx_data_que, data_interface=data_interface, logging_level=logging_level)
     webInterface_inst.module_receiver.daq_center_freq   = daq_center_freq
     webInterface_inst.module_receiver.daq_rx_gain       = daq_rx_gain #settings.uniform_gain #daq_rx_gain
     webInterface_inst.module_receiver.daq_squelch_th_dB = daq_squelch_th_dB
     webInterface_inst.module_receiver.rec_ip_addr       = rec_ip_addr
 
-    webInterface_inst.module_signal_processor = SignalProcessor(data_que=webInterface_inst.sp_data_que, module_receiver=webInterface_inst.module_receiver, logging_level=settings.logging_level*10)
+    webInterface_inst.module_signal_processor = SignalProcessor(data_que=webInterface_inst.sp_data_que, module_receiver=webInterface_inst.module_receiver, logging_level=logging_level)
     webInterface_inst.module_signal_processor.DOA_ant_alignment    = DOA_ant_alignment
     webInterface_inst.module_signal_processor.DOA_inter_elem_space = DOA_inter_elem_space
     webInterface_inst.module_signal_processor.en_DOA_estimation    = en_DOA_estimation

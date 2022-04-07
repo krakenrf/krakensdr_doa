@@ -83,7 +83,6 @@ class SignalProcessor(threading.Thread):
 
         # Squelch feature
         self.data_ready = False
-
         self.dsp_decimation = 1
 
         # DOA processing options
@@ -98,7 +97,6 @@ class SignalProcessor(threading.Thread):
         self.DOA_theta =  np.linspace(0,359,360)
         self.custom_array_x = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
         self.custom_array_y = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
-
 
         # Processing parameters
         self.spectrum_window_size = fft.next_fast_len(4096)
