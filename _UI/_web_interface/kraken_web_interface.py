@@ -936,12 +936,12 @@ def generate_config_page_layout(webInterface_inst):
         ], className="field"),
 
         html.Div([
-                html.Div("Custom X (m):", className="field-label"),
+                html.Div("Custom X [m]:", className="field-label"),
                 dcc.Input(id='custom_array_x_meters', value=','.join(['%.2f' % num for num in webInterface_inst.custom_array_x_meters]), type='text', debounce=True, className="field-body-textbox")
         ], id="customx", className="field"),
 
         html.Div([
-                html.Div("Custom Y (m):", className="field-label"),
+                html.Div("Custom Y [m]:", className="field-label"),
                 dcc.Input(id='custom_array_y_meters', value=','.join(['%.2f' % num for num in webInterface_inst.custom_array_y_meters]), type='text', debounce=True, className="field-body-textbox")
         ], id="customy", className="field"),
 
@@ -1180,17 +1180,17 @@ def generate_config_page_layout(webInterface_inst):
         vfo_card[i] = \
         html.Div([
             html.Div([
-                    html.Div("VFO-" + str(i) + " Frequency (MHz):", className="field-label"),
+                    html.Div("VFO-" + str(i) + " Frequency [MHz]:", className="field-label"),
                     dcc.Input(id='vfo_' + str(i) + '_freq', value=webInterface_inst.module_signal_processor.vfo_freq[i] / 10**6, type='number', debounce=True, className="field-body-textbox")
                 ], className="field"),
 
             html.Div([
-                    html.Div("VFO-" + str(i) + " Bandwidth (Hz):", className="field-label"),
+                    html.Div("VFO-" + str(i) + " Bandwidth [Hz]:", className="field-label"),
                     dcc.Input(id='vfo_' + str(i) + '_bw', value=webInterface_inst.module_signal_processor.vfo_bw[i], type='number', debounce=True, className="field-body-textbox")
                 ], className="field"),
 
             html.Div([
-                    html.Div("VFO-" + str(i) + " Squelch (dB) :", className="field-label"),
+                    html.Div("VFO-" + str(i) + " Squelch [dB] :", className="field-label"),
                     dcc.Input(id='vfo_' +str(i) + '_squelch', value=webInterface_inst.module_signal_processor.vfo_squelch[i], type='number', debounce=True, className="field-body-textbox")
                 ], className="field"),
         ], id="vfo"+str(i), className="card", style = {'display': 'block'} if i < webInterface_inst.module_signal_processor.active_vfos else {'display': 'none'} )
@@ -1967,16 +1967,16 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
     if ant_arrangement == "ULA":
         max_phase_diff = webInterface_inst.ant_spacing_meters / wavelength
         smoothing_possibility = [{"label":"", "value": 1, "disabled": False}] # Enables the checkbox
-        spacing_label = "Interelement Spacing (m):"
+        spacing_label = "Interelement Spacing [m]:"
     elif ant_arrangement == "UCA":
         UCA_ant_spacing = (np.sqrt(2)*webInterface_inst.ant_spacing_meters*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
         max_phase_diff = UCA_ant_spacing/wavelength
         smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
-        spacing_label = "Array Radius (m):"
+        spacing_label = "Array Radius [m]:"
     elif ant_arrangement == "Custom":
         max_phase_diff = 0.25 #ant_spacing_meter / wavelength
         smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
-        spacing_label = "Interelement Spacing (meters)"
+        spacing_label = "Interelement Spacing [m]"
 
     if max_phase_diff > 0.5:
         ambiguity_warning= "WARNING: Array size is too large for this frequency. DoA estimation is ambiguous. Max phase difference:{:.1f}°.".format(np.rad2deg(2*np.pi*max_phase_diff))
