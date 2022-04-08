@@ -1935,7 +1935,7 @@ def toggle_gps_fields(toggle_value):
     Output(component_id="label_ant_spacing_meter",  component_property='children'),
     Output(component_id="ambiguity_warning",  component_property='children'),
     Output(component_id="en_fb_avg_check",  component_property="options")],
-    [Input(component_id ="placeholder_update_freq"       , component_property='value'),
+    [Input(component_id ="placeholder_update_freq"       , component_property='children'),
     Input(component_id ="en_doa_check"       , component_property='value'),
     Input(component_id ="en_fb_avg_check"           , component_property='value'),
     Input(component_id ="ant_spacing_meter"           , component_property='value'),
@@ -1966,16 +1966,16 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
     # Max phase diff and ambiguity warning and Spatial smoothing control
     if ant_arrangement == "ULA":
         max_phase_diff = webInterface_inst.ant_spacing_meters / wavelength
-        smoothing_possibility = [{"label":"", "value": 1, "disabled": False}] # Enables the checkbox
+        smoothing_possibility = [{"label":"", "options": 1, "disabled": False}] # Enables the checkbox
         spacing_label = "Interelement Spacing [m]:"
     elif ant_arrangement == "UCA":
         UCA_ant_spacing = (np.sqrt(2)*webInterface_inst.ant_spacing_meters*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
         max_phase_diff = UCA_ant_spacing/wavelength
-        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
+        smoothing_possibility = [{"label":"", "options": 1, "disabled": True}] # Disables the checkbox
         spacing_label = "Array Radius [m]:"
     elif ant_arrangement == "Custom":
         max_phase_diff = 0.25 #ant_spacing_meter / wavelength
-        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
+        smoothing_possibility = [{"label":"", "options": 1, "disabled": True}] # Disables the checkbox
         spacing_label = "Interelement Spacing [m]"
 
     if max_phase_diff > 0.5:
@@ -2239,6 +2239,7 @@ def toggle_basic_daq(toggle_value):
     else:
         return {'display': 'none'}
 
+
 @app.callback([Output("url"                     , "pathname")],
               [Input("daq_cfg_files"            , "value"),
               Input("placeholder_recofnig_daq" , "children"),
@@ -2249,6 +2250,7 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
     webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_dict['config_name']
 
     return ["/config"]
+
 
 @app.callback(
     None,
