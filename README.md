@@ -159,12 +159,16 @@ After starting the script a web based server opens at port number `8080`, which 
 
 ## Upcoming Features and Known Bugs
 
-1. [FEATURE] Currently squelch works by selecting the strongest signal that is active and above the set threshold within the active bandwidth. The next steps will be to allow users to create multiple channels within the active bandwidth, each with their own squelch. This will allow users to track multiple signals at once, and ignore unwated signals within the bandwidth at the same time.
+~~1. [FEATURE] Currently squelch works by selecting the strongest signal that is active and above the set threshold within the active bandwidth. The next steps will be to allow users to create multiple channels within the active bandwidth, each with their own squelch. This will allow users to track multiple signals at once, and ignore unwated signals within the bandwidth at the same time.
 
 2. [FEATURE] It would be better if the KrakenSDR controls, spectrum and/or DOA graphs could be accessible from the same page. Future work will look to integrate the controls in a sidebar.
 
-3. [FEATURE] Some users would like to monitor the spectrum, and manually click on an active signal to DF that particular signal. We will be looking at a way to implement this.  
+~~3. [FEATURE] Some users would like to monitor the spectrum, and manually click on an active signal to DF that particular signal. We will be looking at a way to implement this.  
 
-4. [BUG] Sometimes the DOA graphs will not load properly and refreshing the page is required. A fix is being investigated.
+~~4. [BUG] Sometimes the DOA graphs will not load properly and refreshing the page is required. A fix is being investigated.
+
+5. [FEATURE] ALL VFO output for Kraken Pro App JSON format does not yet work. When the Kraken Pro App is released and supports this it will be added.  
+
+6. [MULTI-CHANNEL/CLICK TO TUNE NOTES]. Note, if you use these features, you must use the fractional compensation delay feature branch of heimdall, otherwise the DoA data will be corrupt for non-centered signals.
 
 This software was 95% developed by Tamas Peto, and makes use of his pyAPRIL and pyARGUS libraries. See his website at www.tamaspeto.com
