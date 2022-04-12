@@ -120,12 +120,10 @@ conda install dash==1.20.0
 ```bash
 cd ~/krakensdr
 git clone https://github.com/krakenrf/krakensdr_doa
-cd krakensdr_doa
 ```
 
 Copy the the `krakensdr_doa/util/kraken_doa_start.sh` and the `krakensdr_doa/util/kraken_doa_stop.sh` scripts into the krakensdr root folder of the project.
 ```bash
-cd ~/krakensdr
 cp krakensdr_doa/util/kraken_doa_start.sh .
 cp krakensdr_doa/util/kraken_doa_stop.sh .
 ```
