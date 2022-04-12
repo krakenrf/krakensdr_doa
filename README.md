@@ -86,7 +86,7 @@ Now you can run the code as normal on the Pi 3.
 
 ``` bash
 sudo apt update
-sudo apt install php-cli
+sudo apt install php-cli nodejs
 ```
 
 2. Install Heimdall DAQ
