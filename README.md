@@ -97,7 +97,7 @@ If not done already, first, follow the instructions at https://github.com/kraken
 
 You will have created a Miniconda environment during the Heimdall DAQ install phase.
 
-Please run the installs in this order as we need to ensure a specific version of dash is installed.
+Please run the installs in this order as we need to ensure a specific version of dash and Werkzeug is installed because newer versions break compatibility with other libraries.
 
 ``` bash
 conda activate kraken
@@ -106,6 +106,7 @@ conda install quart
 conda install pandas
 conda install orjson
 conda install matplotlib
+conda install requests
 
 pip3 install dash_bootstrap_components
 pip3 install quart_compress
@@ -113,6 +114,7 @@ pip3 install dash_devices
 pip3 install pyargus
 
 conda install dash==1.20.0
+conda install werkzeug==2.0.2
 ```
 
 4. Install the `krakensdr_doa` software
