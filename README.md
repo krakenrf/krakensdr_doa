@@ -166,6 +166,6 @@ After starting the script a web based server opens at port number `8080`, which 
 
 5. [FEATURE] ALL VFO output for Kraken Pro App JSON format does not yet work. When the Kraken Pro App is released and supports this it will be added.  
 
-6. [MULTI-CHANNEL/CLICK TO TUNE NOTES]. Note, if you use these features, you must use the fractional compensation delay feature branch of heimdall, otherwise the DoA data will be corrupt for non-centered signals.
+~~6. [MULTI-CHANNEL/CLICK TO TUNE NOTES]. Note, if you use these features, you must use the fractional compensation delay feature branch of heimdall, otherwise the DoA data will be corrupt for non-centered signals.~~
 
 This software was 95% developed by Tamas Peto, and makes use of his pyAPRIL and pyARGUS libraries. See his website at www.tamaspeto.com
