@@ -109,8 +109,8 @@ class webInterface():
         self._doa_method = dsp_settings.get("doa_method", "MUSIC")
         self._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
 
-        self.sp_data_que = queue.Queue(8) # Que to communicate with the signal processing module
-        self.rx_data_que = queue.Queue(8) # Que to communicate with the receiver modules
+        self.sp_data_que = queue.Queue(1) # Que to communicate with the signal processing module
+        self.rx_data_que = queue.Queue(1) # Que to communicate with the receiver modules
 
         self.data_interface = dsp_settings.get("data_interface", "shmem")
 
