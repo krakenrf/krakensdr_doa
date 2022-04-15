@@ -33,60 +33,36 @@ Now after performing either option a) or b) when you reboot the Pi 4 should auto
 
 With this method you can then browse to http://krakensdr:8080 to load up the web interface.
 
-### KerberosSDR BOOTING NOTE
-The Pi 4 hardware has a problem where it will not boot if a powered USB hub drawing current from the Pi 4 is plugged in. Inside the KerberosSDR is a powered USB hub and hence the Pi 4 will not boot if the KerberosSDR is plugged in. So please plug the KerberosSDR in after booting. For the KrakenSDR the hardware implementation forces external power only, so this problem does not occurr. If this is a problem for your particular KerberosSDR setup, you can force external power only on the KerberosSDR by opening the enclosure and removing the `JP2` jumper
 
-### KerberosSDR EEPROM Update
-For KerberosSDR users you will need to initially flash the EEPROM to use the new serial numbering scheme. There is a script in `krakensdr/heimdall_daq_fw/util/eeprom_init.sh` that can guide your through this. Just plug in your KerberosSDR (ensuring it is powered from the power port), and run the script `./eeprom_init.sh`. The script will guide you to use the DIP switches to turn all units off, except the currently requested tuner. It will then flash the realtek_oem firmware, then the serial number, before asking you to turn off that tuner, and turn on the next one. Answer `Y` each time it asks to flash.
+    
+### KerberosSDR Setup (KrakenSDR users Ignore)
 
-Once the EEPROM is flashed you can run the code.
+<details>
+    <summary>KerberosSDR Setup Information</summary>
+
+#### KerberosSDR BOOTING NOTE
+The Pi 4 hardware has a problem where it will not boot if a powered USB hub drawing current from the Pi 4 is plugged in. Inside the KerberosSDR is a powered USB hub and hence the Pi 4 will not boot if the KerberosSDR is plugged in. So please plug the KerberosSDR in after booting. For the KrakenSDR the hardware implementation forces external power only, so this problem does not occur. 
+    
+We strongly recommend making a small modification by removing a jumper on the KerberosSDR PCB to avoid this Pi 4 issue. This modification force external power only on the KerberosSDR by opening the enclosure, carefully removing the top calibration board, and then removing the `JP2` jumper from the PCB.
+
+![kerberos_jumper_mod](https://user-images.githubusercontent.com/78108016/163519259-bc6c8f37-87fc-4742-8f03-c3cae849e133.jpg)
+
+#### KerberosSDR EEPROM Update
+For KerberosSDR users you will need to initially flash the EEPROM to use the new serial numbering scheme. Connect a monitor and boot up the image file. The code will not start as the EEPROMs are incorrect.
+   
+There is a script in `krakensdr/heimdall_daq_fw/util/eeprom_init.sh` that can guide your through this. Just plug in your KerberosSDR (ensuring it is powered from the power port), and run the script `./eeprom_init.sh`. The script will guide you to use the DIP switches to turn all units off, except the currently requested tuner. It will then flash the realtek_oem firmware, then the serial number, before asking you to turn off that tuner, and turn on the next one. Answer `Y` each time it asks to flash.
+
+Once the EEPROM is flashed you can run reboot and follow the reconfiguration step below.
 
 ### KerberosSDR Reconfiguration
 The image is currently set up for the KrakenSDR. For KerberosSDR users, please update the EEPROM as described above first, then reboot. Once the web interface is loaded, expand the "Basic DAQ Settings" by clicking on the checkbox. Under "Preconfigured DAQ Files" select "kerberosSDR_default", and then click on "Reconfigure and Restart DAQ chain". This may take a minute or so, but after it's completed the software should connect and begin processing.
 
-### KerberosSDR
+### KerberosSDR Retuning
 The KrakenSDR code base is designed to autocalibrate phase on each retune. Unfortunately this feature is not available on the KerberosSDR due to the lack of a noise source switching circuit. So with the KerberosSDR every time you change the frequency or DAQ settings, make sure that you have the antennas disconnected. Also if you make any custom changes to the DAQ settings (which is not recommended), always ensure that `Calibration Track Mode` is set to `No Tracking` otherwise the software will attempt to recalibrate every X-minutes.
 
 Once you've set the frequency, you can connect your antennas. Then click on the `Spectrum` tab. Ensure that the signal is there, and is not overloading. If it looks like the spectrum is overloaded, reduce the gain. Take note of an appropriate squelching threshold for the signal.
-
-## Pi 3 Users (NOT RECOMMENDED)
-
-The image recommended for use and is tested for the Pi 4 only. We strongly recommend using a Pi 4. The Pi 3 can also be used in a pinch, though it will run the code much slower and it may not be fast enough to process fast bursty signals. The initial code run numba JIT compiles will take several minutes as well (first time you click start or enable the squelch), and the spectrum display may lag. To convert the Pi 4 image to a Pi 3 install, you will need to recompile the NE10 ARM DSP library and the Heimdall C DAQ files for the Pi 3 CPU first however. 
-
-As the Pi 3 very quickly thermal throttles, we recommend adding a good heatsink and fan and installing cpufrequtils `sudo apt install cpufrequtils`, and in `~/krakensdr/heimdall_daq_fw/Firmware/daq_start_sm.sh` uncomment `#sudo cpufreq-set -g performance`.
-
-Follow the steps above for the Pi 4, but before you run the code you'll need to recompile for the Pi 3 CPU by following the steps in the `Heimdall README` for the `NE10` and `Heimdall Manual Install Compile Instructions`, BUT use the following commands instead:
-
-For the NE10 compile, enter the build folder and run:
-
-``` bash
-cmake -DNE10_LINUX_TARGET_ARCH=aarch64 -DGNULINUX_PLATFORM=ON -DCMAKE_C_FLAGS="-mcpu=cortex-a53 -mtune=cortex-a53 -Ofast -funsafe-math-optimizations" ..
-make
-```
-
-Then copy the new `libNE10.a` library over.
-
-``` bash
-cd ~/krakensdr/heimdall_daq_fw/Firmware/_daq_core/
-cp ~/Ne10/build/modules/libNE10.a .
-```
-
-Next edit the `_daq_core` `Makefile` and optimize it for the Pi 3.
-
-``` bash
-nano Makefile
-```
-
-Change the `CFLAGS` line to the following:
-
-```CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a53 -mtune=cortex-a53 -Ofast -funsafe-math-optimizations -funroll-loops```
-
-`Ctrl+X`, `Y` to save
-
-Then run `make` to recompile `heimdall`.
-
-Now you can run the code as normal on the Pi 3.
-
+</details>
+    
 ## Manual Installation from a fresh OS
 
 1. Install the prerequisites
