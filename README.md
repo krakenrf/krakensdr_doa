@@ -32,8 +32,6 @@ If the KrakenAndroid SSID is not detected, the Pi 4 will automatically revert to
 Now after performing either option a) or b) when you reboot the Pi 4 should automatically connect to your home WiFi. If the KrakenAndroid WiFi is present, priority will be given to that connection first, so be sure to turn your hotspot off if you want to connect to the fixed WiFi network.
 
 With this method you can then browse to http://krakensdr:8080 to load up the web interface.
-
-
     
 ### KerberosSDR Setup (KrakenSDR users Ignore)
 
@@ -62,6 +60,18 @@ The KrakenSDR code base is designed to autocalibrate phase on each retune. Unfor
 
 Once you've set the frequency, you can connect your antennas. Then click on the `Spectrum` tab. Ensure that the signal is there, and is not overloading. If it looks like the spectrum is overloaded, reduce the gain. Take note of an appropriate squelching threshold for the signal.
 </details>
+
+## Software Quick Start
+
+1) Press start and the code will begin running.
+2) Enter your desired center frequency and click on "Update Receiver Parameters" to tune and calibrate on that frequency.
+3) Enter your antenna array configuration details in the "DoA Configuration" card.
+4) Set the VFO-0 bandwidth to the bandwidth of your signal.
+5) Open the "Spectrum" button and ensure that your signal of interest is active and selected by the VFO-0 window. If it is a bursty signal, determine an appropriate squelching power, and enter it back into the VFO-0 squelch settings in the confuration screen.
+6) Open the DOA Estimation tab to see DOA info.
+7) Connect to the Android App for map visualization (See Android Instructions - coming later)
+
+You can also 'click to tune' in the spectrum. Either by clicking on the spectrum graph or the waterfall at the frequency of interest.
     
 ## Manual Installation from a fresh OS
 
