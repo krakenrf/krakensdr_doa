@@ -5,19 +5,32 @@ The complete application is broken down into two main modules in terms of implem
 
 Running these two subsystems on separate processing units can grant higher throughput and stability, while running on the same processing unit makes the entire system more compact.
 
-## Pi 4 Image QUICKSTART (For Interested KerberosSDR Owners, or beta KrakenSDR Testers)
+## Pi 4 Image QUICKSTART (KerberosSDR, or beta KrakenSDR Testers)
 
-### Beta Image
-We have a beta Pi 4 SD card image available here **https://drive.google.com/file/d/1TTb9UOu3nuPCiMQWc4DCdKDlWTDBfN00/view?usp=sharing**. As this is a beta, the code will not autostart on boot and it is intended to be used by those familiar with Linux. For efficiency, the image is terminal only, with no desktop GUI. You can access the terminal either via SSH or by plugging in a HDMI monitor.
+We have a beta Pi 4 SD card image available here **https://drive.google.com/file/d/1JT41DfkaYNSgGlxqaAvUwHQO_NwXewRW/view?usp=sharing**. In this image the code will automatically run on boot. Note that it may take 2-3 minutes for the boot process to complete. 
 
-To run this code flash the image file to an 8GB or larger SD Card, and login to the terminal with the follow credentials:
+To run this code flash the image file to an 8GB or larger SD Card using Etcher. For advanced users the login/password details for SSH and terminal are "krakenrf"/"krakensdr"
 
-Username: `pi`
+### Choose and Set up Connectivity Option 
+In this image there are three ways to connect to the web GUI interface.
 
-Password: `krakensdr`
+1) **Pi 4 WiFi Hotspot:** If you simply boot up the image without setting up options 2 or 3, then the Pi 4 will automatically create a WiFi hotspot with SSID name "krakensdr" that you can connect to. The SSID password is also "krakensdr". Once connected, you can use a web brower to browse to "http://192.168.50.5:8080", which will load up the web interface.
 
-### Connectivity 
-Run `sudo raspi-config` to set up your WiFi connection and WiFi country if not using Ethernet. Alternatively, you could connect headlessly by using the `wpa_supplicant` method. Once you're connected, you can login via SSH if desired (or you can continue to use a physical HDMI screen if preferred). You can try connecting to SSH via the hostname `krakensdr`, or if hostnames are not supported by your network you will need to determine the IP address of the Pi 4 either by running the `ip addr` command on the Pi 4, or using your WiFi routers configuration page to find the `krakensdr` device IP.
+Note that if you use this method, your mobile device will not have any internet access. So if you are using the Android App, be sure to download offline maps first.
+
+2) **AndroidWiFi  Mobile Hotspot:** In this method you use your Android device to set up a WiFi mobile 4G/5G hotspot with SSID/password "KrakenAndroid"/"KrakenAndroid". The setup procedure is different on every phone, but it's usually under a setting called "Mobile Hotspot". When the Pi 4 boots up the image, if the KrakenAndroid SSID is detected, the Pi4 will automatically connect to the KrakenAndroid SSID. With this method your mobile device will retain full mobile internet access, allowing the KrakenSDR Android App to download maps as you drive.
+
+To connect to the web interface you will need to determine the IP address given to the KrakenSDR. You can find this in the mobile hotspot settings too. Again this is different on every Android device, so you'll need to determine this yourself for your own device.
+
+If the KrakenAndroid SSID is not detected, the Pi 4 will automatically revert to option 1, and create it's own hotspot without internet.
+
+3) **Connect to your own WiFi Network** If you are running the KrakenSDR at a fixed location, it makes sense to connect to your home/facilities WiFi network. There are two ways to do this. 
+a) Either connect a monitor, and etc `sudo nano /etc/wpa_supplicant/wpa_supplicant.conf` in terminal. In the entry where it says "MY_SSID" and "MY_SSID_PASSWORD" enter your own WiFi information there. If you are outside the USA, make sure to set your two letter country code on the top line too. Then press "CTRL+X", "Y", to save and exit.
+b) Add a wpa_supplicant.conf file in the boot drive of the image. You can do this by connecting your SD Card to a Windows machine, and opening up the boot drive that can be seen. In the boot drive we've left a file called "wpa_supplicant_example.conf". Make a copy of this file in the same directory, and rename it to "wpa_supplicant.conf". Now edit wpa_supplicant.conf with Notepad, replacing "MY_SSID" and "MY_SSID_PASSWORD" with your own WiFi information. If you are outside the USA, make sure to set your two letter country code on the top line too. Save this file.
+
+Now after performing either method a) or b) when you reboot the Pi 4 should automatically connect to your home WiFi. If the KrakenAndroid WiFi is present, priority will be given to that connection first, so be sure to turn your hotspot off if you want to connect to the fixed WiFi network.
+
+With this method you can then browse to http://krakensdr:8080 to load up the web interface.
 
 ### KerberosSDR BOOTING NOTE
 The Pi 4 hardware has a problem where it will not boot if a powered USB hub drawing current from the Pi 4 is plugged in. Inside the KerberosSDR is a powered USB hub and hence the Pi 4 will not boot if the KerberosSDR is plugged in. So please plug the KerberosSDR in after booting. For the KrakenSDR the hardware implementation forces external power only, so this problem does not occurr. If this is a problem for your particular KerberosSDR setup, you can force external power only on the KerberosSDR by opening the enclosure and removing the `JP2` jumper
@@ -27,22 +40,15 @@ For KerberosSDR users you will need to initially flash the EEPROM to use the new
 
 Once the EEPROM is flashed you can run the code.
 
-### Running KrakenSDR Software
-Go into the `~/krakensdr` folder and run the `./kraken_doa_start.sh` script. This will automatically start the DAQ and DoA DSP software. After a minute or so you should be able to go to a device on your network, and using a browser browse to the web interface at `krakensdr:8080`. If hostnames are not supported on your network, you can connect via `PI4_IP_ADDRESS:8080`.
+### KerberosSDR Reconfiguration
+The image is currently set up for the KrakenSDR. For KerberosSDR users, please update the EEPROM as described above first, then reboot. Once the web interface is loaded, expand the "Basic DAQ Settings" by clicking on the checkbox. Under "Preconfigured DAQ Files" select "kerberosSDR_default", and then click on "Reconfigure and Restart DAQ chain". This may take a minute or so, but after it's completed the software should connect and begin processing.
 
-The image is currently set up for the KerberosSDR, but you may wish to double check the `Advanced DAQ Settings` by clicking on that checkbox. Ensure that the `# RX channels` is set to `4`, and the `Calibration Track Mode` is set to `No Tracking`. For the first run we don't recommend making any changes, but if you do, or use one of the preconfig files, ensure that you set these settings back for the KerberosSDR. Clicking on `Reconfigure & Restart DAQ Chain` will restart the system with the changes.
-
-If there is nothing to change on the DAQ, just click the `Start Processing` button on the top. You should see the update rate start to work. You can set the frequency and gain using the boxes in the top left, making sure to click on `Update Receiver Parameters` after every change.
-
-The KrakenSDR code base is designed to autocalibrate phase on each retune. Unfortunately this feature is not available on the KerberosSDR due to the lack of a noise source switching circuit. So with the KerberosSDR every time you change the frequency or DAQ settings, make sure that you have the antennas disconnected. Also ensure that `Calibration Track Mode` is set to `No Tracking` otherwise the software will attempt to recalibrate every X-minutes.
+### KerberosSDR
+The KrakenSDR code base is designed to autocalibrate phase on each retune. Unfortunately this feature is not available on the KerberosSDR due to the lack of a noise source switching circuit. So with the KerberosSDR every time you change the frequency or DAQ settings, make sure that you have the antennas disconnected. Also if you make any custom changes to the DAQ settings (which is not recommended), always ensure that `Calibration Track Mode` is set to `No Tracking` otherwise the software will attempt to recalibrate every X-minutes.
 
 Once you've set the frequency, you can connect your antennas. Then click on the `Spectrum` tab. Ensure that the signal is there, and is not overloading. If it looks like the spectrum is overloaded, reduce the gain. Take note of an appropriate squelching threshold for the signal.
 
-Go back to the `Main Configuration` page, and set the `Squelch Threshold` and click `Enable Squelch`. The system will now automatically tune and lock to the strongest signal that is above the threshold in the current spectrum. You can tell which signal the software is tuned to by the red rectangle that will highlight it. If no signal is above the threshold the spectrum and DOA graphs will not update.
-
-The default active bandwidth in the image is set to 300 kHz. If you need to reduce the active bandwidth because there are unwanted strong signals in the active bandwidth, you can do so by changing the `Decimated Bandwidth` setting in the configuration page. The default bandwidth of 300 kHz may be too large for a single signal of interest in there are several signals close to one another. After changing the value, disconnect your antennas, and click `Reconfigure & Restart DAQ Chain`as before.
-
-## Pi 3 Users
+## Pi 3 Users (NOT RECOMMENDED)
 
 The image recommended for use and is tested for the Pi 4 only. We strongly recommend using a Pi 4. The Pi 3 can also be used in a pinch, though it will run the code much slower and it may not be fast enough to process fast bursty signals. The initial code run numba JIT compiles will take several minutes as well (first time you click start or enable the squelch), and the spectrum display may lag. To convert the Pi 4 image to a Pi 3 install, you will need to recompile the NE10 ARM DSP library and the Heimdall C DAQ files for the Pi 3 CPU first however. 
 
