@@ -48,17 +48,20 @@ We strongly recommend making a small modification by removing a jumper on the Ke
 #### KerberosSDR EEPROM Update
 For KerberosSDR users you will need to initially flash the EEPROM to use the new serial numbering scheme. Connect a monitor and boot up the image file. The code will not start as the EEPROMs are incorrect.
    
-There is a script in `krakensdr/heimdall_daq_fw/util/eeprom_init.sh` that can guide your through this. Just plug in your KerberosSDR (ensuring it is powered from the power port), and run the script `./eeprom_init.sh`. The script will guide you to use the DIP switches to turn all units off, except the currently requested tuner. It will then flash the realtek_oem firmware, then the serial number, before asking you to turn off that tuner, and turn on the next one. Answer `Y` each time it asks to flash.
+There is a script in `~/krakensdr_doa/heimdall_daq_fw/util/eeprom_init.sh` that can guide your through this. Just plug in your KerberosSDR (ensuring it is powered from the power port), and run the script `./eeprom_init.sh`. The script will guide you to use the DIP switches to turn all units off, except the currently requested tuner. It will then flash the realtek_oem firmware, then the serial number, before asking you to turn off that tuner, and turn on the next one. Answer `Y` each time it asks to flash.
 
-Once the EEPROM is flashed you can run reboot and follow the reconfiguration step below.
+Once the EEPROM is flashed you can reboot and follow the reconfiguration step below.
 
 #### KerberosSDR Reconfiguration
-The image is currently set up for the KrakenSDR. For KerberosSDR users, please update the EEPROM as described above first, then reboot. Once the web interface is loaded, expand the "Basic DAQ Settings" by clicking on the checkbox. Under "Preconfigured DAQ Files" select "kerberosSDR_default", and then click on "Reconfigure and Restart DAQ chain". This may take a minute or so, but after it's completed the software should connect and begin processing.
+The image is currently set up for the KrakenSDR. For KerberosSDR users, please update the EEPROM as described above first, then reboot. Once the web interface has loaded, expand the "Basic DAQ Settings" by clicking on the checkbox. Under "Preconfigured DAQ Files" select "kerberosSDR_default", and then click on "Reconfigure and Restart DAQ chain". This may take a minute or so, but after it's completed the software should connect and begin processing.
 
 #### KerberosSDR Retuning
-The KrakenSDR code base is designed to autocalibrate phase on each retune. Unfortunately this feature is not available on the KerberosSDR due to the lack of a noise source switching circuit. So with the KerberosSDR every time you change the frequency or DAQ settings, make sure that you have the antennas disconnected. Also if you make any custom changes to the DAQ settings (which is not recommended), always ensure that `Calibration Track Mode` is set to `No Tracking` otherwise the software will attempt to recalibrate every X-minutes.
+The KrakenSDR code is designed to autocalibrate phase on each retune. Unfortunately this feature is not available on the KerberosSDR due to the lack of a noise source switching circuit. So with the KerberosSDR every time you change the frequency or DAQ settings, you must make sure that you have the antennas disconnected. 
+    
+Also if you make any custom changes to the DAQ settings (which is not recommended), always ensure that `Calibration Track Mode` is set to `No Tracking` otherwise the software will attempt to recalibrate every X-minutes.
 
-Once you've set the frequency, you can connect your antennas. Then click on the `Spectrum` tab. Ensure that the signal is there, and is not overloading. If it looks like the spectrum is overloaded, reduce the gain. Take note of an appropriate squelching threshold for the signal.
+Once you've set the center frequency, you can connect your antennas. In the Spectrum screen you can use 'click to tune' to tune to any frequency within the active bandwidth without needing to recalibrate.
+    
 </details>
 
 ## Software Quick Start
