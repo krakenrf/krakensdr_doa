@@ -118,7 +118,6 @@ class webInterface():
         self.module_receiver = ReceiverRTLSDR(data_que=self.rx_data_que, data_interface=self.data_interface, logging_level=self.logging_level)
         self.module_receiver.daq_center_freq   = dsp_settings.get("center_freq", 100.0) * 10**6
         self.module_receiver.daq_rx_gain       = dsp_settings.get("uniform_gain", 1.4)
-        self.module_receiver.daq_squelch_th_dB = dsp_settings.get("squelch_threshold_dB", 0.0)
         self.module_receiver.rec_ip_addr       = dsp_settings.get("default_ip", "0.0.0.0")
 
         self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=self.logging_level)
@@ -133,7 +132,6 @@ class webInterface():
 
         self.module_signal_processor.en_DOA_estimation    = dsp_settings.get("en_doa", 0)
         self.module_signal_processor.en_DOA_FB_avg        = dsp_settings.get("en_fbavg", 0)
-        self.module_signal_processor.en_squelch           = dsp_settings.get("en_squelch", 0)
         self.config_doa_in_signal_processor()
         self.module_signal_processor.start()
 
@@ -252,10 +250,6 @@ class webInterface():
         data["compass_offset"]  = self.compass_ofset
         data["doa_fig_type"]    = self._doa_fig_type
 
-        # DSP misc
-        data["en_squelch"]            = self.module_signal_processor.en_squelch
-        data["squelch_threshold_dB"]  = self.module_receiver.daq_squelch_th_dB
-
         # Web Interface
         data["en_hw_check"]         = dsp_settings.get("en_hw_check", 0)
         #data["en_advanced_daq_cfg"] = dsp_settings.get("en_advanced_daq_cfg", 0)
@@ -329,17 +323,6 @@ class webInterface():
             self.module_signal_processor.en_DOA_Capon    = False
             self.module_signal_processor.en_DOA_MEM      = False
             self.module_signal_processor.en_DOA_MUSIC    = True
-    def config_squelch_value(self, squelch_threshold_dB):
-        """
-            Configures the squelch thresold both on the DAQ side and
-            on the local DoA DSP side.
-        """
-        #NOT USING THIS ANYMORE
-        self.daq_cfg_iface_status = 1
-        #self.module_signal_processor.squelch_threshold = 10**(squelch_threshold_dB/20)
-        #self.module_receiver.set_squelch_threshold(squelch_threshold_dB)
-        #webInterface_inst.logger.info("Updating receiver parameters")
-        #webInterface_inst.logger.info("Squelch threshold : {:f} dB".format(squelch_threshold_dB))
     def config_daq_rf(self, f0, gain):
         """
             Configures the RF parameters in the DAQ module
@@ -612,7 +595,6 @@ app.layout = html.Div([
     html.Div(id="placeholder_update_daq_ini_params", style={"display":"none"}),
     html.Div(id="placeholder_update_freq"          , style={"display":"none"}),
     html.Div(id="placeholder_update_dsp"           , style={"display":"none"}),
-    html.Div(id="placeholder_update_squelch"       , style={"display":"none"}),
     html.Div(id="placeholder_config_page_upd"      , style={"display":"none"}),
     html.Div(id="placeholder_spectrum_page_upd"    , style={"display":"none"}),
     html.Div(id="placeholder_doa_page_upd"         , style={"display":"none"}),
@@ -635,7 +617,6 @@ def generate_config_page_layout(webInterface_inst):
 
     en_doa_values         =[1] if webInterface_inst.module_signal_processor.en_DOA_estimation else []
     en_fb_avg_values      =[1] if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []
-    en_dsp_squelch_values =[1] if webInterface_inst.module_signal_processor.en_squelch        else []
 
     en_fixed_heading = [1] if webInterface_inst.module_signal_processor.fixed_heading else []
 
@@ -2107,7 +2088,6 @@ def update_daq_ini_params(
             cfg_daq_buffer_size = 262144 # This is a reasonable DAQ buffer size to use
             cfg_corr_size = 32768 # Reasonable value that never has problems calibrating
             en_noise_source_ctr = [1]
-            en_squelch_mode = [] # NOTE: For checkboxes, zero is defined by an empty array
             cfg_fir_bw = 1
             cfg_fir_window = 'hann'
             en_filter_reset = []
@@ -2316,14 +2296,12 @@ def reconfig_daq_chain(input_value, freq, gain):
     # Recreate and reinit the receiver and signal processor modules from scratch, keeping current setting values
     daq_center_freq = webInterface_inst.module_receiver.daq_center_freq
     daq_rx_gain = webInterface_inst.module_receiver.daq_rx_gain
-    daq_squelch_th_dB = webInterface_inst.module_receiver.daq_squelch_th_dB
     rec_ip_addr = webInterface_inst.module_receiver.rec_ip_addr
 
     DOA_ant_alignment = webInterface_inst.module_signal_processor.DOA_ant_alignment
     DOA_inter_elem_space = webInterface_inst.module_signal_processor.DOA_inter_elem_space
     en_DOA_estimation = webInterface_inst.module_signal_processor.en_DOA_estimation
     en_DOA_FB_avg = webInterface_inst.module_signal_processor.en_DOA_FB_avg
-    en_squelch = webInterface_inst.module_signal_processor.en_squelch
 
     doa_format = webInterface_inst.module_signal_processor.DOA_data_format
     doa_station_id = webInterface_inst.module_signal_processor.station_id
@@ -2342,7 +2320,6 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.module_receiver = ReceiverRTLSDR(data_que=webInterface_inst.rx_data_que, data_interface=data_interface, logging_level=logging_level)
     webInterface_inst.module_receiver.daq_center_freq   = daq_center_freq
     webInterface_inst.module_receiver.daq_rx_gain       = daq_rx_gain #settings.uniform_gain #daq_rx_gain
-    webInterface_inst.module_receiver.daq_squelch_th_dB = daq_squelch_th_dB
     webInterface_inst.module_receiver.rec_ip_addr       = rec_ip_addr
 
     webInterface_inst.module_signal_processor = SignalProcessor(data_que=webInterface_inst.sp_data_que, module_receiver=webInterface_inst.module_receiver, logging_level=logging_level)
@@ -2350,7 +2327,6 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.module_signal_processor.DOA_inter_elem_space = DOA_inter_elem_space
     webInterface_inst.module_signal_processor.en_DOA_estimation    = en_DOA_estimation
     webInterface_inst.module_signal_processor.en_DOA_FB_avg        = en_DOA_FB_avg
-    webInterface_inst.module_signal_processor.en_squelch           = en_squelch
 
     webInterface_inst.module_signal_processor.DOA_data_format = doa_format
     webInterface_inst.module_signal_processor.station_id = doa_station_id

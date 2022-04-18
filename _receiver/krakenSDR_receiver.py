@@ -57,7 +57,6 @@ class ReceiverRTLSDR():
         # Values are configured externally upon configuration request
         self.daq_center_freq   = 100 # MHz
         self.daq_rx_gain       = 0   # [dB]
-        self.daq_squelch_th_dB = 0
 
         # UI interface
         self.data_que = data_que
@@ -121,7 +120,6 @@ class ReceiverRTLSDR():
                 self.logger.info("CTR INIT Center freq: {0}".format(self.daq_center_freq))
                 self.set_center_freq(self.daq_center_freq)
                 self.set_if_gain(self.daq_rx_gain)
-                self.set_squelch_threshold(self.daq_squelch_th_dB)
         except:
             errorMsg = sys.exc_info()[0]
             self.logger.error("Error message: "+str(errorMsg))
@@ -257,26 +255,6 @@ class ReceiverRTLSDR():
             return self.iq_samples
         else:
              return 0
-
-    def set_squelch_threshold(self, threshold_dB):
-        """
-            Configures the threshold level of the squelch module in the DAQ FW through the control interface
-        """
-        if self.receiver_connection_status: # Check connection
-            self.daq_squelch_th_dB      = threshold_dB
-            if threshold_dB == -80: threshold = 0
-            else: threshold = 10**(threshold_dB/20)
-
-            # Assembling message
-            cmd="STHU"
-            th_bytes=pack("f",threshold)
-            msg_bytes=(cmd.encode()+th_bytes+bytearray(120))
-            try:
-                _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))
-            except:
-                errorMsg = sys.exc_info()[0]
-                self.logger.error("Unable to start communication thread")
-                self.logger.error("Error message: {:s}".format(errorMsg))
 
     def ctr_iface_init(self):
         """
