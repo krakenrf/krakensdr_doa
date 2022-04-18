@@ -28,7 +28,7 @@
   "output_vfo": 0,
   "vfo_bw_0": 12500,
   "vfo_freq_0": 416588000,
-  "vfo_squelch_0": -40,
+  "vfo_squelch_0": -120,
   "vfo_bw_1": 12500,
   "vfo_freq_1": 416588000,
   "vfo_squelch_1": -120,
