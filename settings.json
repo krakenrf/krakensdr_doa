@@ -26,7 +26,7 @@
   "dsp_decimation": 1,
   "active_vfos": 1,
   "output_vfo": 0,
-  "en_optimize_short_bursts": true,
+  "en_optimize_short_bursts": false,
   "vfo_bw_0": 12500,
   "vfo_freq_0": 416588000,
   "vfo_squelch_0": -120,

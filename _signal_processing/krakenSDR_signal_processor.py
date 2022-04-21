@@ -199,11 +199,11 @@ class SignalProcessor(threading.Thread):
 
                         single_ch = self.processed_signal[1,:]
 
-                        noverlap = 0.25
+                        noverlap = int(N * 0)
                         window = 'blackman'
                         if self.optimize_short_bursts:
-                            noverlap = 0.75
-                            window = ('tukey', 0.25)
+                            noverlap = int(N * 0.5)
+                            window = ('tukey', 0.15)
 
                         f, Pxx_den = signal.welch(single_ch, sampling_freq,
                                      nperseg= N,

@@ -54,6 +54,12 @@ dsp_config_tooltips = html.Div([
         className="tooltip"
     ),
     dbc.Tooltip([
+        html.P("Enhance squelcher detection of very narrow bandwidth and short bursty signals with pulse lengths 50ms or less.")],
+        target="label_optimize_short_bursts",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
         html.P("Linear - A simple line plot of the DoA data. "),
         html.P("Polar - A circular plot in polar form. "),
         html.P("Compass - The same as the polar plot, but axis in the compass convention with 90 degrees clockwise from zero. Can be offset by some degrees in order to align the graph with the array heading. ")],
@@ -241,22 +247,6 @@ daq_ini_config_tooltips = html.Div([
     dbc.Tooltip([
         html.P("Enables the utilization of the built-in noise source for calibration")],
         target="label_en_noise_source_ctr",
-        placement="bottom",
-        className="tooltip"
-    ),
-    # Enable squelch mode
-    dbc.Tooltip([
-        html.P("Enable DAQ-side squelch to capture burst like signals - NOTE DISABLED IN THIS VERSION, THIS VERSION USES DSP SIDE SQUELCH ONLY")],
-        target="label_en_squelch",
-        placement="bottom",
-        className="tooltip"
-    ),
-    # Squelch threshold
-    dbc.Tooltip([
-        html.P("Amplitude threshold used for the squelch feature."),
-        html.P("Should take values on range: 0...1"),
-        html.P("When set to zero the squelch is bypassed")],
-        target="label_squelch_init_threshold",
         placement="bottom",
         className="tooltip"
     ),
