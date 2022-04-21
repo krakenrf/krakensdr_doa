@@ -201,7 +201,6 @@ class SignalProcessor(threading.Thread):
 
                         noverlap = 0.25
                         window = 'blackman'
-                        print("optimize" + str(self.optimize_short_bursts))
                         if self.optimize_short_bursts:
                             noverlap = 0.75
                             window = ('tukey', 0.25)
