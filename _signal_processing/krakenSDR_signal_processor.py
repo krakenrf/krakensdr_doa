@@ -123,6 +123,7 @@ class SignalProcessor(threading.Thread):
         self.active_vfos = 1
         self.output_vfo = 0
         self.vfo_mode = 'Standard'
+        self.optimize_short_bursts = False
 
         #self.DOA_theta =  np.linspace(0,359,360)
         self.spectrum = None #np.ones((self.channel_number+2,N), dtype=np.float32)
@@ -197,13 +198,21 @@ class SignalProcessor(threading.Thread):
                         self.spectrum = np.ones((self.channel_number+(self.active_vfos*2+1), N), dtype=np.float32) # Only 0.1 ms, not performance bottleneck
 
                         single_ch = self.processed_signal[1,:]
+
+                        noverlap = 0.25
+                        window = 'blackman'
+                        print("optimize" + str(self.optimize_short_bursts))
+                        if self.optimize_short_bursts:
+                            noverlap = 0.75
+                            window = ('tukey', 0.25)
+
                         f, Pxx_den = signal.welch(single_ch, sampling_freq,
                                      nperseg= N,
                                      nfft=N,
-                                     noverlap=0.25, #int(N_perseg*0.0),
+                                     noverlap=noverlap, #int(N_perseg*0.0),
                                      detrend=False,
                                      return_onesided=False,
-                                     window= 'blackman', #('tukey', 0.25), #tukey window gives better time resolution for squelching
+                                     window=window, #'blackman', #('tukey', 0.25), #tukey window gives better time resolution for squelching
                                      scaling='spectrum')
                         self.spectrum[1+m,:] = fft.fftshift(10*np.log10(Pxx_den))
                         self.spectrum[0,:] = fft.fftshift(f)

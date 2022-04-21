@@ -156,6 +156,8 @@ class webInterface():
         self.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
         self.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
 
+        self.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", 0)
+
         for i in range(self.module_signal_processor.max_vfos):
             self.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
             self.module_signal_processor.vfo_freq[i] = float(dsp_settings.get("vfo_freq_" + str(i), 0))
@@ -223,6 +225,7 @@ class webInterface():
         self.vfo_cfg_inputs.append(Input(component_id ="dsp_decimation", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id ="active_vfos", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id ="output_vfo", component_property="value"))
+        self.vfo_cfg_inputs.append(Input(component_id ="en_optimize_short_bursts", component_property="value"))
 
         for i in range(self.module_signal_processor.max_vfos):
             self.vfo_cfg_inputs.append(Input(component_id ="vfo_"+str(i)+"_bw", component_property="value"))
@@ -272,6 +275,7 @@ class webInterface():
         data["dsp_decimation"] = self.module_signal_processor.dsp_decimation
         data["active_vfos"] = self.module_signal_processor.active_vfos
         data["output_vfo"] = self.module_signal_processor.output_vfo
+        data["en_optimize_short_bursts"] = self.module_signal_processor.optimize_short_bursts
 
         for i in range(webInterface_inst.module_signal_processor.max_vfos):
             data["vfo_bw_" + str(i)] = self.module_signal_processor.vfo_bw[i]
@@ -617,6 +621,8 @@ def generate_config_page_layout(webInterface_inst):
 
     en_doa_values         =[1] if webInterface_inst.module_signal_processor.en_DOA_estimation else []
     en_fb_avg_values      =[1] if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []
+
+    en_optimize_short_bursts    =[1] if webInterface_inst.module_signal_processor.optimize_short_bursts     else []
 
     en_fixed_heading = [1] if webInterface_inst.module_signal_processor.fixed_heading else []
 
@@ -1145,10 +1151,18 @@ def generate_config_page_layout(webInterface_inst):
                 html.Div("DSP Side Decimation:", id="label_dsp_side_decimation", className="field-label"),
                 dcc.Input(id='dsp_decimation', value=webInterface_inst.module_signal_processor.dsp_decimation, type='number', debounce=True, className="field-body-textbox")
             ], className="field"),
+
+        html.Div([
+                html.Div("Optimize Short Bursts:", id="label_optimize_short_bursts", className="field-label"),
+                dcc.Checklist(options=option     , id="en_optimize_short_bursts"   , className="field-body", value=en_optimize_short_bursts),
+            ], className="field"),
+
+
+
     ], className="card")
 
     #-----------------------------
-    #  VFO Configuration Card
+    #  Individual VFO Configurations
     #-----------------------------
     vfo_card = [" "] * webInterface_inst.module_signal_processor.max_vfos
 
@@ -1647,6 +1661,12 @@ def update_vfo_params(*args):
     webInterface_inst.module_signal_processor.dsp_decimation = max(int(kwargs_dict["dsp_decimation"]), 1)
     webInterface_inst.module_signal_processor.active_vfos = active_vfos
     webInterface_inst.module_signal_processor.output_vfo = kwargs_dict["output_vfo"]
+
+    en_optimize_short_bursts = kwargs_dict["en_optimize_short_bursts"]
+    if en_optimize_short_bursts is not None and len(en_optimize_short_bursts):
+        webInterface_inst.module_signal_processor.optimize_short_bursts   = True
+    else:
+        webInterface_inst.module_signal_processor.optimize_short_bursts   = False
 
     for i in range(webInterface_inst.module_signal_processor.max_vfos):
         if i < kwargs_dict["active_vfos"]:
