@@ -144,6 +144,8 @@ class SignalProcessor(threading.Thread):
         self.hasgps = hasgps
         self.usegps = False
         self.gps_connected = False
+        self.krakenpro_key = "0"
+
 
     def run(self):
         """
@@ -282,6 +284,11 @@ class SignalProcessor(threading.Thread):
                             #-----> DoA ESIMATION <-----
                             conf_val = 0
                             theta_0 = 0
+                            DOA_str = ""
+                            confidence_str = ""
+                            max_power_level_str = ""
+                            doa_result_log = np.array([0,0,0])
+
                             if self.en_DOA_estimation and self.channel_number > 1 and max_amplitude > self.vfo_squelch[i] and (i == self.output_vfo or self.output_vfo < 0):
                                 write_freq = int(self.vfo_freq[i])
                                 # Do channelization
@@ -328,8 +335,6 @@ class SignalProcessor(threading.Thread):
                                 confidence_str = "{:.2f}".format(np.max(conf_val))
                                 max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
 
-                        if self.hasgps:
-                            self.update_location()
 
                         if self.DOA_data_format == "DF Aggregator":
                             self.wr_xml(self.station_id,
@@ -362,7 +367,7 @@ class SignalProcessor(threading.Thread):
                                         self.longitude,
                                         self.heading,
                                         "Kerberos")
-                        elif self.DOA_data_format == "Kraken Pro App":
+                        elif self.DOA_data_format == "Kraken Pro Local":
                             self.wr_json(self.station_id,
                                         DOA_str,
                                         confidence_str,
@@ -372,9 +377,21 @@ class SignalProcessor(threading.Thread):
                                         self.latitude,
                                         self.longitude,
                                         self.heading)
-
+                        elif self.DOA_data_format == "Kraken Pro Remote":
+                            self.wr_json(self.station_id,
+                                        DOA_str,
+                                        confidence_str,
+                                        max_power_level_str,
+                                        write_freq,
+                                        doa_result_log,
+                                        self.latitude,
+                                        self.longitude,
+                                        self.heading)
                         else:
                             self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
+
+                        if self.hasgps:
+                            self.update_location()
 
                     #-----> SPECTRUM PROCESSING <-----
                     if self.en_spectrum and self.data_ready:

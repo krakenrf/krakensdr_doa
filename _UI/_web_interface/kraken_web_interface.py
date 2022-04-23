@@ -149,6 +149,9 @@ class webInterface():
         self.module_signal_processor.longitude     = dsp_settings.get("longitude", 0.0)
         self.module_signal_processor.heading       = dsp_settings.get("heading", 0.0)
 
+        # Kraken Pro Remote Key
+        self.module_signal_processor.krakenpro_key = dsp_settings.get("krakenpro_key", 0.0)
+
         # VFO Configuration
         self.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
         self.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", 'Standard')
@@ -201,12 +204,18 @@ class webInterface():
         self.logger.info("Web interface object initialized")
 
         self.dsp_timer = None
+        self.settings_change_timer = None
         self.update_time = 9999
 
         self.pathname = ""
         self.reset_doa_graph_flag = False
         self.reset_spectrum_graph_flag = False
         self.oldMaxIndex = 9999
+
+        # Refresh Settings Paramaters
+        self.last_changed_time_previous = float("inf")
+        self.needs_refresh = False
+
         # Basic DAQ Config
         self.decimated_bandwidth = 12.5
 
@@ -268,6 +277,8 @@ class webInterface():
         data["latitude"] = self.module_signal_processor.latitude
         data["longitude"] = self.module_signal_processor.longitude
         data["heading"] = self.module_signal_processor.heading
+        data["krakenpro_key"] = self.module_signal_processor.krakenpro_key
+
 
         # VFO Information
         data["spectrum_calculation"] = self.module_signal_processor.spectrum_fig_type
@@ -578,6 +589,7 @@ doa_fig = go.Figure(layout=fig_layout)
 
 #app = dash.Dash(__name__, suppress_callback_exceptions=True, compress=True, update_title="") # cannot use update_title with dash_devices
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
+#app = dash.Dash(__name__, suppress_callback_exceptions=False)
 app.title = "KrakenSDR DoA"
 
 # app_log = logger.getLogger('werkzeug')
@@ -591,6 +603,10 @@ app.layout = html.Div([
             html.A("Spectrum"       , className="header_inactive" , id="header_spectrum",href="/spectrum"),
             html.A("DoA Estimation" , className="header_inactive" , id="header_doa"     ,href="/doa"),
             ], className="header"),
+
+    dcc.Interval(id="interval-component", interval=1000, n_intervals=0),
+
+
     html.Div(id="placeholder_start"                , style={"display":"none"}),
     html.Div(id="placeholder_stop"                 , style={"display":"none"}),
     html.Div(id="placeholder_save"                 , style={"display":"none"}),
@@ -603,6 +619,7 @@ app.layout = html.Div([
     html.Div(id="placeholder_spectrum_page_upd"    , style={"display":"none"}),
     html.Div(id="placeholder_doa_page_upd"         , style={"display":"none"}),
     html.Div(id="dummy_output"                     , style={"display":"none"}),
+
 
     html.Div(id='page-content')
 ])
@@ -998,7 +1015,8 @@ def generate_config_page_layout(webInterface_inst):
                 dcc.Dropdown(id='doa_format_type',
                              options=[
                                  {'label': 'Kraken App', 'value': 'Kraken App'},
-                                 {'label': 'Kraken Pro App', 'value': 'Kraken Pro App'},
+                                 {'label': 'Kraken Pro Local', 'value': 'Kraken Pro Local'},
+                                 {'label': 'Kraken Pro Remote', 'value': 'Kraken Pro Remote'},
                                  {'label': 'Kerberos App', 'value': 'Kerberos App'},
                                  {'label': 'DF Aggregator', 'value': 'DF Aggregator'},
                                  {'label': 'JSON', 'value': 'JSON', 'disabled': True},
@@ -1006,6 +1024,12 @@ def generate_config_page_layout(webInterface_inst):
                              value=webInterface_inst.module_signal_processor.DOA_data_format,
                              style={"display": "inline-block"}, className="field-body"),
             ], className="field"),
+            html.Div([
+                html.Div("Kraken Pro Key:", className="field-label"),
+                dcc.Input(id='krakenpro_key',
+                          value=webInterface_inst.module_signal_processor.krakenpro_key,
+                          type='text', className="field-body-textbox", debounce=True)
+            ], id="krakenpro_field", className="field"),
             html.Div([
                 html.Div("Location Source:", id="location_src_label", className="field-label"),
                 dcc.Dropdown(id='loc_src_dropdown',
@@ -1033,20 +1057,20 @@ def generate_config_page_layout(webInterface_inst):
                     html.Div("Latitude:", className="field-label"),
                     dcc.Input(id='latitude_input',
                               value=webInterface_inst.module_signal_processor.latitude,
-                              type='number', className="field-body")
+                              type='number', className="field-body-textbox")
                 ], id="latitude_field", className="field"),
                 html.Div([
                     html.Div("Longitude:", className="field-label"),
                     dcc.Input(id='longitude_input',
                               value=webInterface_inst.module_signal_processor.longitude,
-                              type='number', className="field-body")
+                              type='number', className="field-body-textbox")
                 ], id="logitude_field", className="field"),
             ], id="location_fields"),
             html.Div([
                 html.Div("Heading:", className="field-label"),
                 dcc.Input(id='heading_input',
                           value=webInterface_inst.module_signal_processor.heading,
-                          type='number', className="field-body")
+                          type='number', className="field-body-textbox")
             ], id="heading_field", className="field"),
             html.Div([
                 html.Div([
@@ -1055,15 +1079,15 @@ def generate_config_page_layout(webInterface_inst):
                 ], id="gps_status_field", className="field"),
                 html.Div([
                     html.Div("Latitude:", id="label_gps_latitude", className="field-label"),
-                    html.Div("-", id="body_gps_latitude", className="field-body-textbox")
+                    html.Div("-", id="body_gps_latitude", className="field-body")
                 ], className="field"),
                 html.Div([
                     html.Div("Longitude:", id="label_gps_longitude", className="field-label"),
-                    html.Div("-", id="body_gps_longitude", className="field-body-textbox")
+                    html.Div("-", id="body_gps_longitude", className="field-body")
                 ], className="field"),
                 html.Div([
                     html.Div("Heading:", id="label_gps_heading", className="field-label"),
-                    html.Div("-", id="body_gps_heading", className="field-body-textbox")
+                    html.Div("-", id="body_gps_heading", className="field-body")
                 ], className="field"),
             ], id="gps_status_info")
         ], className="card")
@@ -1086,7 +1110,6 @@ def generate_config_page_layout(webInterface_inst):
                     ],
             value=webInterface_inst.module_signal_processor.spectrum_fig_type, style={"display":"inline-block"},className="field-body"),
         ], className="field"),
-
 
         html.Div([
         html.Div("VFO Mode:", id="label_vfo_mode", className="field-label"),
@@ -1238,6 +1261,8 @@ def generate_doa_page_layout(webInterface_inst):
 def func(client, connect):
     if connect and len(app.clients)==1:
         fetch_dsp_data()
+        fetch_gps_data()
+        settings_change_watcher()
     elif not connect and len(app.clients)==0:
         webInterface_inst.dsp_timer.cancel()
 
@@ -1389,6 +1414,79 @@ def fetch_dsp_data():
 
     webInterface_inst.dsp_timer = Timer(.01, fetch_dsp_data)
     webInterface_inst.dsp_timer.start()
+
+def settings_change_watcher():
+    last_changed_time = os.stat(settings_file_path).st_mtime
+    time_delta = last_changed_time-webInterface_inst.last_changed_time_previous
+
+    # Load settings file
+    if(time_delta > 0): # If > 0, file was changed
+        global dsp_settings
+        if os.path.exists(settings_file_path):
+            with open(settings_file_path, 'r') as myfile:
+                dsp_settings = json.loads(myfile.read()) # update global dsp_settings, to ensureother functions using it get the most up to date values??
+
+        center_freq = dsp_settings.get("center_freq", 100.0)
+        gain = dsp_settings.get("uniform_gain", 1.4)
+
+        DOA_ant_alignment = dsp_settings.get("ant_arrangement")
+        webInterface_inst.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
+
+        webInterface_inst.module_signal_processor.en_DOA_estimation    = dsp_settings.get("en_doa", 0)
+        webInterface_inst.module_signal_processor.en_DOA_FB_avg        = dsp_settings.get("en_fbavg", 0)
+
+        # Create a function called load conf file, where we load the json config into global variables, and use that in the main init too
+        # WE NEED to put the DOA_ant_alignment text changer and ant_spacing_wavelength etc code into functions, since their used in multiple places in the code
+        webInterface_inst.module_signal_processor.DOA_ant_alignment = dsp_settings.get("ant_arrangement", "ULA")
+        webInterface_inst.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
+
+        webInterface_inst.custom_array_x_meters = np.float_(dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
+        webInterface_inst.custom_array_y_meters = np.float_(dsp_settings.get("custom_array_y_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
+        webInterface_inst.module_signal_processor.custom_array_x = webInterface_inst.custom_array_x_meters / (300 / webInterface_inst.module_receiver.daq_center_freq)
+        webInterface_inst.module_signal_processor.custom_array_y = webInterface_inst.custom_array_y_meters / (300 / webInterface_inst.module_receiver.daq_center_freq)
+
+        # Station Information
+        webInterface_inst.module_signal_processor.station_id    = dsp_settings.get("station_id", "NO-CALL")
+        webInterface_inst.location_source                       = dsp_settings.get("location_source", "None")
+        webInterface_inst.module_signal_processor.latitude      = dsp_settings.get("latitude", 0.0)
+        webInterface_inst.module_signal_processor.longitude     = dsp_settings.get("longitude", 0.0)
+        webInterface_inst.module_signal_processor.heading       = dsp_settings.get("heading", 0.0)
+        webInterface_inst.module_signal_processor.krakenpro_key = dsp_settings.get("krakenpro_key", 0.0)
+
+        # VFO Configuration
+        webInterface_inst.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
+        webInterface_inst.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", 'Standard')
+        webInterface_inst.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
+        webInterface_inst.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
+        webInterface_inst.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
+        webInterface_inst.compass_ofset = dsp_settings.get("compass_offset", 0)
+        webInterface_inst.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", 0)
+
+        for i in range(webInterface_inst.module_signal_processor.max_vfos):
+            webInterface_inst.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
+            webInterface_inst.module_signal_processor.vfo_freq[i] = float(dsp_settings.get("vfo_freq_" + str(i), 0))
+            webInterface_inst.module_signal_processor.vfo_squelch[i] = int(dsp_settings.get("vfo_squelch_" + str(i), 0))
+
+
+        webInterface_inst._doa_method = dsp_settings.get("doa_method", "MUSIC")
+        webInterface_inst._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
+        webInterface_inst.config_doa_in_signal_processor()
+
+        freq_delta = webInterface_inst.daq_center_freq - center_freq
+        gain_delta = webInterface_inst.module_receiver.daq_rx_gain - gain
+
+        if(abs(freq_delta) > 0.001 or abs(gain_delta) > 0.001):
+            webInterface_inst.daq_center_freq = center_freq
+            webInterface_inst.config_daq_rf(center_freq, gain)
+
+        webInterface_inst.needs_refresh = True
+
+    webInterface_inst.last_changed_time_previous = last_changed_time
+
+    webInterface_inst.settings_change_timer  = Timer(0.1, settings_change_watcher)
+    webInterface_inst.settings_change_timer.start()
+
+
 
 def fetch_gps_data():
     app.push_mods({
@@ -1558,6 +1656,11 @@ def set_station_id(station_id):
     webInterface_inst.module_signal_processor.station_id = valid_id
     return valid_id
 
+@app.callback_shared(None,
+                     [Input(component_id='krakenpro_key', component_property='value')])
+def set_kraken_pro_key(key):
+    webInterface_inst.module_signal_processor.krakenpro_key = key 
+
 
 # Enable GPS Relevant fields
 @app.callback([Output('fixed_heading_div', 'style'),
@@ -1568,6 +1671,16 @@ def toggle_gps_fields(toggle_value):
         return [{'display': 'block'}, {'display': 'block'}]
     else:
         return [{'display': 'none'}, {'display': 'none'}]
+
+# Enable of Disable Kraken Pro Key Box
+@app.callback(Output('krakenpro_field', 'style'),
+              [Input('doa_format_type', 'value')])
+def toggle_kraken_pro_key(doa_format_type):
+    if doa_format_type == "Kraken Pro Remote":
+        return {'display': 'block'}
+    else:
+        return {'display': 'none'}
+
 
 
 # Enable or Disable Heading Input Fields
@@ -1691,8 +1804,15 @@ def update_vfo_params(*args):
               Output("header_config"  ,"className"),
               Output("header_spectrum","className"),
               Output("header_doa"     ,"className")],
-              [Input("url"            , "pathname")])
+              [Input("url"            , "pathname")],
+)
 def display_page(pathname):
+
+    # CHECK CONTEXT, was this called by url or timer?
+
+    #if self.needs_refresh:
+    #    self.needs_refresh = False
+
     global spectrum_fig
     global doa_fig
     webInterface_inst.pathname = pathname
@@ -1920,7 +2040,7 @@ def plot_spectrum():
                Output('customy', 'style'),
                Output('antspacing', 'style')],
               [Input('radio_ant_arrangement', 'value')])
-def toggle_gps_fields(toggle_value):
+def toggle_custom_array_fields(toggle_value):
     if toggle_value == "UCA" or toggle_value == "ULA":
         return [{'display': 'none'}, {'display': 'none'}, {'display': 'block'}]
     else:
@@ -2243,6 +2363,21 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
     webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_dict['config_name']
 
     return ["/config"]
+
+
+@app.callback([Output("placeholder_update_rx", "children")],
+              [Input("interval-component", "n_intervals")],
+              [State("url", "pathname")],
+)
+def settings_change_refresh(toggle_value, pathname):
+    if webInterface_inst.needs_refresh:
+        webInterface_inst.needs_refresh = False
+
+        if pathname == "/" or pathname == "/init":
+            return ["upddate"]
+        elif pathname == "/config":
+            return ["update"]
+    return Output('dummy_output', 'children', '')
 
 
 @app.callback(
