@@ -725,8 +725,8 @@ def gen_scanning_vectors_custom(M, custom_x, custom_y):
     thetas =  np.linspace(0,359,360) # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
 #    x = np.array(custom_x)
 #    y = np.array(custom_y)
-    x = custom_x
-    y = custom_y
+    x = custom_x[0:M]
+    y = custom_y[0:M]
     scanning_vectors = np.zeros((M, thetas.size), dtype=np.complex64)
     complex_pi = 1j*2*np.pi
     for i in range(thetas.size):
