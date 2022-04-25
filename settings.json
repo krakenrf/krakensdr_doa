@@ -15,7 +15,7 @@
   "en_hw_check": 0,
   "logging_level": 5,
   "disable_tooltips": 0,
-  "doa_data_format": "Kraken Pro Remote",
+  "doa_data_format": "Kraken App",
   "station_id": "NOCALL",
   "location_source": "None",
   "latitude": 0.0,
