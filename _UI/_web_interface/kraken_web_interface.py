@@ -360,6 +360,7 @@ def read_config_file_dict(config_fname=daq_config_filename):
 
     ini_data['config_name'] = parser.get('meta', 'config_name')
     ini_data['num_ch'] = parser.getint('hw', 'num_ch')
+    ini_data['en_bias_tee'] = parser.get('hw', 'en_bias_tee')
     ini_data['daq_buffer_size'] = parser.getint('daq','daq_buffer_size')
     ini_data['sample_rate'] = parser.getint('daq','sample_rate')
     ini_data['en_noise_source_ctr'] =  parser.getint('daq','en_noise_source_ctr')
@@ -381,6 +382,7 @@ def read_config_file_dict(config_fname=daq_config_filename):
     ini_data['amplitude_tolerance'] = parser.getint('calibration','amplitude_tolerance')
     ini_data['phase_tolerance'] = parser.getint('calibration','phase_tolerance')
     ini_data['maximum_sync_fails'] = parser.getint('calibration','maximum_sync_fails')
+    ini_data['adpis_gains_init'] = parser.get('adpis', 'adpis_gains_init')
 
     ini_data['out_data_iface_type'] = parser.get('data_interface','out_data_iface_type')
 
@@ -393,8 +395,12 @@ def write_config_file_dict(param_dict):
     if not found:
         return -1
 
+    # DONT FORGET TO REWRITE en_bias_tee and adpis_gains_init
+
+
     parser['meta']['config_name']=str(param_dict['config_name'])
     parser['hw']['num_ch']=str(param_dict['num_ch'])
+    parser['hw']['en_bias_tee']=str(param_dict['en_bias_tee'])
     parser['daq']['daq_buffer_size']=str(param_dict['daq_buffer_size'])
     parser['daq']['sample_rate']=str(param_dict['sample_rate'])
     parser['daq']['en_noise_source_ctr']=str(param_dict['en_noise_source_ctr'])
@@ -418,6 +424,7 @@ def write_config_file_dict(param_dict):
     parser['calibration']['amplitude_tolerance']=str(param_dict['amplitude_tolerance'])
     parser['calibration']['phase_tolerance']=str(param_dict['phase_tolerance'])
     parser['calibration']['maximum_sync_fails']=str(param_dict['maximum_sync_fails'])
+    parser['adpis']['adpis_gains_init'] = str(param_dict['adpis_gains_init'])
 
     ini_parameters = parser._sections
 
