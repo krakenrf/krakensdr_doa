@@ -604,7 +604,7 @@ app.layout = html.Div([
             html.A("DoA Estimation" , className="header_inactive" , id="header_doa"     ,href="/doa"),
             ], className="header"),
 
-    dcc.Interval(id="interval-component", interval=1000, n_intervals=0),
+    dcc.Interval(id="settings-refresh-timer", interval=1000, n_intervals=0),
 
 
     html.Div(id="placeholder_start"                , style={"display":"none"}),
@@ -2366,7 +2366,7 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
 
 
 @app.callback([Output("placeholder_update_rx", "children")],
-              [Input("interval-component", "n_intervals")],
+              [Input("settings-refresh-timer", "n_intervals")],
               [State("url", "pathname")],
 )
 def settings_change_refresh(toggle_value, pathname):
