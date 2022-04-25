@@ -490,10 +490,16 @@ fig_layout = go.Layout(
 
 option = [{"label":"", "value": 1}]
 
-spectrum_fig = go.Figure(layout=fig_layout)
+def init_spectrum_fig(fig_layout, trace_colors):
 
-for m in range(0, webInterface_inst.module_receiver.M): #+1 for the auto decimation window selection
-    spectrum_fig.add_trace(go.Scattergl(
+    y=np.random.normal(0,1,2**3)
+    x=np.arange(2**3)
+
+
+    spectrum_fig = go.Figure(layout=fig_layout)
+
+    for m in range(0, webInterface_inst.module_receiver.M): #+1 for the auto decimation window selection
+        spectrum_fig.add_trace(go.Scattergl(
                                x=x,
                                y=y,
                                name="Channel {:d}".format(m),
@@ -502,9 +508,9 @@ for m in range(0, webInterface_inst.module_receiver.M): #+1 for the auto decimat
                                )
                            )
 
-for i in range(webInterface_inst.module_signal_processor.max_vfos): #webInterface_inst.module_signal_processor.active_vfos):
-    m = webInterface_inst.module_receiver.M + 2 #(2*i+1)
-    spectrum_fig.add_trace(go.Scattergl(
+    for i in range(webInterface_inst.module_signal_processor.max_vfos): #webInterface_inst.module_signal_processor.active_vfos):
+        m = webInterface_inst.module_receiver.M + 2 #(2*i+1)
+        spectrum_fig.add_trace(go.Scattergl(
                                x=x,
                                y=y,
                                name="VFO" + str(i),
@@ -515,8 +521,8 @@ for i in range(webInterface_inst.module_signal_processor.max_vfos): #webInterfac
                                )
                            )
 
-    m = webInterface_inst.module_receiver.M + 1 #(2*i+2)
-    spectrum_fig.add_trace(go.Scattergl(
+        m = webInterface_inst.module_receiver.M + 1 #(2*i+2)
+        spectrum_fig.add_trace(go.Scattergl(
                                x=x,
                                y=y,
                                name="VFO" + str(i) +" Squelch",
@@ -527,7 +533,7 @@ for i in range(webInterface_inst.module_signal_processor.max_vfos): #webInterfac
                                )
                            )
 
-    spectrum_fig.add_annotation(
+        spectrum_fig.add_annotation(
         x=415640000,
         y=-5,
         text="VFO-" + str(i),
@@ -535,7 +541,7 @@ for i in range(webInterface_inst.module_signal_processor.max_vfos): #webInterfac
         yshift=10,
         visible=False)
 
-spectrum_fig.update_xaxes(
+    spectrum_fig.update_xaxes(
                     color='rgba(255,255,255,1)',
                     title_font_size=20,
                     tickfont_size= 15, #figure_font_size,
@@ -546,7 +552,7 @@ spectrum_fig.update_xaxes(
                     showline=True,
                     #fixedrange=True
                     )
-spectrum_fig.update_yaxes(title_text="Amplitude [dB]",
+    spectrum_fig.update_yaxes(title_text="Amplitude [dB]",
                     color='rgba(255,255,255,1)',
                     title_font_size=20,
                     tickfont_size=figure_font_size,
@@ -557,8 +563,12 @@ spectrum_fig.update_yaxes(title_text="Amplitude [dB]",
                     #fixedrange=True
                     )
 
-spectrum_fig.update_layout(margin=go.layout.Margin(b=5, t=0))
-spectrum_fig.update(layout_showlegend=False)
+    spectrum_fig.update_layout(margin=go.layout.Margin(b=5, t=0))
+    spectrum_fig.update(layout_showlegend=False)
+
+    return spectrum_fig
+
+spectrum_fig = init_spectrum_fig(fig_layout, trace_colors)
 
 waterfall_init_x = list(range(0, webInterface_inst.module_signal_processor.spectrum_plot_size-1)) #[1] * webInterface_inst.module_signal_processor.spectrum_window_size
 waterfall_init = [[-80] * webInterface_inst.module_signal_processor.spectrum_plot_size] * 50
@@ -2500,11 +2510,16 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.module_signal_processor.usegps = doa_usegps
     webInterface_inst.module_signal_processor.gps_connected = doa_gps_connected
 
+    # This must be here, otherwise the gains dont reinit properly?
+    webInterface_inst.module_receiver.M = webInterface_inst.daq_ini_cfg_dict['num_ch']
+    print("M: " + str(webInterface_inst.module_receiver.M))
+
     webInterface_inst.config_doa_in_signal_processor()
     webInterface_inst.module_signal_processor.start()
 
-    # This must be here, otherwise the gains dont reinit properly?
-    webInterface_inst.module_receiver.M = webInterface_inst.daq_ini_cfg_dict['num_ch']
+    # Reinit the spectrum fig, because number of traces may have changed if tuner count is different
+    global spectrum_fig
+    spectrum_fig = init_spectrum_fig(fig_layout, trace_colors)
 
     # Restart signal processing
     webInterface_inst.start_processing()
