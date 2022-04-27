@@ -35,7 +35,7 @@ import dash_html_components as html
 import dash_devices as dash
 from dash_devices.dependencies import Input, Output, State
 
-from dash.exceptions import PreventUpdate
+#from dash.exceptions import PreventUpdate
 from dash.dash import no_update
 import plotly.graph_objects as go
 import plotly.express as px
@@ -158,8 +158,8 @@ class webInterface():
         self.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
         self.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
         self.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
-
         self.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", 0)
+        self.selected_vfo = 0
 
         for i in range(self.module_signal_processor.max_vfos):
             self.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
@@ -196,11 +196,13 @@ class webInterface():
         self.doa_results           = []
         self.doa_labels            = []
         self.doas                  = [] # Final measured DoAs [deg]
+        self.max_doas_list         = []
         self.doa_confidences       = []
         self.compass_ofset         = dsp_settings.get("compass_offset", 0)
         self.daq_dsp_latency       = 0 # [ms]
         self.max_amplitude         = 0 # Used to help setting the threshold level of the squelch
         self.avg_powers            = []
+        self.squelch_update        = []
         self.logger.info("Web interface object initialized")
 
         self.dsp_timer = None
@@ -293,7 +295,6 @@ class webInterface():
             data["vfo_freq_" + str(i)] = self.module_signal_processor.vfo_freq[i]
             data["vfo_squelch_" + str(i)] = self.module_signal_processor.vfo_squelch[i]
 
-        #settings.write(data)
         with open(settings_file_path, 'w') as outfile:
             json.dump(data, outfile, indent=2)
 
@@ -475,8 +476,8 @@ doa_trace_colors =	{
 }
 figure_font_size = 20
 
-y=np.random.normal(0,1,2**3)
-x=np.arange(2**3)
+y=np.random.normal(0,1,2**1)
+x=np.arange(2**1)
 
 fig_layout = go.Layout(
                  paper_bgcolor='rgba(0,0,0,0)',
@@ -491,54 +492,58 @@ fig_layout = go.Layout(
 option = [{"label":"", "value": 1}]
 
 def init_spectrum_fig(fig_layout, trace_colors):
-
-    y=np.random.normal(0,1,2**3)
-    x=np.arange(2**3)
-
-
     spectrum_fig = go.Figure(layout=fig_layout)
 
+    scatter_plot = go.Scatter(x=x,
+                              y=y,
+                              name="Channel {:d}".format(1),
+                              line = dict(color = trace_colors[1], width = 1),
+                              )
+
     for m in range(0, webInterface_inst.module_receiver.M): #+1 for the auto decimation window selection
-        spectrum_fig.add_trace(go.Scattergl(
-                               x=x,
-                               y=y,
-                               name="Channel {:d}".format(m),
-                               line = dict(color = trace_colors[m],
-                                           width = 1),
-                               )
-                           )
+        scatter = scatter_plot
+        scatter['name'] = "Channel {:d}".format(m)
+        scatter['line'] = dict(color = trace_colors[m], width = 1)
+        spectrum_fig.add_trace(scatter)
 
-    for i in range(webInterface_inst.module_signal_processor.max_vfos): #webInterface_inst.module_signal_processor.active_vfos):
-        m = webInterface_inst.module_receiver.M + 2 #(2*i+1)
-        spectrum_fig.add_trace(go.Scattergl(
-                               x=x,
-                               y=y,
-                               name="VFO" + str(i),
-                               line = dict(color = trace_colors[m], width = 0),
-                               opacity = 0.33,
-                               fill='toself',
-                               visible=False
-                               )
-                           )
+    VFO_color = dict(color = 'green', width=0) #trace_colors[webInterface_inst.module_receiver.M + 2], width = 0)
+    VFO_squelch_color = dict(color = 'yellow', width=0) #trace_colors[webInterface_inst.module_receiver.M + 1], width = 0)
+    VFO_scatter = go.Scatter(x=x,
+                             y=y,
+                             name="VFO" + str(0),
+                             line = VFO_color, #dict(color = trace_colors[m], width = 0),
+                             opacity = 0.33,
+                             fill='toself',
+                             visible=False
+                             )
+    for i in range(webInterface_inst.module_signal_processor.max_vfos):
+        scatter = VFO_scatter
+        scatter['name'] = "VFO" + str(i)
+        scatter['line'] = VFO_color
+        spectrum_fig.add_trace(scatter)
 
-        m = webInterface_inst.module_receiver.M + 1 #(2*i+2)
-        spectrum_fig.add_trace(go.Scattergl(
-                               x=x,
-                               y=y,
-                               name="VFO" + str(i) +" Squelch",
-                               line = dict(color = trace_colors[m], width = 0),
-                               opacity = 0.33,
-                               fill='toself',
-                               visible=False
-                               )
-                           )
+        scatter['name'] = "VFO" + str(i) +" Squelch"
+        scatter['line'] = VFO_squelch_color
+        spectrum_fig.add_trace(scatter)
 
         spectrum_fig.add_annotation(
         x=415640000,
         y=-5,
         text="VFO-" + str(i),
+        font=dict(size=12,family='Courier New'),
         showarrow=False,
         yshift=10,
+        visible=False)
+
+    # Now add the angle display text
+    for i in range(webInterface_inst.module_signal_processor.max_vfos): #webInterface_inst.module_signal_processor.active_vfos):
+        spectrum_fig.add_annotation(
+        x=415640000,
+        y=-5,
+        text="Angle",
+        font=dict(size=12,family='Courier New'),
+        showarrow=False,
+        yshift=-5,
         visible=False)
 
     spectrum_fig.update_xaxes(
@@ -563,17 +568,17 @@ def init_spectrum_fig(fig_layout, trace_colors):
                     #fixedrange=True
                     )
 
-    spectrum_fig.update_layout(margin=go.layout.Margin(b=5, t=0))
+    spectrum_fig.update_layout(margin=go.layout.Margin(b=5, t=0), hoverdistance=10000)
     spectrum_fig.update(layout_showlegend=False)
 
     return spectrum_fig
 
 spectrum_fig = init_spectrum_fig(fig_layout, trace_colors)
+waterfall_fig = go.Figure(layout=fig_layout)
 
 waterfall_init_x = list(range(0, webInterface_inst.module_signal_processor.spectrum_plot_size-1)) #[1] * webInterface_inst.module_signal_processor.spectrum_window_size
 waterfall_init = [[-80] * webInterface_inst.module_signal_processor.spectrum_plot_size] * 50
 
-waterfall_fig = go.Figure(layout=fig_layout)
 waterfall_fig.add_trace(go.Heatmapgl(
                          x=waterfall_init_x,
                          z=waterfall_init,
@@ -596,18 +601,18 @@ waterfall_fig.add_trace(go.Heatmapgl(
                          [0.9282, '#750000'],
                          [1.0, '#4A0000']]))
 
-
 waterfall_fig.update_xaxes(tickfont_size=1)
 waterfall_fig.update_yaxes(tickfont_size=1,  showgrid=False)
-
-waterfall_fig.update_layout(margin=go.layout.Margin(t=5), hoverdistance=1000) #Set hoverdistance to 1000 seems to be a hack that fixed clickData events not always firing
+waterfall_fig.update_layout(margin=go.layout.Margin(t=5), hoverdistance=10000) #Set hoverdistance to 1000 seems to be a hack that fixed clickData events not always firing
 
 doa_fig = go.Figure(layout=fig_layout)
 
 #app = dash.Dash(__name__, suppress_callback_exceptions=True, compress=True, update_title="") # cannot use update_title with dash_devices
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
-#app = dash.Dash(__name__, suppress_callback_exceptions=False)
 app.title = "KrakenSDR DoA"
+
+app.config.suppress_callback_exceptions=True
+
 
 # app_log = logger.getLogger('werkzeug')
 # app_log.setLevel(settings.logging_level*10)
@@ -622,7 +627,6 @@ app.layout = html.Div([
             ], className="header"),
 
     dcc.Interval(id="settings-refresh-timer", interval=1000, n_intervals=0),
-
 
     html.Div(id="placeholder_start"                , style={"display":"none"}),
     html.Div(id="placeholder_stop"                 , style={"display":"none"}),
@@ -666,8 +670,6 @@ def generate_config_page_layout(webInterface_inst):
     wavelength= 300 / webInterface_inst.daq_center_freq
     ant_spacing_wavelength = webInterface_inst.module_signal_processor.DOA_inter_elem_space
     ant_spacing_meter = webInterface_inst.ant_spacing_meters #round(wavelength * ant_spacing_wavelength, 3)
-    #ant_spacing_feet  = ant_spacing_meter*3.2808399
-    #ant_spacing_inch  = ant_spacing_meter*39.3700787
 
     cfg_decimated_bw = ((daq_cfg_dict['sample_rate']) / daq_cfg_dict['decimation_ratio']) / 10**3
     cfg_data_block_len = ( daq_cfg_dict['cpi_size'] / (cfg_decimated_bw) )
@@ -1355,14 +1357,6 @@ def fetch_dsp_data():
                 daq_status_update_flag = 1
             elif data_entry[0] == "update_rate":
                 webInterface_inst.daq_update_rate = data_entry[1]
-                # Set absoluth minimum
-                #if webInterface_inst.daq_update_rate < 0.1: webInterface_inst.daq_update_rate = 0.1
-                if webInterface_inst._update_rate_arr is None:
-                    webInterface_inst._update_rate_arr = np.ones(webInterface_inst._avg_win_size)*webInterface_inst.daq_update_rate
-                webInterface_inst._update_rate_arr[0:webInterface_inst._avg_win_size-2] = \
-                webInterface_inst._update_rate_arr[1:webInterface_inst._avg_win_size-1]
-                webInterface_inst._update_rate_arr[webInterface_inst._avg_win_size-1] = webInterface_inst.daq_update_rate
-                #webInterface_inst.page_update_rate = np.average(webInterface_inst._update_rate_arr)*0.8
             elif data_entry[0] == "latency":
                 webInterface_inst.daq_dsp_latency = data_entry[1] + webInterface_inst.daq_cpi
             elif data_entry[0] == "max_amplitude":
@@ -1383,36 +1377,20 @@ def fetch_dsp_data():
                 webInterface_inst.doa_results     = []
                 webInterface_inst.doa_labels      = []
                 webInterface_inst.doas            = []
+                webInterface_inst.max_doas_list   = []
                 webInterface_inst.doa_confidences = []
                 webInterface_inst.logger.debug("DoA estimation data fetched from signal processing que")
-            elif data_entry[0] == "DoA Bartlett":
+            elif data_entry[0] == "DoA Result":
                 webInterface_inst.doa_results.append(data_entry[1])
                 webInterface_inst.doa_labels.append(data_entry[0])
-            elif data_entry[0] == "DoA Bartlett Max":
+            elif data_entry[0] == "DoA Max":
                 webInterface_inst.doas.append(data_entry[1])
-            elif data_entry[0] == "DoA Bartlett confidence":
+            elif data_entry[0] == "DoA Confidence":
                 webInterface_inst.doa_confidences.append(data_entry[1])
-            elif data_entry[0] == "DoA Capon":
-                webInterface_inst.doa_results.append(data_entry[1])
-                webInterface_inst.doa_labels.append(data_entry[0])
-            elif data_entry[0] == "DoA Capon Max":
-                webInterface_inst.doas.append(data_entry[1])
-            elif data_entry[0] == "DoA Capon confidence":
-                webInterface_inst.doa_confidences.append(data_entry[1])
-            elif data_entry[0] == "DoA MEM":
-                webInterface_inst.doa_results.append(data_entry[1])
-                webInterface_inst.doa_labels.append(data_entry[0])
-            elif data_entry[0] == "DoA MEM Max":
-                webInterface_inst.doas.append(data_entry[1])
-            elif data_entry[0] == "DoA MEM confidence":
-                webInterface_inst.doa_confidences.append(data_entry[1])
-            elif data_entry[0] == "DoA MUSIC":
-                webInterface_inst.doa_results.append(data_entry[1])
-                webInterface_inst.doa_labels.append(data_entry[0])
-            elif data_entry[0] == "DoA MUSIC Max":
-                webInterface_inst.doas.append(data_entry[1])
-            elif data_entry[0] == "DoA MUSIC confidence":
-                webInterface_inst.doa_confidences.append(data_entry[1])
+            elif data_entry[0] == "DoA Max List":
+                webInterface_inst.max_doas_list = data_entry[1].copy()
+            elif data_entry[0] == "DoA Squelch":
+                webInterface_inst.squelch_update = data_entry[1].copy()
             else:
                 webInterface_inst.logger.warning("Unknown data entry: {:s}".format(data_entry[0]))
     except queue.Empty:
@@ -1500,7 +1478,7 @@ def settings_change_watcher():
 
     webInterface_inst.last_changed_time_previous = last_changed_time
 
-    webInterface_inst.settings_change_timer  = Timer(0.1, settings_change_watcher)
+    webInterface_inst.settings_change_timer  = Timer(1, settings_change_watcher)
     webInterface_inst.settings_change_timer.start()
 
 
@@ -1880,16 +1858,32 @@ def save_config_btn(input_value):
     [Input('spectrum-graph', 'clickData')]
 )
 def click_to_set_freq_spectrum(clickData):
-    idx = max(webInterface_inst.module_signal_processor.output_vfo, 0)
-    webInterface_inst.module_signal_processor.vfo_freq[idx] = int(clickData["points"][0]["x"])
+    set_clicked(clickData)
 
 @app.callback_shared(
     None,
     [Input('waterfall-graph', 'clickData')]
 )
 def click_to_set_waterfall_spectrum(clickData):
-    idx = max(webInterface_inst.module_signal_processor.output_vfo, 0)
-    webInterface_inst.module_signal_processor.vfo_freq[idx] = int(clickData["points"][0]["x"])
+    set_clicked(clickData)
+
+def set_clicked(clickData):
+    M = webInterface_inst.module_receiver.M
+    curveNumber = clickData["points"][0]["curveNumber"]
+
+    if curveNumber >= M:
+        vfo_idx = int((curveNumber - M) / 2)
+        webInterface_inst.selected_vfo = vfo_idx
+        if webInterface_inst.module_signal_processor.output_vfo >= 0:
+            webInterface_inst.module_signal_processor.output_vfo = vfo_idx
+    else:
+        idx = 0
+        if webInterface_inst.module_signal_processor.output_vfo >= 0:
+            idx = max(webInterface_inst.module_signal_processor.output_vfo, 0)
+        else:
+            idx = webInterface_inst.selected_vfo
+        webInterface_inst.module_signal_processor.vfo_freq[idx] = int(clickData["points"][0]["x"])
+
 
 def plot_doa():
     global doa_fig
@@ -1985,7 +1979,6 @@ def plot_spectrum():
         # Plot traces
         for m in range(np.size(webInterface_inst.spectrum, 0)-1):
             spectrum_fig.data[m]['x'] = x
-            #spectrum_fig.data[m]['y'] = y
 
         # Hide non active traces
         for i in range(webInterface_inst.module_signal_processor.max_vfos):
@@ -1993,12 +1986,14 @@ def plot_spectrum():
                 spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2)]['visible'] = True
                 spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2+1)]['visible'] = True
                 spectrum_fig.layout.annotations[i]['visible'] = True
+                spectrum_fig.layout.annotations[webInterface_inst.module_signal_processor.max_vfos+i]['visible'] = True
             else:
                 spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2)]['visible'] = False
                 spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2+1)]['visible'] = False
                 spectrum_fig.layout.annotations[i]['visible'] = False
+                spectrum_fig.layout.annotations[webInterface_inst.module_signal_processor.max_vfos+i]['visible'] = False
 
-        waterfall_fig.data[0]['x'] = x #[]
+        waterfall_fig.data[0]['x'] = x
         waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], showgrid=False)
 
         webInterface_inst.reset_spectrum_graph_flag = False
@@ -2011,7 +2006,6 @@ def plot_spectrum():
         # Update entire graph to update VFO-0 text. There is no way to just update annotations in Dash, but updating the entire spectrum is fast
         # enough to do on click
         x = webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6
-        update = False
         for i in range(webInterface_inst.module_signal_processor.active_vfos):
 
             # Find center of VFO display window
@@ -2020,34 +2014,38 @@ def plot_spectrum():
             reverseSpectrum = webInterface_inst.spectrum[webInterface_inst.module_receiver.M+(i*2+1),::-1]
             maxIndexReverse = reverseSpectrum.argmax()
             maxIndexReverse = len(reverseSpectrum) - maxIndexReverse - 1
-
             maxIndexCenter = (maxIndex + maxIndexReverse)//2
 
-            if x[maxIndexCenter] != spectrum_fig.layout.annotations[i]['x']: #webInterface_inst.oldMaxIndex:
-                update = True
-                maxX = x[maxIndexCenter]
-                spectrum_fig.layout.annotations[i]['x'] = maxX
+            # Update VFO Text Bearing
+            doa = webInterface_inst.max_doas_list[i]
+            if webInterface_inst._doa_fig_type == "Compass":
+                doa = (360-doa+webInterface_inst.compass_ofset)%360
+            spectrum_fig.layout.annotations[webInterface_inst.module_signal_processor.max_vfos + i]['text'] = \
+                                  str(doa)+"°"
+
+            maxX = x[maxIndexCenter]
+            spectrum_fig.layout.annotations[i]['x'] = maxX
+            spectrum_fig.layout.annotations[webInterface_inst.module_signal_processor.max_vfos + i]['x'] = maxX
+
+            # Update selected VFO border
+            width = 0
+            if webInterface_inst.selected_vfo == i:
+                width = 3
+
+            # Update squelch/active colors
+            if webInterface_inst.squelch_update[i]:
+                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2)]['line'] = dict(color='green', width=width)
+            else:
+                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2)]['line'] = dict(color='red', width=width)
 
         # Make y values too so that the graph does not rapidly flash with random data on every click
-        if update:
-            spectrum_fig.data[0]['x'] = x
-            for m in range(1, np.size(webInterface_inst.spectrum, 0)):
-                spectrum_fig.data[m-1]['y'] = webInterface_inst.spectrum[m,:]
+        spectrum_fig.data[0]['x'] = x
+        for m in range(1, np.size(webInterface_inst.spectrum, 0)):
+            spectrum_fig.data[m-1]['y'] = webInterface_inst.spectrum[m,:]
 
-            app.push_mods({
-                'spectrum-graph': {'figure': spectrum_fig}
-            })
-
-        x_app = []
-        y_app = []
-        for m in range(1, np.size(webInterface_inst.spectrum, 0)): #webInterface_inst.module_receiver.M+1):
-            x_app.append(x)
-            y_app.append(webInterface_inst.spectrum[m, :])
-
-        update_data = dict(x=x_app, y=y_app)
         z = webInterface_inst.spectrum[1, :]
         app.push_mods({
-            'spectrum-graph': {'extendData': [update_data, list(range(0,len(webInterface_inst.spectrum)-1)), len(webInterface_inst.spectrum[0,:])]},
+            'spectrum-graph': {'figure': spectrum_fig},
             'waterfall-graph': {'extendData': [dict(z = [[z]]), [0], 50]}, #Add up spectrum for waterfall
         })
 

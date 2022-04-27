@@ -112,6 +112,7 @@ class SignalProcessor(threading.Thread):
         self.DOA_Capon_res = np.ones(181)
         self.DOA_MEM_res = np.ones(181)
         self.DOA_MUSIC_res = np.ones(181)
+        self.DOA = np.ones(181)
         #self.DOA_theta = np.arange(0,181,1)
 
         # VFO settings
@@ -145,6 +146,9 @@ class SignalProcessor(threading.Thread):
         self.usegps = False
         self.gps_connected = False
         self.krakenpro_key = "0"
+
+        self.doa_max_list = [-1] * self.max_vfos
+
 
 
     def run(self):
@@ -238,6 +242,14 @@ class SignalProcessor(threading.Thread):
                         spectrum_window_size = len(self.spectrum[0,:])
                         active_vfos = self.active_vfos if self.vfo_mode == 'Standard' else 1
                         write_freq = 0
+                        update_list = [False] * self.max_vfos
+                        conf_val = 0
+                        theta_0 = 0
+                        DOA_str = ""
+                        confidence_str = ""
+                        max_power_level_str = ""
+                        doa_result_log = np.array([0,0,0])
+
                         for i in range(active_vfos):
                             # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
                             if abs(self.vfo_freq[i] - self.module_receiver.daq_center_freq) > sampling_freq/2 :
@@ -282,12 +294,6 @@ class SignalProcessor(threading.Thread):
                                 self.spectrum[self.channel_number+(2*i+2), :] = signal_window #np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
 
                             #-----> DoA ESIMATION <-----
-                            conf_val = 0
-                            theta_0 = 0
-                            DOA_str = ""
-                            confidence_str = ""
-                            max_power_level_str = ""
-                            doa_result_log = np.array([0,0,0])
 
                             if self.en_DOA_estimation and self.channel_number > 1 and max_amplitude > self.vfo_squelch[i] and (i == self.output_vfo or self.output_vfo < 0):
                                 write_freq = int(self.vfo_freq[i])
@@ -301,40 +307,27 @@ class SignalProcessor(threading.Thread):
                                 ##########################
                                 self.estimate_DOA(vfo_channel)
 
-                                que_data_packet.append(['doa_thetas', self.DOA_theta])
-                                if self.en_DOA_Bartlett:
-                                    doa_result_log = DOA_plot_util(self.DOA_Bartlett_res)
-                                    theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
-                                    conf_val = calculate_doa_papr(self.DOA_Bartlett_res)
-                                    que_data_packet.append(['DoA Bartlett', doa_result_log])
-                                    que_data_packet.append(['DoA Bartlett Max', theta_0])
-                                    que_data_packet.append(['DoA Bartlett confidence', conf_val])
-                                if self.en_DOA_Capon:
-                                    doa_result_log = DOA_plot_util(self.DOA_Capon_res)
-                                    theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
-                                    conf_val = calculate_doa_papr(self.DOA_Capon_res)
-                                    que_data_packet.append(['DoA Capon', doa_result_log])
-                                    que_data_packet.append(['DoA Capon Max', theta_0])
-                                    que_data_packet.append(['DoA Capon confidence', conf_val])
-                                if self.en_DOA_MEM:
-                                    doa_result_log = DOA_plot_util(self.DOA_MEM_res)
-                                    theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
-                                    conf_val = calculate_doa_papr(self.DOA_MEM_res)
-                                    que_data_packet.append(['DoA MEM', doa_result_log])
-                                    que_data_packet.append(['DoA MEM Max', theta_0])
-                                    que_data_packet.append(['DoA MEM confidence', conf_val])
-                                if self.en_DOA_MUSIC:
-                                    doa_result_log = DOA_plot_util(self.DOA_MUSIC_res)
-                                    theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
-                                    conf_val = calculate_doa_papr(self.DOA_MUSIC_res)
-                                    que_data_packet.append(['DoA MUSIC', doa_result_log])
-                                    que_data_packet.append(['DoA MUSIC Max', theta_0])
-                                    que_data_packet.append(['DoA MUSIC confidence', conf_val])
+                                #SIMPLIFY THIS (dont need to care about method)
+                                # And put all DOAs from the for loop into the que via appending
 
-                                DOA_str = str(int(theta_0))
-                                confidence_str = "{:.2f}".format(np.max(conf_val))
-                                max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
+                                doa_result_log = DOA_plot_util(self.DOA)
+                                theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
+                                conf_val = calculate_doa_papr(self.DOA)
+                                self.doa_max_list[i] = theta_0
+                                update_list[i] = True
 
+                        que_data_packet.append(['doa_thetas', self.DOA_theta])
+                        que_data_packet.append(['DoA Result', doa_result_log])
+                        que_data_packet.append(['DoA Max', theta_0])
+                        que_data_packet.append(['DoA Confidence', conf_val])
+                        que_data_packet.append(['DoA Squelch', update_list])
+
+                        DOA_str = str(int(theta_0))
+                        confidence_str = "{:.2f}".format(np.max(conf_val))
+                        max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
+
+                        # Outside the foor loop at this indent
+                        que_data_packet.append(['DoA Max List', self.doa_max_list])
 
                         if self.DOA_data_format == "DF Aggregator":
                             self.wr_xml(self.station_id,
@@ -437,15 +430,19 @@ class SignalProcessor(threading.Thread):
         if self.en_DOA_Bartlett:
             DOA_Bartlett_res = de.DOA_Bartlett(R, scanning_vectors)
             self.DOA_Bartlett_res = DOA_Bartlett_res
+            self.DOA = DOA_Bartlett_res
         if self.en_DOA_Capon:
             DOA_Capon_res = de.DOA_Capon(R, scanning_vectors)
             self.DOA_Capon_res = DOA_Capon_res
+            self.DOA = DOA_Capon_res
         if self.en_DOA_MEM:
             DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)
             self.DOA_MEM_res = DOA_MEM_res
+            self.DOA = DOA_MEM_res
         if self.en_DOA_MUSIC:
             DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1) #de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
             self.DOA_MUSIC_res = DOA_MUSIC_res
+            self.DOA = DOA_MUSIC_res
 
     # Enable GPS
     def enable_gps(self):
