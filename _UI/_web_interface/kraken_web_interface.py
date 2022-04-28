@@ -1298,6 +1298,8 @@ def func(client, connect):
         settings_change_watcher()
     elif not connect and len(app.clients)==0:
         webInterface_inst.dsp_timer.cancel()
+        webInterface_inst.gps_timer.cancel()
+        webInterface_inst.settings_change_timer.cancel()
 
 def fetch_dsp_data():
     daq_status_update_flag = 0
