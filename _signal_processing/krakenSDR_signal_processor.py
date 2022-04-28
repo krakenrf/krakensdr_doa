@@ -94,6 +94,7 @@ class SignalProcessor(threading.Thread):
         self.DOA_offset      = 0
         self.DOA_inter_elem_space = 0.5
         self.DOA_ant_alignment    = "ULA"
+        self.ula_direction = "Both"
         self.DOA_theta =  np.linspace(0,359,360)
         self.custom_array_x = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
         self.custom_array_y = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
@@ -191,7 +192,6 @@ class SignalProcessor(threading.Thread):
                         sampling_freq = sampling_freq//global_decimation_factor
 
                     self.data_ready = True
-                    #max_amplitude = -100
 
                     if self.spectrum_fig_type == 'Single':
                         m = 0
@@ -302,14 +302,12 @@ class SignalProcessor(threading.Thread):
                                 ##########################
                                 self.estimate_DOA(vfo_channel)
 
-                                #SIMPLIFY THIS (dont need to care about method)
-                                # And put all DOAs from the for loop into the que via appending
-
                                 doa_result_log = DOA_plot_util(self.DOA)
                                 theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
                                 conf_val = calculate_doa_papr(self.DOA)
                                 self.doa_max_list[i] = theta_0
                                 update_list[i] = True
+
 
                         que_data_packet.append(['doa_thetas', self.DOA_theta])
                         que_data_packet.append(['DoA Result', doa_result_log])
@@ -434,6 +432,14 @@ class SignalProcessor(threading.Thread):
         if self.en_DOA_MUSIC:
             DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1) #de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
             self.DOA = DOA_MUSIC_res
+
+        #ULA Array, choose bewteen the full omnidirecitonal 360 data, or forward/backward data only
+        if self.DOA_ant_alignment == "ULA" and self.ula_direction == "Forward":
+            self.DOA[90:270] = min(self.DOA)
+        elif self.DOA_ant_alignment == "ULA" and self.ula_direction == "Backward":
+            min_val = min(self.DOA)
+            self.DOA[0:90] = min_val
+            self.DOA[270:360] = min_val
 
     # Enable GPS
     def enable_gps(self):
@@ -620,7 +626,7 @@ def shift_filter(decimation_factor, freq, sampling_freq, padd):
 
 # This function takes the full data, and efficiently returns only a filtered and decimated requested channel
 # Efficient method: Create BANDPASS Filter for frequency of interest, decimate with that bandpass filter, then do the final shift
-#@jit(fastmath=True, cache=True, parallel=True)
+@jit(fastmath=True, cache=True, parallel=True)
 def channelize(processed_signal, freq, decimation_factor, sampling_freq):
     system = shift_filter(decimation_factor, freq, sampling_freq, 1.1) # Decimate with a BANDPASS filter
     decimated = signal.decimate(processed_signal, decimation_factor, ftype=system)
@@ -711,10 +717,24 @@ def gen_scanning_vectors(M, DOA_inter_elem_space, type):
 @njit(fastmath=True, cache=True)
 def gen_scanning_vectors_custom(M, custom_x, custom_y):
     thetas =  np.linspace(0,359,360) # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
-#    x = np.array(custom_x)
-#    y = np.array(custom_y)
-    x = custom_x[0:M]
-    y = custom_y[0:M]
+
+    x = np.zeros(M, dtype=np.float32)
+    y = np.zeros(M, dtype=np.float32)
+
+    for i in range(len(custom_x)):
+        if i > M: break
+        if custom_x[i] == '':
+            x[i] = 0
+        else:
+            x[i] = float(custom_x[i])
+
+    for i in range(len(custom_y)):
+        if i > M: break
+        if custom_x[i] == '':
+            y[i] = 0
+        else:
+            y[i] = float(custom_y[i])
+
     scanning_vectors = np.zeros((M, thetas.size), dtype=np.complex64)
     complex_pi = 1j*2*np.pi
     for i in range(thetas.size):

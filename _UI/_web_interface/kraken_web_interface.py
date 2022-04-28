@@ -35,7 +35,6 @@ import dash_html_components as html
 import dash_devices as dash
 from dash_devices.dependencies import Input, Output, State
 
-#from dash.exceptions import PreventUpdate
 from dash.dash import no_update
 import plotly.graph_objects as go
 import plotly.express as px
@@ -124,6 +123,7 @@ class webInterface():
         self.module_signal_processor.DOA_ant_alignment    = dsp_settings.get("ant_arrangement", "ULA")
         self.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
         self.module_signal_processor.DOA_inter_elem_space = self.ant_spacing_meters / (300 / self.module_receiver.daq_center_freq)
+        self.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
 
         self.custom_array_x_meters = np.float_(dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
         self.custom_array_y_meters = np.float_(dsp_settings.get("custom_array_y_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
@@ -255,6 +255,7 @@ class webInterface():
         # DOA Estimation
         data["en_doa"]          = self.module_signal_processor.en_DOA_estimation
         data["ant_arrangement"] = self.module_signal_processor.DOA_ant_alignment
+        data["ula_direction"] = self.module_signal_processor.ula_direction
         data["ant_spacing_meters"]     = self.ant_spacing_meters #self.module_signal_processor.DOA_inter_elem_space
         data["custom_array_x_meters"]     = ','.join(['%.2f' % num for num in self.custom_array_x_meters])
         data["custom_array_y_meters"]     = ','.join(['%.2f' % num for num in self.custom_array_y_meters])
@@ -266,7 +267,6 @@ class webInterface():
 
         # Web Interface
         data["en_hw_check"]         = dsp_settings.get("en_hw_check", 0)
-        #data["en_advanced_daq_cfg"] = dsp_settings.get("en_advanced_daq_cfg", 0)
         data["logging_level"]       = dsp_settings.get("logging_level", 0)
         data["disable_tooltips"]    = dsp_settings.get("disable_tooltips", 0)
 
@@ -977,6 +977,7 @@ def generate_config_page_layout(webInterface_inst):
         html.Div([html.Div("Enable DoA Estimation:", id="label_en_doa"     , className="field-label"),
                 dcc.Checklist(options=option     , id="en_doa_check"     , className="field-body", value=en_doa_values),
         ], className="field"),
+
         html.Div([html.Div("DoA Algorithm:", id="label_doa_method"     , className="field-label"),
         dcc.Dropdown(id='doa_method',
             options=[
@@ -987,9 +988,22 @@ def generate_config_page_layout(webInterface_inst):
                 ],
         value=webInterface_inst._doa_method, style={"display":"inline-block"},className="field-body")
         ], className="field"),
+
         html.Div([html.Div("Enable F-B Averaging:", id="label_en_fb_avg"   , className="field-label"),
                 dcc.Checklist(options=option     , id="en_fb_avg_check"   , className="field-body", value=en_fb_avg_values),
         ], className="field"),
+
+        html.Div([html.Div("ULA Output Direction:", id="label_ula_direction"     , className="field-label"),
+        dcc.Dropdown(id='ula_direction',
+            options=[
+                {'label': 'Both', 'value': 'Both'},
+                {'label': 'Forward'   , 'value': 'Forward'},
+                {'label': 'Backward'     , 'value': 'Backward'}
+                ],
+        value=webInterface_inst.module_signal_processor.ula_direction, style={"display":"inline-block"},className="field-body")
+        ], className="field"),
+
+
     ], className="card")
 
     #-----------------------------
@@ -1289,7 +1303,7 @@ def fetch_dsp_data():
     daq_status_update_flag = 0
     spectrum_update_flag   = 0
     doa_update_flag        = 0
-    freq_update            = no_update
+    freq_update            = 0 #no_update
     #############################################
     #      Fetch new data from back-end ques    #
     #############################################
@@ -1465,6 +1479,7 @@ def settings_change_watcher():
 
         webInterface_inst._doa_method = dsp_settings.get("doa_method", "MUSIC")
         webInterface_inst._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
+        webInterface_inst.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
         webInterface_inst.config_doa_in_signal_processor()
 
         freq_delta = webInterface_inst.daq_center_freq - center_freq
@@ -2073,11 +2088,12 @@ def toggle_custom_array_fields(toggle_value):
     Input(component_id ="radio_ant_arrangement"           , component_property='value'),
     Input(component_id ="doa_fig_type"           , component_property='value'),
     Input(component_id ="doa_method"           , component_property='value'),
+    Input(component_id ="ula_direction"           , component_property='value'),
     Input(component_id ="compass_ofset"           , component_property='value'),
     Input(component_id ="custom_array_x_meters"           , component_property='value'),
     Input(component_id ="custom_array_y_meters"           , component_property='value')],
 )
-def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, compass_ofset, custom_array_x_meters, custom_array_y_meters): #, input_value):
+def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, ula_direction, compass_ofset, custom_array_x_meters, custom_array_y_meters): #, input_value):
     webInterface_inst.ant_spacing_meters = spacing_meter
     wavelength = 300 / webInterface_inst.daq_center_freq
 
@@ -2134,6 +2150,8 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
     webInterface_inst.module_signal_processor.DOA_ant_alignment=ant_arrangement
     webInterface_inst._doa_fig_type = doa_fig_type
     webInterface_inst.compass_ofset = compass_ofset
+    webInterface_inst.module_signal_processor.ula_direction = ula_direction
+
 
     return [str(ant_spacing_wavelength), spacing_label, ambiguity_warning, smoothing_possibility]
 
@@ -2472,6 +2490,7 @@ def reconfig_daq_chain(input_value, freq, gain):
     DOA_inter_elem_space = webInterface_inst.module_signal_processor.DOA_inter_elem_space
     en_DOA_estimation = webInterface_inst.module_signal_processor.en_DOA_estimation
     en_DOA_FB_avg = webInterface_inst.module_signal_processor.en_DOA_FB_avg
+    ula_direction = webInterface_inst.module_signal_processor.ula_direction
 
     doa_format = webInterface_inst.module_signal_processor.DOA_data_format
     doa_station_id = webInterface_inst.module_signal_processor.station_id
@@ -2497,6 +2516,8 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.module_signal_processor.DOA_inter_elem_space = DOA_inter_elem_space
     webInterface_inst.module_signal_processor.en_DOA_estimation    = en_DOA_estimation
     webInterface_inst.module_signal_processor.en_DOA_FB_avg        = en_DOA_FB_avg
+    webInterface_inst.module_signal_processor.ula_direction        = ula_direction
+
 
     webInterface_inst.module_signal_processor.DOA_data_format = doa_format
     webInterface_inst.module_signal_processor.station_id = doa_station_id
