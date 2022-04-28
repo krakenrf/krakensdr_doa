@@ -108,12 +108,7 @@ class SignalProcessor(threading.Thread):
         self.spectrum_fig_type = 'Single' #0 Single, 1 Full
 
         # Result vectors
-        self.DOA_Bartlett_res = np.ones(181)
-        self.DOA_Capon_res = np.ones(181)
-        self.DOA_MEM_res = np.ones(181)
-        self.DOA_MUSIC_res = np.ones(181)
         self.DOA = np.ones(181)
-        #self.DOA_theta = np.arange(0,181,1)
 
         # VFO settings
         self.max_vfos = 16
@@ -429,19 +424,15 @@ class SignalProcessor(threading.Thread):
         # DOA estimation
         if self.en_DOA_Bartlett:
             DOA_Bartlett_res = de.DOA_Bartlett(R, scanning_vectors)
-            self.DOA_Bartlett_res = DOA_Bartlett_res
             self.DOA = DOA_Bartlett_res
         if self.en_DOA_Capon:
             DOA_Capon_res = de.DOA_Capon(R, scanning_vectors)
-            self.DOA_Capon_res = DOA_Capon_res
             self.DOA = DOA_Capon_res
         if self.en_DOA_MEM:
             DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)
-            self.DOA_MEM_res = DOA_MEM_res
             self.DOA = DOA_MEM_res
         if self.en_DOA_MUSIC:
             DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1) #de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
-            self.DOA_MUSIC_res = DOA_MUSIC_res
             self.DOA = DOA_MUSIC_res
 
     # Enable GPS
@@ -685,14 +676,14 @@ def DOA_MUSIC(R, scanning_vectors, signal_dimension, angle_resolution=1):
     theta_index=0
     for i in range(scanning_vectors[0,:].size):
         S_theta_ = scanning_vectors[:, i]
-        S_theta_  = S_theta_.T
+        S_theta_  = np.ascontiguousarray(S_theta_.T)
         ADORT[theta_index] = 1/np.abs(S_theta_.conj().T @ E_ct @ S_theta_)
         theta_index += 1
 
     return ADORT
 
 # Numba optimized version of pyArgus corr_matrix_estimate with "fast". About 2x faster on Pi4
-@njit(fastmath=True, cache=True)
+#@njit(fastmath=True, cache=True)
 def corr_matrix(X):
     N = X[0,:].size
     R = np.dot(X, X.conj().T)
