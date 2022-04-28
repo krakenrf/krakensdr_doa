@@ -114,8 +114,8 @@ class webInterface():
 
         # Instantiate and configure Kraken SDR modules
         self.module_receiver = ReceiverRTLSDR(data_que=self.rx_data_que, data_interface=self.data_interface, logging_level=self.logging_level)
-        self.module_receiver.daq_center_freq   = dsp_settings.get("center_freq", 100.0) * 10**6
-        self.module_receiver.daq_rx_gain       = dsp_settings.get("uniform_gain", 1.4)
+        self.module_receiver.daq_center_freq   = float(dsp_settings.get("center_freq", 100.0)) * 10**6
+        self.module_receiver.daq_rx_gain       = float(dsp_settings.get("uniform_gain", 1.4))
         self.module_receiver.rec_ip_addr       = dsp_settings.get("default_ip", "0.0.0.0")
 
         self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=self.logging_level)
@@ -178,7 +178,7 @@ class webInterface():
         self.daq_sample_delay_sync = 0
         self.daq_iq_sync           = 0
         self.daq_noise_source_state= 0
-        self.daq_center_freq       = dsp_settings.get("center_freq", 100.0)
+        self.daq_center_freq       = float(dsp_settings.get("center_freq", 100.0))
         self.daq_adc_fs            = 0 #"-"
         self.daq_fs                = 0 #"-"
         self.daq_cpi               = 0 #"-"
@@ -1416,8 +1416,8 @@ def settings_change_watcher():
             with open(settings_file_path, 'r') as myfile:
                 dsp_settings = json.loads(myfile.read()) # update global dsp_settings, to ensureother functions using it get the most up to date values??
 
-        center_freq = dsp_settings.get("center_freq", 100.0)
-        gain = dsp_settings.get("uniform_gain", 1.4)
+        center_freq = float(dsp_settings.get("center_freq", 100.0))
+        gain = float(dsp_settings.get("uniform_gain", 1.4))
 
         DOA_ant_alignment = dsp_settings.get("ant_arrangement")
         webInterface_inst.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
@@ -2371,6 +2371,7 @@ def toggle_basic_daq(toggle_value):
 def reload_cfg_page(config_fname, dummy_0, dummy_1):
     webInterface_inst.daq_ini_cfg_dict = read_config_file_dict(config_fname)
     webInterface_inst.tmp_daq_ini_cfg = webInterface_inst.daq_ini_cfg_dict['config_name']
+    webInterface_inst.needs_refresh = False
 
     return ["/config"]
 
@@ -2381,12 +2382,11 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
 )
 def settings_change_refresh(toggle_value, pathname):
     if webInterface_inst.needs_refresh:
-        webInterface_inst.needs_refresh = False
 
         if pathname == "/" or pathname == "/init":
-            return ["upddate"]
+            return ["upd"]
         elif pathname == "/config":
-            return ["update"]
+            return ["upd"]
     return Output('dummy_output', 'children', '')
 
 
