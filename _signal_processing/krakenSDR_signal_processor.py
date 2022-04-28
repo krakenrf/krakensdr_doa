@@ -86,11 +86,12 @@ class SignalProcessor(threading.Thread):
         self.dsp_decimation = 1
 
         # DOA processing options
-        self.en_DOA_Bartlett = False
-        self.en_DOA_Capon    = False
-        self.en_DOA_MEM      = False
-        self.en_DOA_MUSIC    = False
+        #self.en_DOA_Bartlett = False
+        #self.en_DOA_Capon    = False
+        #self.en_DOA_MEM      = False
+        #self.en_DOA_MUSIC    = False
         self.en_DOA_FB_avg   = False
+        self.DOA_algorithm   = "MUSIC"
         self.DOA_offset      = 0
         self.DOA_inter_elem_space = 0.5
         self.DOA_ant_alignment    = "ULA"
@@ -420,16 +421,16 @@ class SignalProcessor(threading.Thread):
             scanning_vectors = gen_scanning_vectors_custom(M, self.custom_array_x, self.custom_array_y)
 
         # DOA estimation
-        if self.en_DOA_Bartlett:
+        if self.DOA_algorithm == "Bartlett": #self.en_DOA_Bartlett:
             DOA_Bartlett_res = de.DOA_Bartlett(R, scanning_vectors)
             self.DOA = DOA_Bartlett_res
-        if self.en_DOA_Capon:
+        if self.DOA_algorithm == "Capon": #self.en_DOA_Capon:
             DOA_Capon_res = de.DOA_Capon(R, scanning_vectors)
             self.DOA = DOA_Capon_res
-        if self.en_DOA_MEM:
+        if self.DOA_algorithm == "MEM": #self.en_DOA_MEM:
             DOA_MEM_res = de.DOA_MEM(R, scanning_vectors,  column_select = 0)
             self.DOA = DOA_MEM_res
-        if self.en_DOA_MUSIC:
+        if self.DOA_algorithm == "MUSIC": #self.en_DOA_MUSIC:
             DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1) #de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
             self.DOA = DOA_MUSIC_res
 

@@ -105,7 +105,6 @@ class webInterface():
         self._avg_win_size = 10
         self._update_rate_arr = None
 
-        self._doa_method = dsp_settings.get("doa_method", "MUSIC")
         self._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
 
         self.sp_data_que = queue.Queue(1) # Que to communicate with the signal processing module
@@ -124,6 +123,8 @@ class webInterface():
         self.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
         self.module_signal_processor.DOA_inter_elem_space = self.ant_spacing_meters / (300 / self.module_receiver.daq_center_freq)
         self.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
+        self.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
+
 
         self.custom_array_x_meters = np.float_(dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
         self.custom_array_y_meters = np.float_(dsp_settings.get("custom_array_y_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
@@ -132,7 +133,6 @@ class webInterface():
 
         self.module_signal_processor.en_DOA_estimation    = dsp_settings.get("en_doa", 0)
         self.module_signal_processor.en_DOA_FB_avg        = dsp_settings.get("en_fbavg", 0)
-        self.config_doa_in_signal_processor()
         self.module_signal_processor.start()
 
         #############################################
@@ -260,7 +260,7 @@ class webInterface():
         data["custom_array_x_meters"]     = ','.join(['%.2f' % num for num in self.custom_array_x_meters])
         data["custom_array_y_meters"]     = ','.join(['%.2f' % num for num in self.custom_array_y_meters])
 
-        data["doa_method"]      = self._doa_method
+        data["doa_method"]      = self.module_signal_processor.DOA_algorithm
         data["en_fbavg"]        = self.module_signal_processor.en_DOA_FB_avg
         data["compass_offset"]  = self.compass_ofset
         data["doa_fig_type"]    = self._doa_fig_type
@@ -318,27 +318,6 @@ class webInterface():
         self.module_receiver.eth_close()
     def close(self):
         pass
-    def config_doa_in_signal_processor(self):
-        if self._doa_method == "Bartlett":
-            self.module_signal_processor.en_DOA_Bartlett = True
-            self.module_signal_processor.en_DOA_Capon    = False
-            self.module_signal_processor.en_DOA_MEM      = False
-            self.module_signal_processor.en_DOA_MUSIC    = False
-        elif self._doa_method == "Capon":
-            self.module_signal_processor.en_DOA_Bartlett = False
-            self.module_signal_processor.en_DOA_Capon    = True
-            self.module_signal_processor.en_DOA_MEM      = False
-            self.module_signal_processor.en_DOA_MUSIC    = False
-        elif self._doa_method == "MEM":
-            self.module_signal_processor.en_DOA_Bartlett = False
-            self.module_signal_processor.en_DOA_Capon    = False
-            self.module_signal_processor.en_DOA_MEM      = True
-            self.module_signal_processor.en_DOA_MUSIC    = False
-        elif self._doa_method == "MUSIC":
-            self.module_signal_processor.en_DOA_Bartlett = False
-            self.module_signal_processor.en_DOA_Capon    = False
-            self.module_signal_processor.en_DOA_MEM      = False
-            self.module_signal_processor.en_DOA_MUSIC    = True
     def config_daq_rf(self, f0, gain):
         """
             Configures the RF parameters in the DAQ module
@@ -986,7 +965,7 @@ def generate_config_page_layout(webInterface_inst):
                 {'label': 'MEM'     , 'value': 'MEM'},
                 {'label': 'MUSIC'   , 'value': 'MUSIC'}
                 ],
-        value=webInterface_inst._doa_method, style={"display":"inline-block"},className="field-body")
+        value=webInterface_inst.module_signal_processor.DOA_algorithm, style={"display":"inline-block"},className="field-body")
         ], className="field"),
 
         html.Div([html.Div("Enable F-B Averaging:", id="label_en_fb_avg"   , className="field-label"),
@@ -1305,7 +1284,7 @@ def fetch_dsp_data():
     daq_status_update_flag = 0
     spectrum_update_flag   = 0
     doa_update_flag        = 0
-    freq_update            = 0 #no_update
+    #freq_update            = 0 #no_update
     #############################################
     #      Fetch new data from back-end ques    #
     #############################################
@@ -1356,8 +1335,8 @@ def fetch_dsp_data():
                 webInterface_inst.daq_iq_sync           = iq_header.iq_sync_flag
                 webInterface_inst.daq_noise_source_state= iq_header.noise_source_state
 
-                if webInterface_inst.daq_center_freq != iq_header.rf_center_freq/10**6:
-                    freq_update = 1
+                #if webInterface_inst.daq_center_freq != iq_header.rf_center_freq/10**6:
+                #    freq_update = 1
 
                 webInterface_inst.daq_center_freq       = iq_header.rf_center_freq/10**6
                 webInterface_inst.daq_adc_fs            = iq_header.adc_sampling_freq/10**6
@@ -1446,8 +1425,6 @@ def settings_change_watcher():
         webInterface_inst.module_signal_processor.en_DOA_estimation    = dsp_settings.get("en_doa", 0)
         webInterface_inst.module_signal_processor.en_DOA_FB_avg        = dsp_settings.get("en_fbavg", 0)
 
-        # Create a function called load conf file, where we load the json config into global variables, and use that in the main init too
-        # WE NEED to put the DOA_ant_alignment text changer and ant_spacing_wavelength etc code into functions, since their used in multiple places in the code
         webInterface_inst.module_signal_processor.DOA_ant_alignment = dsp_settings.get("ant_arrangement", "ULA")
         webInterface_inst.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
@@ -1479,10 +1456,9 @@ def settings_change_watcher():
             webInterface_inst.module_signal_processor.vfo_squelch[i] = int(dsp_settings.get("vfo_squelch_" + str(i), 0))
 
 
-        webInterface_inst._doa_method = dsp_settings.get("doa_method", "MUSIC")
+        webInterface_inst.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
         webInterface_inst._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
         webInterface_inst.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
-        webInterface_inst.config_doa_in_signal_processor()
 
         freq_delta = webInterface_inst.daq_center_freq - center_freq
         gain_delta = webInterface_inst.module_receiver.daq_rx_gain - gain
@@ -2140,8 +2116,7 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
     else:
         webInterface_inst.module_signal_processor.en_DOA_estimation = False
 
-    webInterface_inst._doa_method=doa_method
-    webInterface_inst.config_doa_in_signal_processor()
+    webInterface_inst.module_signal_processor.DOA_algorithm = doa_method
 
     if en_fb_avg is not None and len(en_fb_avg):
         webInterface_inst.logger.debug("FB averaging enabled")
@@ -2535,7 +2510,6 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.module_receiver.M = webInterface_inst.daq_ini_cfg_dict['num_ch']
     print("M: " + str(webInterface_inst.module_receiver.M))
 
-    webInterface_inst.config_doa_in_signal_processor()
     webInterface_inst.module_signal_processor.start()
 
     # Reinit the spectrum fig, because number of traces may have changed if tuner count is different
