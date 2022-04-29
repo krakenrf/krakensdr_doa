@@ -2032,8 +2032,8 @@ def plot_spectrum():
                 spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2)]['line'] = dict(color='red', width=width)
 
         # Make y values too so that the graph does not rapidly flash with random data on every click
-        spectrum_fig.data[0]['x'] = x
         for m in range(1, np.size(webInterface_inst.spectrum, 0)):
+            spectrum_fig.data[m-1]['x'] = x
             spectrum_fig.data[m-1]['y'] = webInterface_inst.spectrum[m,:]
 
         z = webInterface_inst.spectrum[1, :]
@@ -2382,11 +2382,9 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
 )
 def settings_change_refresh(toggle_value, pathname):
     if webInterface_inst.needs_refresh:
+        if pathname == "/" or pathname == "/init" or pathname == "/config":
+            return ["upd"]
 
-        if pathname == "/" or pathname == "/init":
-            return ["upd"]
-        elif pathname == "/config":
-            return ["upd"]
     return Output('dummy_output', 'children', '')
 
 
