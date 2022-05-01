@@ -198,7 +198,7 @@ class webInterface():
         self.doas                  = [] # Final measured DoAs [deg]
         self.max_doas_list         = []
         self.doa_confidences       = []
-        self.compass_ofset         = dsp_settings.get("compass_offset", 0)
+        self.compass_offset         = dsp_settings.get("compass_offset", 0)
         self.daq_dsp_latency       = 0 # [ms]
         self.max_amplitude         = 0 # Used to help setting the threshold level of the squelch
         self.avg_powers            = []
@@ -262,7 +262,7 @@ class webInterface():
 
         data["doa_method"]      = self.module_signal_processor.DOA_algorithm
         data["en_fbavg"]        = self.module_signal_processor.en_DOA_FB_avg
-        data["compass_offset"]  = self.compass_ofset
+        data["compass_offset"]  = self.compass_offset
         data["doa_fig_type"]    = self._doa_fig_type
 
         # Web Interface
@@ -1005,7 +1005,7 @@ def generate_config_page_layout(webInterface_inst):
 
         html.Div([
         html.Div("Compass Offset [deg]:", className="field-label"),
-        dcc.Input(id="compass_ofset", value=webInterface_inst.compass_ofset, type='number', debounce=True, className="field-body-textbox"),
+        dcc.Input(id="compass_offset", value=webInterface_inst.compass_offset, type='number', debounce=True, className="field-body-textbox"),
         ], className="field"),
 
     ], className="card")
@@ -1447,7 +1447,7 @@ def settings_change_watcher():
         webInterface_inst.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
         webInterface_inst.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
         webInterface_inst.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
-        webInterface_inst.compass_ofset = dsp_settings.get("compass_offset", 0)
+        webInterface_inst.compass_offset = dsp_settings.get("compass_offset", 0)
         webInterface_inst.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", 0)
 
         for i in range(webInterface_inst.module_signal_processor.max_vfos):
@@ -1926,7 +1926,7 @@ def plot_doa():
             # --- Compass  ---
             elif webInterface_inst._doa_fig_type == 'Compass' :
                 doa_fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
-                                        angularaxis = dict(rotation=90+webInterface_inst.compass_ofset,
+                                        angularaxis = dict(rotation=90+webInterface_inst.compass_offset,
                                                             direction="clockwise",
                                                             tickfont_size = figure_font_size)
                                                           )
@@ -1934,7 +1934,7 @@ def plot_doa():
 
                 label = "DOA Angle"
 
-                doa_fig.add_trace(go.Scatterpolargl(theta=x, #(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360,
+                doa_fig.add_trace(go.Scatterpolargl(theta=x, #(360-webInterface_inst.doa_thetas+webInterface_inst.compass_offset)%360,
                                                 r=y, #doa_result,
                                                 name= label,
                                                # line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
@@ -1953,8 +1953,8 @@ def plot_doa():
             if webInterface_inst._doa_fig_type == 'Polar' :
                 update_data = dict(theta=[webInterface_inst.doa_thetas], r=[webInterface_inst.doa_results[0]])
             elif webInterface_inst._doa_fig_type == 'Compass' :
-                doa_max_str = (360-webInterface_inst.doas[0]+webInterface_inst.compass_ofset)%360
-                update_data = dict(theta=[(360-webInterface_inst.doa_thetas+webInterface_inst.compass_ofset)%360], r=[webInterface_inst.doa_results[0]])
+                doa_max_str = (360-webInterface_inst.doas[0]+webInterface_inst.compass_offset)%360
+                update_data = dict(theta=[(360-webInterface_inst.doa_thetas+webInterface_inst.compass_offset)%360], r=[webInterface_inst.doa_results[0]])
 
             app.push_mods({
                 'doa-graph': {'extendData': [update_data, [0], len(webInterface_inst.doa_thetas)]},
@@ -2012,7 +2012,7 @@ def plot_spectrum():
             # Update VFO Text Bearing
             doa = webInterface_inst.max_doas_list[i]
             if webInterface_inst._doa_fig_type == "Compass":
-                doa = (360-doa+webInterface_inst.compass_ofset)%360
+                doa = (360-doa+webInterface_inst.compass_offset)%360
             spectrum_fig.layout.annotations[webInterface_inst.module_signal_processor.max_vfos + i]['text'] = \
                                   str(doa)+"°"
 
@@ -2067,11 +2067,11 @@ def toggle_custom_array_fields(toggle_value):
     Input(component_id ="doa_fig_type"           , component_property='value'),
     Input(component_id ="doa_method"           , component_property='value'),
     Input(component_id ="ula_direction"           , component_property='value'),
-    Input(component_id ="compass_ofset"           , component_property='value'),
+    Input(component_id ="compass_offset"           , component_property='value'),
     Input(component_id ="custom_array_x_meters"           , component_property='value'),
     Input(component_id ="custom_array_y_meters"           , component_property='value')],
 )
-def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, ula_direction, compass_ofset, custom_array_x_meters, custom_array_y_meters): #, input_value):
+def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, ula_direction, compass_offset, custom_array_x_meters, custom_array_y_meters): #, input_value):
     webInterface_inst.ant_spacing_meters = spacing_meter
     wavelength = 300 / webInterface_inst.daq_center_freq
 
@@ -2126,7 +2126,7 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
 
     webInterface_inst.module_signal_processor.DOA_ant_alignment=ant_arrangement
     webInterface_inst._doa_fig_type = doa_fig_type
-    webInterface_inst.compass_ofset = compass_ofset
+    webInterface_inst.compass_offset = compass_offset
     webInterface_inst.module_signal_processor.ula_direction = ula_direction
 
 
