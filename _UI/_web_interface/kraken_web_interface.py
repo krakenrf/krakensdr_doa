@@ -636,6 +636,7 @@ def generate_config_page_layout(webInterface_inst):
         # Read available preconfig files
         preconfigs = get_preconfigs(daq_preconfigs_path)
 
+    en_data_record        =[1] if webInterface_inst.module_signal_processor.en_data_record    else []
     en_doa_values         =[1] if webInterface_inst.module_signal_processor.en_DOA_estimation else []
     en_fb_avg_values      =[1] if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []
 
@@ -1105,6 +1106,32 @@ def generate_config_page_layout(webInterface_inst):
         ], className="card")
 
 
+    recording_config_card = \
+        html.Div([
+            html.H2("Local Data Recording", id="data_recording_title"),
+            html.Div([
+                html.Div("Filename:", id="filename_label", className="field-label"),
+                dcc.Input(id='filename_input',
+                          value=webInterface_inst.module_signal_processor.data_recording_file_name, #webInterface_inst.module_signal_processor.station_id,
+                          type='text', className="field-body-textbox")
+            ], className="field"),
+            html.Div([
+                html.Div("Data Format:", id="data_format_label", className="field-label"),
+                dcc.Dropdown(id='data_format_type',
+                             options=[
+                                 {'label': 'Kraken App', 'value': 'Kraken App'},
+                                 {'label': 'Kraken Pro JSON', 'value': 'Kraken Pro Local'},
+                                 {'label': 'Kerberos App', 'value': 'Kerberos App'},
+                             ],
+                             value='Kraken App', #webInterface_inst.module_signal_processor.DOA_data_format,
+                             style={"display": "inline-block"}, className="field-body"),
+            ], className="field"),
+            html.Div([html.Div("Enable Local Data Recording:", id="label_en_data_record"     , className="field-label"),
+                dcc.Checklist(options=option     , id="en_data_record"     , className="field-body", value=en_data_record),
+            ], className="field"),
+        ], className="card")
+
+
 
     #-----------------------------
     #  VFO Configuration Card
@@ -1220,7 +1247,7 @@ def generate_config_page_layout(webInterface_inst):
                 ], className="field"),
         ], id="vfo"+str(i), className="card", style = {'display': 'block'} if i < webInterface_inst.module_signal_processor.active_vfos else {'display': 'none'} )
 
-    config_page_component_list = [start_stop_card, daq_status_card, daq_config_card, vfo_config_card, dsp_config_card, display_options_card, station_config_card]
+    config_page_component_list = [start_stop_card, daq_status_card, daq_config_card, vfo_config_card, dsp_config_card, display_options_card, station_config_card, recording_config_card]
 
     for i in range(webInterface_inst.module_signal_processor.max_vfos):
         config_page_component_list.append(vfo_card[i])
@@ -1624,10 +1651,20 @@ def update_daq_params(input_value, f0, gain):
            'body_ant_spacing_wavelength': {'children': str(ant_spacing_wavelength)},
     })
 
-#    return str(ant_spacing_wavelength)
+@app.callback_shared(
+    None,
+    [Input(component_id="filename_input", component_property="value"),
+    Input(component_id="en_data_record", component_property="value")]
+)
+def update_data_recording_params(filename, en_data_record):
+    webInterface_inst.data_recording_file_name = filename
+    #TODO: Call sig processor file update function here
 
-    #webInterface_inst.daq_center_freq
-    #return '1'
+    if en_data_record is not None and len(en_data_record):
+        webInterface_inst.module_signal_processor.en_data_record   = True
+    else:
+        webInterface_inst.module_signal_processor.en_data_record   = False
+
 
 # Set DOA Output Format
 @app.callback_shared(None,

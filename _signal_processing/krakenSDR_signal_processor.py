@@ -73,6 +73,13 @@ class SignalProcessor(threading.Thread):
         doa_res_file_path = os.path.join(os.path.join(root_path,"_android_web","DOA_value.html"))
         self.DOA_res_fd = open(doa_res_file_path,"w+")
 
+        # TODO: NEED to have a funtion to update the file name if changed in the web ui
+        self.data_recording_file_name = "mydata.csv"
+        data_recording_file_path = os.path.join(os.path.join(root_path,self.data_recording_file_name))
+        self.data_record_fd = open(data_recording_file_path,"a+")
+        self.en_data_record = False
+
+
         self.module_receiver = module_receiver
         self.data_que = data_que
         self.en_spectrum = False
@@ -377,6 +384,18 @@ class SignalProcessor(threading.Thread):
                         else:
                             self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
 
+                        if self.en_data_record:
+                            self.wr_csv_record(self.station_id,
+                                        DOA_str,
+                                        confidence_str,
+                                        max_power_level_str,
+                                        write_freq,
+                                        doa_result_log,
+                                        self.latitude,
+                                        self.longitude,
+                                        self.heading,
+                                        "Kraken")
+
                         if self.hasgps:
                             self.update_location()
 
@@ -500,6 +519,25 @@ class SignalProcessor(threading.Thread):
         self.DOA_res_fd.write(html_str)
         self.DOA_res_fd.truncate()
         # print("Wrote XML")
+
+    def wr_csv_record(self, station_id, DOA_str, confidence_str, max_power_level_str,
+               freq, doa_result_log, latitude, longitude, heading, app_type):
+        if app_type == "Kraken":
+            epoch_time = int(time.time() * 1000)
+
+            # KrakenSDR Android App Output
+            message = f"{epoch_time}, {DOA_str}, {confidence_str}, {max_power_level_str}, "
+            message += f"{freq}, {self.DOA_ant_alignment}, {self.latency}, {station_id}, "
+            message += f"{latitude}, {longitude}, {heading}, "
+            message += "R, R, R, R, R, R"  # Reserve 6 entries for other things
+
+            doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
+            for i in range(len(doa_result_log)):
+                message += ", " + "{:.2f}".format(doa_result_log[i])
+
+            message += " \n"
+            self.data_record_fd.write(message)
+
 
     def wr_csv(self, station_id, DOA_str, confidence_str, max_power_level_str,
                freq, doa_result_log, latitude, longitude, heading, app_type):
