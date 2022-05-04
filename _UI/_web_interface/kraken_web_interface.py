@@ -1021,7 +1021,7 @@ def generate_config_page_layout(webInterface_inst):
                 html.Div("Station ID:", id="station_id_label", className="field-label"),
                 dcc.Input(id='station_id_input',
                           value=webInterface_inst.module_signal_processor.station_id,
-                          type='text', className="field-body-textbox")
+                          type='text', className="field-body-textbox", debounce=True)
             ], className="field"),
             html.Div([
                 html.Div("DOA Data Format:", id="doa_format_label", className="field-label"),
@@ -1032,7 +1032,6 @@ def generate_config_page_layout(webInterface_inst):
                                  {'label': 'Kraken Pro Remote', 'value': 'Kraken Pro Remote'},
                                  {'label': 'Kerberos App', 'value': 'Kerberos App'},
                                  {'label': 'DF Aggregator', 'value': 'DF Aggregator'},
-                                 {'label': 'JSON', 'value': 'JSON', 'disabled': True},
                              ],
                              value=webInterface_inst.module_signal_processor.DOA_data_format,
                              style={"display": "inline-block"}, className="field-body"),
@@ -1070,20 +1069,20 @@ def generate_config_page_layout(webInterface_inst):
                     html.Div("Latitude:", className="field-label"),
                     dcc.Input(id='latitude_input',
                               value=webInterface_inst.module_signal_processor.latitude,
-                              type='number', className="field-body-textbox")
+                              type='number', className="field-body-textbox", debounce=True)
                 ], id="latitude_field", className="field"),
                 html.Div([
                     html.Div("Longitude:", className="field-label"),
                     dcc.Input(id='longitude_input',
                               value=webInterface_inst.module_signal_processor.longitude,
-                              type='number', className="field-body-textbox")
+                              type='number', className="field-body-textbox", debounce=True)
                 ], id="logitude_field", className="field"),
             ], id="location_fields"),
             html.Div([
                 html.Div("Heading:", className="field-label"),
                 dcc.Input(id='heading_input',
                           value=webInterface_inst.module_signal_processor.heading,
-                          type='number', className="field-body-textbox")
+                          type='number', className="field-body-textbox", debounce=True)
             ], id="heading_field", className="field"),
             html.Div([
                 html.Div([
@@ -1113,22 +1112,33 @@ def generate_config_page_layout(webInterface_inst):
                 html.Div("Filename:", id="filename_label", className="field-label"),
                 dcc.Input(id='filename_input',
                           value=webInterface_inst.module_signal_processor.data_recording_file_name, #webInterface_inst.module_signal_processor.station_id,
-                          type='text', className="field-body-textbox")
+                          type='text', className="field-body-textbox", debounce=True)
             ], className="field"),
             html.Div([
                 html.Div("Data Format:", id="data_format_label", className="field-label"),
                 dcc.Dropdown(id='data_format_type',
                              options=[
                                  {'label': 'Kraken App', 'value': 'Kraken App'},
-                                 {'label': 'Kraken Pro JSON', 'value': 'Kraken Pro Local'},
-                                 {'label': 'Kerberos App', 'value': 'Kerberos App'},
                              ],
                              value='Kraken App', #webInterface_inst.module_signal_processor.DOA_data_format,
                              style={"display": "inline-block"}, className="field-body"),
             ], className="field"),
+            html.Div([
+                html.Div("Write Interval (s):", id="write_interval_label", className="field-label"),
+                dcc.Input(id='write_interval_input',
+                          value=webInterface_inst.module_signal_processor.write_interval, #webInterface_inst.module_signal_processor.station_id,
+                          type='text', className="field-body-textbox", debounce=True)
+            ], className="field"),
+
             html.Div([html.Div("Enable Local Data Recording:", id="label_en_data_record"     , className="field-label"),
                 dcc.Checklist(options=option     , id="en_data_record"     , className="field-body", value=en_data_record),
             ], className="field"),
+
+            html.Div([
+                html.Button("Download File", id="btn_download_file", className="btn"),
+                dcc.Download(id="download_recorded_file")
+            ], className="field"),
+
         ], className="card")
 
 
@@ -1654,10 +1664,12 @@ def update_daq_params(input_value, f0, gain):
 @app.callback_shared(
     None,
     [Input(component_id="filename_input", component_property="value"),
-    Input(component_id="en_data_record", component_property="value")]
+    Input(component_id="en_data_record", component_property="value"),
+    Input(component_id="write_interval_input", component_property="value")]
 )
-def update_data_recording_params(filename, en_data_record):
-    webInterface_inst.data_recording_file_name = filename
+def update_data_recording_params(filename, en_data_record, write_interval):
+    #webInterface_inst.module_signal_processor.data_recording_file_name = filename
+    webInterface_inst.module_signal_processor.update_recording_filename(filename)
     #TODO: Call sig processor file update function here
 
     if en_data_record is not None and len(en_data_record):
@@ -1665,6 +1677,14 @@ def update_data_recording_params(filename, en_data_record):
     else:
         webInterface_inst.module_signal_processor.en_data_record   = False
 
+    webInterface_inst.module_signal_processor.write_interval = float(write_interval)
+
+@app.callback_shared(
+    Output("download_recorded_file", "data"), 
+    [Input("btn_download_file", "n_clicks")]
+)
+def send_recorded_file(n_clicks):
+    return dcc.send_file(os.path.join(os.path.join(webInterface_inst.module_signal_processor.root_path,webInterface_inst.module_signal_processor.data_recording_file_name)))
 
 # Set DOA Output Format
 @app.callback_shared(None,

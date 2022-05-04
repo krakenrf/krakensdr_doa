@@ -69,16 +69,17 @@ class SignalProcessor(threading.Thread):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging_level)
 
-        root_path      = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-        doa_res_file_path = os.path.join(os.path.join(root_path,"_android_web","DOA_value.html"))
+        self.root_path      = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        doa_res_file_path = os.path.join(os.path.join(self.root_path,"_android_web","DOA_value.html"))
         self.DOA_res_fd = open(doa_res_file_path,"w+")
 
         # TODO: NEED to have a funtion to update the file name if changed in the web ui
         self.data_recording_file_name = "mydata.csv"
-        data_recording_file_path = os.path.join(os.path.join(root_path,self.data_recording_file_name))
+        data_recording_file_path = os.path.join(os.path.join(self.root_path,self.data_recording_file_name))
         self.data_record_fd = open(data_recording_file_path,"a+")
         self.en_data_record = False
-
+        self.write_interval = 1
+        self.last_write_time = 0
 
         self.module_receiver = module_receiver
         self.data_que = data_que
@@ -152,7 +153,6 @@ class SignalProcessor(threading.Thread):
         self.krakenpro_key = "0"
 
         self.doa_max_list = [-1] * self.max_vfos
-
 
 
     def run(self):
@@ -385,7 +385,10 @@ class SignalProcessor(threading.Thread):
                             self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
 
                         if self.en_data_record:
-                            self.wr_csv_record(self.station_id,
+                            time_elapsed = time.time() - self.last_write_time
+                            if time_elapsed > self.write_interval:
+                                self.last_write_time = time.time()
+                                self.wr_csv_record(self.station_id,
                                         DOA_str,
                                         confidence_str,
                                         max_power_level_str,
@@ -528,8 +531,8 @@ class SignalProcessor(threading.Thread):
             # KrakenSDR Android App Output
             message = f"{epoch_time}, {DOA_str}, {confidence_str}, {max_power_level_str}, "
             message += f"{freq}, {self.DOA_ant_alignment}, {self.latency}, {station_id}, "
-            message += f"{latitude}, {longitude}, {heading}, "
-            message += "R, R, R, R, R, R"  # Reserve 6 entries for other things
+            message += f"{latitude}, {longitude}, {heading}, {heading}, "
+            message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation if needed
 
             doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
             for i in range(len(doa_result_log)):
@@ -537,7 +540,7 @@ class SignalProcessor(threading.Thread):
 
             message += " \n"
             self.data_record_fd.write(message)
-
+            #self.data_record_fd.flush() #Only needed for testing
 
     def wr_csv(self, station_id, DOA_str, confidence_str, max_power_level_str,
                freq, doa_result_log, latitude, longitude, heading, app_type):
@@ -548,8 +551,8 @@ class SignalProcessor(threading.Thread):
             # KrakenSDR Android App Output
             message = f"{epoch_time}, {DOA_str}, {confidence_str}, {max_power_level_str}, "
             message += f"{freq}, {self.DOA_ant_alignment}, {self.latency}, {station_id}, "
-            message += f"{latitude}, {longitude}, {heading}, "
-            message += "R, R, R, R, R, R"  # Reserve 6 entries for other things
+            message += f"{latitude}, {longitude}, {heading}, {heading}, "
+            message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation 
 
             doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
             for i in range(len(doa_result_log)):
@@ -599,6 +602,13 @@ class SignalProcessor(threading.Thread):
             r = requests.post('http://127.0.0.1:8042/doapost', json=jsonDict)
         except requests.exceptions.RequestException as e:
             self.logger.error("Error while posting to local websocket server")
+
+    def update_recording_filename(self, filename):
+        self.data_record_fd.close()
+        self.data_recording_file_name = filename
+        data_recording_file_path = os.path.join(os.path.join(self.root_path,self.data_recording_file_name))
+        self.data_record_fd = open(data_recording_file_path,"a+")
+        self.en_data_record = False
 
 
 def calc_sync(iq_samples):
