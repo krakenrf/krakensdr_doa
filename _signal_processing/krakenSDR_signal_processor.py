@@ -610,6 +610,9 @@ class SignalProcessor(threading.Thread):
         self.data_record_fd = open(data_recording_file_path,"a+")
         self.en_data_record = False
 
+    def get_recording_filesize(self):
+        return round(os.path.getsize(os.path.join(os.path.join(self.root_path,self.data_recording_file_name))) / 1048576, 2) # Convert to MB
+
 
 def calc_sync(iq_samples):
     iq_diffs   = np.ones(4, dtype=np.complex64)

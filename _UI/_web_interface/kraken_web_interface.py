@@ -1134,6 +1134,10 @@ def generate_config_page_layout(webInterface_inst):
                 dcc.Checklist(options=option     , id="en_data_record"     , className="field-body", value=en_data_record),
             ], className="field"),
 
+            html.Div([html.Div("File Size:"              , id="label_file_size"   , className="field-label"), 
+            html.Div("- MB"        , id="body_file_size"   , className="field-body")], className="field"),
+
+
             html.Div([
                 html.Button("Download File", id="btn_download_file", className="btn"),
                 dcc.Download(id="download_recorded_file")
@@ -1608,7 +1612,6 @@ def update_daq_status():
     daq_max_amp_str        = "{:.1f}".format(webInterface_inst.max_amplitude)
     daq_avg_powers_str     = webInterface_inst.avg_powers
 
-
     app.push_mods({
            'body_daq_update_rate': {'children': daq_update_rate_str},
            'body_daq_dsp_latency': {'children': daq_dsp_latency},
@@ -1638,6 +1641,12 @@ def update_daq_status():
            'body_daq_delay_sync': {'style': delay_sync_style},
            'body_daq_iq_sync': {'style': iq_sync_style},
            'body_daq_noise_source': {'style': noise_source_style},
+    })
+
+    # Update local recording file size
+    recording_file_size = webInterface_inst.module_signal_processor.get_recording_filesize()
+    app.push_mods({
+           'body_file_size': {'children': recording_file_size}
     })
 
 
