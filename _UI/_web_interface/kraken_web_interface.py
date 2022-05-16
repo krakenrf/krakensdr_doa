@@ -1134,7 +1134,7 @@ def generate_config_page_layout(webInterface_inst):
                 dcc.Checklist(options=option     , id="en_data_record"     , className="field-body", value=en_data_record),
             ], className="field"),
 
-            html.Div([html.Div("File Size:"              , id="label_file_size"   , className="field-label"), 
+            html.Div([html.Div("File Size (MB):"              , id="label_file_size"   , className="field-label"), 
             html.Div("- MB"        , id="body_file_size"   , className="field-body")], className="field"),
 
 

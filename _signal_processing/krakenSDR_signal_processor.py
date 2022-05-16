@@ -73,13 +73,6 @@ class SignalProcessor(threading.Thread):
         doa_res_file_path = os.path.join(os.path.join(self.root_path,"_android_web","DOA_value.html"))
         self.DOA_res_fd = open(doa_res_file_path,"w+")
 
-        # TODO: NEED to have a funtion to update the file name if changed in the web ui
-        self.data_recording_file_name = "mydata.csv"
-        data_recording_file_path = os.path.join(os.path.join(self.root_path,self.data_recording_file_name))
-        self.data_record_fd = open(data_recording_file_path,"a+")
-        self.en_data_record = False
-        self.write_interval = 1
-        self.last_write_time = 0
 
         self.module_receiver = module_receiver
         self.data_que = data_que
@@ -153,6 +146,15 @@ class SignalProcessor(threading.Thread):
         self.krakenpro_key = "0"
 
         self.doa_max_list = [-1] * self.max_vfos
+
+        # TODO: NEED to have a funtion to update the file name if changed in the web ui
+        self.data_recording_file_name = "mydata.csv"
+        data_recording_file_path = os.path.join(os.path.join(self.root_path,self.data_recording_file_name))
+        self.data_record_fd = open(data_recording_file_path,"a+")
+        self.en_data_record = False
+        self.write_interval = 1
+        self.last_write_time = [0] * self.max_vfos
+
 
 
     def run(self):
@@ -253,6 +255,13 @@ class SignalProcessor(threading.Thread):
                         max_power_level_str = ""
                         doa_result_log = np.array([0,0,0])
 
+                        theta_0_list = []
+                        DOA_str_list = []
+                        confidence_str_list = []
+                        max_power_level_str_list = []
+                        freq_list = []
+                        doa_result_log_list = []
+
                         for i in range(active_vfos):
                             # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
                             if abs(self.vfo_freq[i] - self.module_receiver.daq_center_freq) > sampling_freq/2 :
@@ -311,11 +320,24 @@ class SignalProcessor(threading.Thread):
                                 self.estimate_DOA(vfo_channel)
 
                                 doa_result_log = DOA_plot_util(self.DOA)
+
                                 theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
                                 conf_val = calculate_doa_papr(self.DOA)
+
                                 self.doa_max_list[i] = theta_0
                                 update_list[i] = True
 
+                                #DOA_str = str(int(theta_0))
+                                DOA_str = str(int(360 - theta_0)) # Change to this, once we upload new Android APK
+                                confidence_str = "{:.2f}".format(np.max(conf_val))
+                                max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
+
+                                theta_0_list.append(theta_0)
+                                DOA_str_list.append(DOA_str)
+                                confidence_str_list.append(confidence_str)
+                                max_power_level_str_list.append(max_power_level_str)
+                                freq_list.append(write_freq)
+                                doa_result_log_list.append(doa_result_log)
 
                         que_data_packet.append(['doa_thetas', self.DOA_theta])
                         que_data_packet.append(['DoA Result', doa_result_log])
@@ -323,6 +345,40 @@ class SignalProcessor(threading.Thread):
                         que_data_packet.append(['DoA Confidence', conf_val])
                         que_data_packet.append(['DoA Squelch', update_list])
 
+
+                        # Do Kraken App first as currently its the only one supporting multi-vfo out
+                        if self.DOA_data_format == "Kraken App" or self.en_data_record: #and len(freq_list) > 0:
+                            epoch_time = int(time.time() * 1000)
+                            message = ""
+                            for j in range(len(freq_list)):
+                                # KrakenSDR Android App Output
+                                sub_message = ""
+                                sub_message += f"{epoch_time}, {DOA_str_list[j]}, {confidence_str_list[j]}, {max_power_level_str_list[j]}, "
+                                sub_message += f"{freq_list[j]}, {self.DOA_ant_alignment}, {self.latency}, {self.station_id}, "
+                                sub_message += f"{self.latitude}, {self.longitude}, {self.heading}, {self.heading}, "
+                                sub_message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation 
+
+                                doa_result_log = doa_result_log_list[j] + np.abs(np.min(doa_result_log_list[j]))
+                                for i in range(len(doa_result_log)):
+                                    sub_message += ", " + "{:.2f}".format(doa_result_log[i])
+
+                                sub_message += " \n"
+
+                                if self.en_data_record:
+                                    time_elapsed = time.time() - self.last_write_time[j] # Make a list of 16 last_write_times
+                                    if time_elapsed > self.write_interval:
+                                        self.last_write_time[j] = time.time()
+                                        self.data_record_fd.write(sub_message)
+
+                                message += sub_message
+
+                            if self.DOA_data_format == "Kraken App":
+                                self.DOA_res_fd.seek(0)
+                                self.DOA_res_fd.write(message)
+                                self.DOA_res_fd.truncate()
+
+
+                        # Now create output for apps that only take one VFO
                         DOA_str = str(int(theta_0))
                         confidence_str = "{:.2f}".format(np.max(conf_val))
                         max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
@@ -339,17 +395,6 @@ class SignalProcessor(threading.Thread):
                                         self.latitude,
                                         self.longitude,
                                         self.heading)
-                        elif self.DOA_data_format == "Kraken App":
-                            self.wr_csv(self.station_id,
-                                        DOA_str,
-                                        confidence_str,
-                                        max_power_level_str,
-                                        write_freq,
-                                        doa_result_log,
-                                        self.latitude,
-                                        self.longitude,
-                                        self.heading,
-                                        "Kraken")
                         elif self.DOA_data_format == "Kerberos App":
                             self.wr_csv(self.station_id,
                                         DOA_str,
@@ -383,21 +428,6 @@ class SignalProcessor(threading.Thread):
                                         self.heading)
                         else:
                             self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
-
-                        if self.en_data_record:
-                            time_elapsed = time.time() - self.last_write_time
-                            if time_elapsed > self.write_interval:
-                                self.last_write_time = time.time()
-                                self.wr_csv_record(self.station_id,
-                                        DOA_str,
-                                        confidence_str,
-                                        max_power_level_str,
-                                        write_freq,
-                                        doa_result_log,
-                                        self.latitude,
-                                        self.longitude,
-                                        self.heading,
-                                        "Kraken")
 
                         if self.hasgps:
                             self.update_location()
@@ -522,25 +552,6 @@ class SignalProcessor(threading.Thread):
         self.DOA_res_fd.write(html_str)
         self.DOA_res_fd.truncate()
         # print("Wrote XML")
-
-    def wr_csv_record(self, station_id, DOA_str, confidence_str, max_power_level_str,
-               freq, doa_result_log, latitude, longitude, heading, app_type):
-        if app_type == "Kraken":
-            epoch_time = int(time.time() * 1000)
-
-            # KrakenSDR Android App Output
-            message = f"{epoch_time}, {DOA_str}, {confidence_str}, {max_power_level_str}, "
-            message += f"{freq}, {self.DOA_ant_alignment}, {self.latency}, {station_id}, "
-            message += f"{latitude}, {longitude}, {heading}, {heading}, "
-            message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation if needed
-
-            doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
-            for i in range(len(doa_result_log)):
-                message += ", " + "{:.2f}".format(doa_result_log[i])
-
-            message += " \n"
-            self.data_record_fd.write(message)
-            #self.data_record_fd.flush() #Only needed for testing
 
     def wr_csv(self, station_id, DOA_str, confidence_str, max_power_level_str,
                freq, doa_result_log, latitude, longitude, heading, app_type):
