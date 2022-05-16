@@ -280,7 +280,7 @@ class webInterface():
         data["longitude"] = self.module_signal_processor.longitude
         data["heading"] = self.module_signal_processor.heading
         data["krakenpro_key"] = self.module_signal_processor.krakenpro_key
-
+        data["rdf_mapper_server"] = self.module_signal_processor.RDF_mapper_server
 
         # VFO Information
         data["spectrum_calculation"] = self.module_signal_processor.spectrum_fig_type
@@ -1032,10 +1032,20 @@ def generate_config_page_layout(webInterface_inst):
                                  {'label': 'Kraken Pro Remote', 'value': 'Kraken Pro Remote'},
                                  {'label': 'Kerberos App', 'value': 'Kerberos App'},
                                  {'label': 'DF Aggregator', 'value': 'DF Aggregator'},
+                                 {'label': 'RDF Mapper', 'value': 'RDF Mapper'},
                              ],
                              value=webInterface_inst.module_signal_processor.DOA_data_format,
                              style={"display": "inline-block"}, className="field-body"),
             ], className="field"),
+
+            html.Div([
+                html.Div("RDF Mapper Server URL:", className="field-label"),
+                dcc.Input(id='rdf_mapper_server_address',
+                          value=webInterface_inst.module_signal_processor.RDF_mapper_server,
+                          type='text', className="field-body-textbox", debounce=True)
+            ], id="rdf_mapper_server_address_field", className="field"),
+
+
             html.Div([
                 html.Div("Kraken Pro Key:", className="field-label"),
                 dcc.Input(id='krakenpro_key',
@@ -1481,6 +1491,7 @@ def settings_change_watcher():
         webInterface_inst.module_signal_processor.longitude     = dsp_settings.get("longitude", 0.0)
         webInterface_inst.module_signal_processor.heading       = dsp_settings.get("heading", 0.0)
         webInterface_inst.module_signal_processor.krakenpro_key = dsp_settings.get("krakenpro_key", 0.0)
+        webInterface_inst.module_signal_processor.RDF_mapper_server = dsp_settings.get("rdf_mapper_server", "http://RDF_MAPPER_SERVER.com/save.php")
 
         # VFO Configuration
         webInterface_inst.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
@@ -1715,6 +1726,10 @@ def set_station_id(station_id):
 def set_kraken_pro_key(key):
     webInterface_inst.module_signal_processor.krakenpro_key = key 
 
+@app.callback_shared(None,
+                     [Input(component_id='rdf_mapper_server_address', component_property='value')])
+def set_rdf_mapper_server(url):
+    webInterface_inst.module_signal_processor.RDF_mapper_server = url
 
 # Enable GPS Relevant fields
 @app.callback([Output('fixed_heading_div', 'style'),
@@ -1731,6 +1746,16 @@ def toggle_gps_fields(toggle_value):
               [Input('doa_format_type', 'value')])
 def toggle_kraken_pro_key(doa_format_type):
     if doa_format_type == "Kraken Pro Remote":
+        return {'display': 'block'}
+    else:
+        return {'display': 'none'}
+
+
+# Enable of Disable Kraken Pro Key Box
+@app.callback(Output('rdf_mapper_server_address_field', 'style'),
+              [Input('doa_format_type', 'value')])
+def toggle_kraken_pro_key(doa_format_type):
+    if doa_format_type == "RDF Mapper":
         return {'display': 'block'}
     else:
         return {'display': 'none'}

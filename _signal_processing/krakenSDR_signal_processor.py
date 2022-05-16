@@ -31,6 +31,7 @@ import queue
 import math
 import xml.etree.ElementTree as ET
 import requests
+from multiprocessing.dummy import Pool
 
 # Import optimization modules
 import numba as nb
@@ -144,7 +145,9 @@ class SignalProcessor(threading.Thread):
         self.usegps = False
         self.gps_connected = False
         self.krakenpro_key = "0"
-
+        self.RDF_mapper_server = "http://MY_RDF_MAPPER_SERVER.com/save.php"
+        self.pool = Pool()
+        self.rdf_mapper_last_write_time = 0
         self.doa_max_list = [-1] * self.max_vfos
 
         # TODO: NEED to have a funtion to update the file name if changed in the web ui
@@ -426,6 +429,24 @@ class SignalProcessor(threading.Thread):
                                         self.latitude,
                                         self.longitude,
                                         self.heading)
+                        elif self.DOA_data_format == "RDF Mapper":
+                            epoch_time = int(time.time() * 1000)
+
+                            time_elapsed = time.time() - self.rdf_mapper_last_write_time
+                            if time_elapsed > 1: # Upload to RDF Mapper server only every 1s to ensure we dont overload his server
+                                self.rdf_mapper_last_write_time = time.time()
+                                elat, elng = calculate_end_lat_lng(self.latitude, self.longitude, int(DOA_str), self.heading)
+                                rdf_post = {'id': self.station_id, 
+                                            'time': str(epoch_time),
+                                            'slat': str(self.latitude),
+                                            'slng': str(self.longitude),
+                                            'elat': str(elat),
+                                            'elng': str(elng)}
+                                try:
+                                    #out = requests.post(self.RDF_mapper_server, data = rdf_post, timeout=5)
+                                    out = self.pool.apply_async(requests.post, args=[self.RDF_mapper_server, rdf_post])
+                                except:
+                                    print("NO CONNECTION: Invalid RDF Mapper Server")
                         else:
                             self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
 
@@ -453,6 +474,8 @@ class SignalProcessor(threading.Thread):
                 except:
                     # Discard data, UI couldn't consume fast enough
                     pass
+
+
 
     def estimate_DOA(self, processed_signal):
         """
@@ -623,6 +646,18 @@ class SignalProcessor(threading.Thread):
 
     def get_recording_filesize(self):
         return round(os.path.getsize(os.path.join(os.path.join(self.root_path,self.data_recording_file_name))) / 1048576, 2) # Convert to MB
+
+def calculate_end_lat_lng(s_lat: float, s_lng: float, doa: float, my_bearing: float) -> (float, float):
+    R = 6372.795477598
+    line_length = 100
+    theta = math.radians(my_bearing + (360 - doa))
+    s_lat_in_rad = math.radians(s_lat)
+    s_lng_in_rad = math.radians(s_lng)
+    e_lat = math.asin(math.sin(s_lat_in_rad) * math.cos(line_length / R) + math.cos(s_lat_in_rad) * math.sin(line_length / R) * math.cos(theta))
+    e_lng = s_lng_in_rad + math.atan2(math.sin(theta) * math.sin(line_length / R) * math.cos(s_lat_in_rad), math.cos(line_length / R) - math.sin(s_lat_in_rad) * math.sin(e_lat))
+    return round(math.degrees(e_lat), 6), round(math.degrees(e_lng), 6)
+
+
 
 
 def calc_sync(iq_samples):
