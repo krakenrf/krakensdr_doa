@@ -101,6 +101,7 @@ class SignalProcessor(threading.Thread):
         self.DOA_theta =  np.linspace(0,359,360)
         self.custom_array_x = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
         self.custom_array_y = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
+        self.array_offset = 0
 
         # Processing parameters
         self.spectrum_window_size = fft.next_fast_len(4096)
@@ -491,7 +492,7 @@ class SignalProcessor(threading.Thread):
         M = self.channel_number
         scanning_vectors = []
         if self.DOA_ant_alignment == "UCA" or self.DOA_ant_alignment == "ULA":
-            scanning_vectors = gen_scanning_vectors(M, self.DOA_inter_elem_space, self.DOA_ant_alignment)
+            scanning_vectors = gen_scanning_vectors(M, self.DOA_inter_elem_space, self.DOA_ant_alignment, int(self.array_offset))
         elif self.DOA_ant_alignment == "Custom":
             scanning_vectors = gen_scanning_vectors_custom(M, self.custom_array_x, self.custom_array_y)
 
@@ -509,13 +510,17 @@ class SignalProcessor(threading.Thread):
             DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1) #de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
             self.DOA = DOA_MUSIC_res
 
+        thetas = (np.linspace(0,359,360)-self.array_offset) % 360 # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
+
         #ULA Array, choose bewteen the full omnidirecitonal 360 data, or forward/backward data only
         if self.DOA_ant_alignment == "ULA" and self.ula_direction == "Forward":
-            self.DOA[90:270] = min(self.DOA)
+            self.DOA[thetas[90:270].astype(int)] = min(self.DOA)
+            #self.DOA[90:270] = min(self.DOA)
         elif self.DOA_ant_alignment == "ULA" and self.ula_direction == "Backward":
             min_val = min(self.DOA)
-            self.DOA[0:90] = min_val
-            self.DOA[270:360] = min_val
+            self.DOA[thetas[0:90].astype(int)] = min_val
+            self.DOA[thetas[270:360].astype(int)] = min_val
+
 
     # Enable GPS
     def enable_gps(self):
@@ -796,7 +801,7 @@ def corr_matrix(X):
 
 # LRU cache memoize about 1000x faster.
 @lru_cache(maxsize=32)
-def gen_scanning_vectors(M, DOA_inter_elem_space, type):
+def gen_scanning_vectors(M, DOA_inter_elem_space, type, offset):
     thetas =  np.linspace(0,359,360) # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
     if type == "UCA":
         x = DOA_inter_elem_space * np.cos(2*np.pi/M * np.arange(M))
@@ -807,7 +812,7 @@ def gen_scanning_vectors(M, DOA_inter_elem_space, type):
 
     scanning_vectors = np.zeros((M, thetas.size), dtype=np.complex64)
     for i in range(thetas.size):
-        scanning_vectors[:,i] = np.exp(1j*2*np.pi* (x*np.cos(np.deg2rad(thetas[i])) + y*np.sin(np.deg2rad(thetas[i]))))
+        scanning_vectors[:,i] = np.exp(1j*2*np.pi* (x*np.cos(np.deg2rad(thetas[i]+offset)) + y*np.sin(np.deg2rad(thetas[i]+offset))))
 
     return np.ascontiguousarray(scanning_vectors)
 

@@ -130,6 +130,7 @@ class webInterface():
         self.custom_array_y_meters = np.float_(dsp_settings.get("custom_array_y_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
         self.module_signal_processor.custom_array_x = self.custom_array_x_meters / (300 / self.module_receiver.daq_center_freq)
         self.module_signal_processor.custom_array_y = self.custom_array_y_meters / (300 / self.module_receiver.daq_center_freq)
+        self.module_signal_processor.array_offset = int(dsp_settings.get("array_offset", 0))
 
         self.module_signal_processor.en_DOA_estimation    = dsp_settings.get("en_doa", 0)
         self.module_signal_processor.en_DOA_FB_avg        = dsp_settings.get("en_fbavg", 0)
@@ -259,6 +260,7 @@ class webInterface():
         data["ant_spacing_meters"]     = self.ant_spacing_meters #self.module_signal_processor.DOA_inter_elem_space
         data["custom_array_x_meters"]     = ','.join(['%.2f' % num for num in self.custom_array_x_meters])
         data["custom_array_y_meters"]     = ','.join(['%.2f' % num for num in self.custom_array_y_meters])
+        data["array_offset"] = int(self.module_signal_processor.array_offset)
 
         data["doa_method"]      = self.module_signal_processor.DOA_algorithm
         data["en_fbavg"]        = self.module_signal_processor.en_DOA_FB_avg
@@ -983,6 +985,12 @@ def generate_config_page_layout(webInterface_inst):
         value=webInterface_inst.module_signal_processor.ula_direction, style={"display":"inline-block"},className="field-body")
         ], className="field"),
 
+        html.Div([
+            html.Div("Array Offset:", id="label_array_offset", className="field-label"),
+            dcc.Input(id='array_offset',
+                      value=webInterface_inst.module_signal_processor.array_offset, #webInterface_inst.module_signal_processor.station_id,
+                      type='number', className="field-body-textbox", debounce=True)
+        ], className="field"),
 
     ], className="card")
 
@@ -1511,6 +1519,7 @@ def settings_change_watcher():
         webInterface_inst.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
         webInterface_inst._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
         webInterface_inst.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
+        webInterface_inst.module_signal_processor.array_offset = int(dsp_settings.get("array_offset", 0))
 
         freq_delta = webInterface_inst.daq_center_freq - center_freq
         gain_delta = webInterface_inst.module_receiver.daq_rx_gain - gain
@@ -2158,11 +2167,12 @@ def toggle_custom_array_fields(toggle_value):
     Input(component_id ="doa_fig_type"           , component_property='value'),
     Input(component_id ="doa_method"           , component_property='value'),
     Input(component_id ="ula_direction"           , component_property='value'),
+    Input(component_id ="array_offset"           , component_property='value'),
     Input(component_id ="compass_offset"           , component_property='value'),
     Input(component_id ="custom_array_x_meters"           , component_property='value'),
     Input(component_id ="custom_array_y_meters"           , component_property='value')],
 )
-def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, ula_direction, compass_offset, custom_array_x_meters, custom_array_y_meters): #, input_value):
+def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, ula_direction, array_offset, compass_offset, custom_array_x_meters, custom_array_y_meters): #, input_value):
     webInterface_inst.ant_spacing_meters = spacing_meter
     wavelength = 300 / webInterface_inst.daq_center_freq
 
@@ -2219,6 +2229,7 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
     webInterface_inst._doa_fig_type = doa_fig_type
     webInterface_inst.compass_offset = compass_offset
     webInterface_inst.module_signal_processor.ula_direction = ula_direction
+    webInterface_inst.module_signal_processor.array_offset = array_offset
 
 
     return [str(ant_spacing_wavelength), spacing_label, ambiguity_warning, smoothing_possibility]
