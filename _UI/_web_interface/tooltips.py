@@ -41,7 +41,7 @@ dsp_config_tooltips = html.Div([
     ),
     dbc.Tooltip([
         html.P("Choose which VFO channel is output to the DOA graphs and data stream. In the spectrum graph this chooses what VFO channel click to tune will move."),
-        html.P("ALL - Outputs data from all active VFOs to the Kraken Pro App data stream for simultaenous channel monitoring (NOT YET IMPLEMENTED)."),
+        html.P("ALL - Outputs data from all active VFOs to the Kraken App / Kraken Pro App output data stream for simultaenous channel monitoring."),
         html.P("Note that outputting more than 3 active VFOs on a Pi 4 may result in slow computation, resulting in intermittant signal squelch misses. To get around this, you can apply decimation to make computation more efficient.")],
         target="label_output_vfo",
         placement="bottom",
@@ -100,6 +100,50 @@ dsp_config_tooltips = html.Div([
         placement="bottom",
         className="tooltip"
     ),
+    dbc.Tooltip([
+        html.P("If the 0 degree direction of the array is not in-line with the heading of the vehicle, use this to offset the array."),
+        html.P("For example, if you are using a linear array with the broadside not facing the front of the car.")],
+        target="label_array_offset",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Linear arrays cannot differentiate between a signal in front or behind the array. If you have prior knowledge about the signal source location, choose if the signal is in front or behind the array.")],
+        target="label_ula_direction",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Enter the filename for the recording.")],
+        target="filename_label",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("The data output format for the file recording. Currently only Kraken App is available.")],
+        target="data_format_label",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("How often data to the file will be written. If you are making very long recordings, increase to avoid the filesize becoming too large.")],
+        target="write_interval_label",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Enable writing data to local file.")],
+        target="label_en_data_record",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Please ensure that there is sufficient space on your device for the data file.")],
+        target="label_file_size",
+        placement="bottom",
+        className="tooltip"
+    ),
+
     dbc.Tooltip([
         html.P("How long it takes to compute. Should be faster than the data block length, so that no frames are dropped. ")],
         target="label_daq_update_rate",
@@ -403,7 +447,7 @@ station_parameters_tooltips = html.Div([
         html.P("DOA Data Format"),
         html.P("Kraken/Pro & Kerberos App: Choose if you are outputting to the KrakenSDR Android App, KrakenSDR Pro, or Legacy KerberosSDR App"),
         html.P("DF Aggregator: Use for DF Aggregator"),
-        html.P("JSON: Not implemented yet")],
+        html.P("RDF Mapper: Upload directly to an RDF Mapper server")],
         target="doa_format_label",
         placement="bottom",
         className="tooltip"

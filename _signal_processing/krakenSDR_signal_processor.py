@@ -510,16 +510,17 @@ class SignalProcessor(threading.Thread):
             DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors, signal_dimension = 1) #de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
             self.DOA = DOA_MUSIC_res
 
-        thetas = (np.linspace(0,359,360)-self.array_offset) % 360 # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
 
         #ULA Array, choose bewteen the full omnidirecitonal 360 data, or forward/backward data only
-        if self.DOA_ant_alignment == "ULA" and self.ula_direction == "Forward":
-            self.DOA[thetas[90:270].astype(int)] = min(self.DOA)
+        if self.DOA_ant_alignment == "ULA":
+            thetas = (np.linspace(0,359,360)-self.array_offset) % 360 # Rotate array with offset (in reverse to compensate for rotation done in gen_scanning_vectors)
+            if self.ula_direction == "Forward":
+                self.DOA[thetas[90:270].astype(int)] = min(self.DOA)
             #self.DOA[90:270] = min(self.DOA)
-        elif self.DOA_ant_alignment == "ULA" and self.ula_direction == "Backward":
-            min_val = min(self.DOA)
-            self.DOA[thetas[0:90].astype(int)] = min_val
-            self.DOA[thetas[270:360].astype(int)] = min_val
+            if self.ula_direction == "Backward":
+                min_val = min(self.DOA)
+                self.DOA[thetas[0:90].astype(int)] = min_val
+                self.DOA[thetas[270:360].astype(int)] = min_val
 
 
     # Enable GPS
