@@ -431,6 +431,26 @@ daq_ini_config_tooltips = html.Div([
         placement="bottom",
         className="tooltip"
     ),
+    dbc.Tooltip([
+        html.P("Apply an optional calibration on any phase differences in cables. Measurements need to be taken with a VNA."),
+        html.P("touchstone: Add 5 Touchstone .s1p format files to the heimdall _calibration folder with filnames cable_ch0.s1p, cable_ch1.s1p and so on. Make sure the file covers the frequency range of interest."),
+        html.P("explicit-time-delay: Apply a constant time delay.")],
+        target="label_iq_adjust_source",
+        placement="top",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Apply an IQ amplitude adjustment to each channel if required.")],
+        target="label_iq_adjust_amplitude",
+        placement="top",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
+        html.P("Relative time delays to use with the explicit-time-delay mode. NOTE: The time delays are in ns and RELATIVE to the measurement made at CH0. (delta = CH_0 - CH_X)")],
+        target="label_iq_adjust_time_delay_ns",
+        placement="top",
+        className="tooltip"
+    ),
 ])
 
 station_parameters_tooltips = html.Div([
