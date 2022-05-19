@@ -15,7 +15,7 @@ We have a beta Pi 4 SD card image available here
 
 In this image the code will automatically run on boot. Note that it may take 2-3 minutes for the boot process to complete. 
 
-To run this code flash the image file to an 8GB or larger SD Card using Etcher. For advanced users the login/password details for SSH and terminal are "krakenrf"/"krakensdr"
+To run this code flash the image file to an SD Card using Etcher. The SD Card needs to be at least 8GB and we recommend using a class 10 card or faster. For advanced users the login/password details for SSH and terminal are "krakenrf"/"krakensdr"
 
 ### Choose and Set up Connectivity Option 
 In this image there are three ways to connect to the web GUI interface.
