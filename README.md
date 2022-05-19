@@ -8,7 +8,9 @@ Running these two subsystems on separate processing units can grant higher throu
 ## Pi 4 Image QUICKSTART (KerberosSDR, or beta KrakenSDR Testers)
 
 We have a beta Pi 4 SD card image available here
-190522 (Latest): https://drive.google.com/file/d/1e6AAR8uOb0MLig4TqesRi9qqQ-80J62k/view?usp=sharing
+
+**190522 (Latest):** https://drive.google.com/file/d/1e6AAR8uOb0MLig4TqesRi9qqQ-80J62k/view?usp=sharing
+
 150422: https://drive.google.com/file/d/1JT41DfkaYNSgGlxqaAvUwHQO_NwXewRW/view?usp=sharing 
 
 In this image the code will automatically run on boot. Note that it may take 2-3 minutes for the boot process to complete. 
