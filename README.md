@@ -173,10 +173,12 @@ Please find the array sizing calculator at https://docs.google.com/spreadsheets/
 
 For our own KrakenSDR branded magnetic whip antenna sets we have a paper printable array template for UCA radius spacings every 50mm linked below. Print 5 arms and one middle and cut out the template and holes so that the antenna base fits inside them. Then use a glue stick to glue the arms onto the base.
 
-Array Arms: https://drive.google.com/file/d/16tjBljRIHRUfqSs5Vb5xsypVTtHK_vDl/view?usp=sharing
-Array Middle Pentagon: https://drive.google.com/file/d/1ekBcr3fQEz1d8WlKEerOmj-JriCywHhg/view?usp=sharing
+**Array Arms:** https://drive.google.com/file/d/16tjBljRIHRUfqSs5Vb5xsypVTtHK_vDl/view?usp=sharing
+
+**Array Middle Pentagon:** https://drive.google.com/file/d/1ekBcr3fQEz1d8WlKEerOmj-JriCywHhg/view?usp=sharing
 
 You can also 3D print a more rigid template:
 
-Array Arm: https://drive.google.com/file/d/1EXp8qS8WzS66JunP4yT6cgPxbYjWra_k/view?usp=sharing
-Array Middle Pentagon: https://drive.google.com/file/d/1aVRFBR6-uo2_RO016jq6CK67G_rXxCrq/view?usp=sharing
+**Array Arm:** https://drive.google.com/file/d/1EXp8qS8WzS66JunP4yT6cgPxbYjWra_k/view?usp=sharing
+
+**Array Middle Pentagon:** https://drive.google.com/file/d/1aVRFBR6-uo2_RO016jq6CK67G_rXxCrq/view?usp=sharing
