@@ -166,3 +166,17 @@ After starting the script a web based server opens at port number `8080`, which 
 1. [FEATURE] It would be better if the KrakenSDR controls, spectrum and/or DOA graphs could be accessible from the same page. Future work will look to integrate the controls in a sidebar.
 
 2. [FEATURE] Wideband scanning. There should be a feature to rapidly scan through a set of frequencies over a wide bandwidth, and perform DFing on a signal in that set if it is active. To do this a rapid scan feature that does not do coherent calibration needs to be implemented first. Then when an active signal is found, calibrate as fast as possible, and do the DoA calculation on that signal for a set period of time, before returning to scan mode.
+
+## Array Sizing Calculator and Templates
+
+Please find the array sizing calculator at https://docs.google.com/spreadsheets/d/1w_LoJka7n38-F0a3vgaTVcSXxjXvH2Td/edit?usp=sharing&ouid=113401145893186461043&rtpof=true&sd=true. Download this file and use it in Excel.
+
+For our own KrakenSDR branded magnetic whip antenna sets we have a paper printable array template for UCA radius spacings every 50mm linked below. Print 5 arms and one middle and cut out the template and holes so that the antenna base fits inside them. Then use a glue stick to glue the arms onto the base.
+
+Array Arms: https://drive.google.com/file/d/16tjBljRIHRUfqSs5Vb5xsypVTtHK_vDl/view?usp=sharing
+Array Middle Pentagon: https://drive.google.com/file/d/1ekBcr3fQEz1d8WlKEerOmj-JriCywHhg/view?usp=sharing
+
+You can also 3D print a more rigid template:
+
+Array Arm: https://drive.google.com/file/d/1EXp8qS8WzS66JunP4yT6cgPxbYjWra_k/view?usp=sharing
+Array Middle Pentagon: https://drive.google.com/file/d/1aVRFBR6-uo2_RO016jq6CK67G_rXxCrq/view?usp=sharing
