@@ -39,6 +39,9 @@ Now after performing either option a) or b) when you reboot the Pi 4 should auto
 
 With this method you can then browse to http://krakensdr:8080 to load up the web interface.
     
+### Pi 4 Overclock
+To get the best performance we recommend adding aftermarket cooling to your Pi 4 and overclocking to at least 2000 MHz. We won't provide instructions for overclocking here, but they can be easily Googled.
+    
 ### KerberosSDR Setup (KrakenSDR users Ignore)
 
 <details>
