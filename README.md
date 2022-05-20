@@ -179,6 +179,6 @@ For our own KrakenSDR branded magnetic whip antenna sets we have a paper printab
 
 You can also 3D print a more rigid template:
 
-**Array Arm:** https://drive.google.com/file/d/1EXp8qS8WzS66JunP4yT6cgPxbYjWra_k/view?usp=sharing
+**Array Arm:** https://drive.google.com/file/d/1LsiqZolMU4og2NStPewQWhIh3z6N1zb5/view?usp=sharing
 
-**Array Middle Pentagon:** https://drive.google.com/file/d/1aVRFBR6-uo2_RO016jq6CK67G_rXxCrq/view?usp=sharing
+**Array Middle Pentagon:** https://drive.google.com/file/d/1fn4KO7orITNJWV99XJHYu8RlZgmTl6-5/view?usp=sharing
