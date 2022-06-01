@@ -5,6 +5,9 @@ The complete application is broken down into two main modules in terms of implem
 
 Running these two subsystems on separate processing units can grant higher throughput and stability, while running on the same processing unit makes the entire system more compact.
 
+## Full Instructions
+Please [consult the Wiki on the kraken_docs repo](https://github.com/krakenrf/krakensdr_docs/wiki) for full documentation on the use of the KrakenSDR.
+
 ## Pi 4 Image QUICKSTART (KerberosSDR, or beta KrakenSDR Testers)
 
 We have a beta Pi 4 SD card image available here
