@@ -606,7 +606,7 @@ app.config.suppress_callback_exceptions=True
 # app_log.setLevel(settings.logging_level*10)
 # app_log.setLevel(30) # TODO: Only during dev time
 app.layout = html.Div([
-    dcc.Location(id='url', children='/config',refresh=False),
+    dcc.Location(id='url', children='/config',refresh=True),
 
     html.Div([html.Img(src="assets/kraken_interface_bw.png", style={"display": "block", "margin-left": "auto", "margin-right": "auto", "height": "60px"})]),
     html.Div([html.A("Configuration", className="header_active"   , id="header_config"  ,href="/config"),
@@ -614,7 +614,7 @@ app.layout = html.Div([
             html.A("DoA Estimation" , className="header_inactive" , id="header_doa"     ,href="/doa"),
             ], className="header"),
 
-    dcc.Interval(id="settings-refresh-timer", interval=1000, n_intervals=0),
+    dcc.Interval(id="settings-refresh-timer", interval=5000, n_intervals=0),
 
     html.Div(id="placeholder_start"                , style={"display":"none"}),
     html.Div(id="placeholder_stop"                 , style={"display":"none"}),
@@ -2417,7 +2417,7 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
 
 @app.callback([Output("placeholder_update_rx", "children")],
               [Input("settings-refresh-timer", "n_intervals")],
-              [State("url", "pathname")],
+              [State("url", "pathname")]
 )
 def settings_change_refresh(toggle_value, pathname):
     if webInterface_inst.needs_refresh:
