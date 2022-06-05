@@ -5,11 +5,20 @@ The complete application is broken down into two main modules in terms of implem
 
 Running these two subsystems on separate processing units can grant higher throughput and stability, while running on the same processing unit makes the entire system more compact.
 
+## Full Instructions
+Please [consult the Wiki on the kraken_docs repo](https://github.com/krakenrf/krakensdr_docs/wiki) for full documentation on the use of the KrakenSDR.
+
 ## Pi 4 Image QUICKSTART (KerberosSDR, or beta KrakenSDR Testers)
 
-We have a beta Pi 4 SD card image available here **https://drive.google.com/file/d/1JT41DfkaYNSgGlxqaAvUwHQO_NwXewRW/view?usp=sharing**. In this image the code will automatically run on boot. Note that it may take 2-3 minutes for the boot process to complete. 
+We have a beta Pi 4 SD card image available here
 
-To run this code flash the image file to an 8GB or larger SD Card using Etcher. For advanced users the login/password details for SSH and terminal are "krakenrf"/"krakensdr"
+**190522 (Latest):** https://drive.google.com/file/d/1e6AAR8uOb0MLig4TqesRi9qqQ-80J62k/view?usp=sharing
+
+150422: https://drive.google.com/file/d/1JT41DfkaYNSgGlxqaAvUwHQO_NwXewRW/view?usp=sharing 
+
+In this image the code will automatically run on boot. Note that it may take 2-3 minutes for the boot process to complete. 
+
+To run this code flash the image file to an SD Card using Etcher. The SD Card needs to be at least 8GB and we recommend using a class 10 card or faster. For advanced users the login/password details for SSH and terminal are "krakenrf"/"krakensdr"
 
 ### Choose and Set up Connectivity Option 
 In this image there are three ways to connect to the web GUI interface.
@@ -32,6 +41,9 @@ If the KrakenAndroid SSID is not detected, the Pi 4 will automatically revert to
 Now after performing either option a) or b) when you reboot the Pi 4 should automatically connect to your home WiFi. If the KrakenAndroid WiFi is present, priority will be given to that connection first, so be sure to turn your hotspot off if you want to connect to the fixed WiFi network.
 
 With this method you can then browse to http://krakensdr:8080 to load up the web interface.
+    
+### Pi 4 Overclock
+To get the best performance we recommend adding aftermarket cooling to your Pi 4 and overclocking to at least 2000 MHz. We won't provide instructions for overclocking here, but they can be easily Googled.
     
 ### KerberosSDR Setup (KrakenSDR users Ignore)
 
@@ -157,3 +169,19 @@ After starting the script a web based server opens at port number `8080`, which 
 1. [FEATURE] It would be better if the KrakenSDR controls, spectrum and/or DOA graphs could be accessible from the same page. Future work will look to integrate the controls in a sidebar.
 
 2. [FEATURE] Wideband scanning. There should be a feature to rapidly scan through a set of frequencies over a wide bandwidth, and perform DFing on a signal in that set if it is active. To do this a rapid scan feature that does not do coherent calibration needs to be implemented first. Then when an active signal is found, calibrate as fast as possible, and do the DoA calculation on that signal for a set period of time, before returning to scan mode.
+
+## Array Sizing Calculator and Templates
+
+Please find the array sizing calculator at https://docs.google.com/spreadsheets/d/1w_LoJka7n38-F0a3vgaTVcSXxjXvH2Td/edit?usp=sharing&ouid=113401145893186461043&rtpof=true&sd=true. Download this file and use it in Excel.
+
+For our own KrakenSDR branded magnetic whip antenna sets we have a paper printable array template for UCA radius spacings every 50mm linked below. Print 5 arms and one middle and cut out the template and holes so that the antenna base fits inside them. Then use a glue stick to glue the arms onto the base.
+
+**Array Arms:** https://drive.google.com/file/d/16tjBljRIHRUfqSs5Vb5xsypVTtHK_vDl/view?usp=sharing
+
+**Array Middle Pentagon:** https://drive.google.com/file/d/1ekBcr3fQEz1d8WlKEerOmj-JriCywHhg/view?usp=sharing
+
+You can also 3D print a more rigid template:
+
+**Array Arm:** https://drive.google.com/file/d/1LsiqZolMU4og2NStPewQWhIh3z6N1zb5/view?usp=sharing
+
+**Array Middle Pentagon:** https://drive.google.com/file/d/1fn4KO7orITNJWV99XJHYu8RlZgmTl6-5/view?usp=sharing
