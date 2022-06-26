@@ -453,7 +453,7 @@ class SignalProcessor(threading.Thread):
                         else:
                             self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
 
-                        if self.hasgps:
+                        if self.hasgps and self.usegps:
                             self.update_location()
 
                     #-----> SPECTRUM PROCESSING <-----
