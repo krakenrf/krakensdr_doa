@@ -1720,15 +1720,16 @@ def update_daq_status():
     State(component_id ="daq_rx_gain"           , component_property='value')],
 )
 def update_daq_params(input_value, f0, gain):
-    webInterface_inst.daq_center_freq = f0
-    webInterface_inst.config_daq_rf(f0,gain)
+    if webInterface_inst.module_signal_processor.run_processing:
+        webInterface_inst.daq_center_freq = f0
+        webInterface_inst.config_daq_rf(f0,gain)
 
-    wavelength = 300 / webInterface_inst.daq_center_freq
-    webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
-    ant_spacing_wavelength = round(webInterface_inst.ant_spacing_meters / wavelength, 3)
-    app.push_mods({
-           'body_ant_spacing_wavelength': {'children': str(ant_spacing_wavelength)},
-    })
+        wavelength = 300 / webInterface_inst.daq_center_freq
+        webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
+        ant_spacing_wavelength = round(webInterface_inst.ant_spacing_meters / wavelength, 3)
+        app.push_mods({
+               'body_ant_spacing_wavelength': {'children': str(ant_spacing_wavelength)},
+        })
 
 @app.callback_shared(
     None,
@@ -1929,14 +1930,15 @@ def update_vfo_params(*args):
                 'vfo'+str(i) : {'style': {'display': 'none'}}
             })
 
-    bw = webInterface_inst.daq_fs / webInterface_inst.module_signal_processor.dsp_decimation
-    vfo_min = webInterface_inst.daq_center_freq - bw/2
-    vfo_max = webInterface_inst.daq_center_freq + bw/2
+    if webInterface_inst.daq_fs > 0:
+        bw = webInterface_inst.daq_fs / webInterface_inst.module_signal_processor.dsp_decimation
+        vfo_min = webInterface_inst.daq_center_freq - bw/2
+        vfo_max = webInterface_inst.daq_center_freq + bw/2
 
-    for i in range(webInterface_inst.module_signal_processor.max_vfos):
-        webInterface_inst.module_signal_processor.vfo_bw[i] = int(min(kwargs_dict['vfo_'+str(i)+'_bw'], bw * 10**6))
-        webInterface_inst.module_signal_processor.vfo_freq[i] = int(max(min(kwargs_dict['vfo_'+str(i)+'_freq'], vfo_max), vfo_min) * 10**6)
-        webInterface_inst.module_signal_processor.vfo_squelch[i] = int(kwargs_dict['vfo_'+str(i)+'_squelch'])
+        for i in range(webInterface_inst.module_signal_processor.max_vfos):
+            webInterface_inst.module_signal_processor.vfo_bw[i] = int(min(kwargs_dict['vfo_'+str(i)+'_bw'], bw * 10**6))
+            webInterface_inst.module_signal_processor.vfo_freq[i] = int(max(min(kwargs_dict['vfo_'+str(i)+'_freq'], vfo_max), vfo_min) * 10**6)
+            webInterface_inst.module_signal_processor.vfo_squelch[i] = int(kwargs_dict['vfo_'+str(i)+'_squelch'])
 
 @app.callback([Output("page-content"   , "children"),
               Output("header_config"  ,"className"),
