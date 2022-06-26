@@ -125,7 +125,14 @@ conda install dash==1.20.0
 conda install werkzeug==2.0.2
 ```
 
-4. Install the `krakensdr_doa` software
+4. (OPTIONAL) Install GPSD if you want to run a USB GPS on the Pi 4. 
+
+```
+sudo apt install gpsd
+pip3 install gpsd-py3
+```
+
+5. Install the `krakensdr_doa` software
 
 ```bash
 cd ~/krakensdr
