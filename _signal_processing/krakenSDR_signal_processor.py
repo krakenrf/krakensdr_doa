@@ -107,7 +107,7 @@ class SignalProcessor(threading.Thread):
         self.spectrum_window_size = fft.next_fast_len(4096)
         self.spectrum_plot_size = 1024
         self.spectrum_window = "hann"
-        self.run_processing = False
+        self.run_processing = True #False
         self.is_running = False
         self.channel_number = 4  # Update from header
         self.spectrum_fig_type = 'Single' #0 Single, 1 Full
