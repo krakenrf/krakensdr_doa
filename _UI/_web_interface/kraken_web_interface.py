@@ -1653,6 +1653,14 @@ def update_daq_status():
         daq_power_level_str = "OK"
         daq_power_level_style={"color": "#7ccc63"}
 
+    if webInterface_inst.module_signal_processor.usegps:
+        gps_en_str = "Enabled"
+        gps_en_str_style={"color": "#7ccc63"}
+    else:
+        gps_en_str = "Disabled"
+        gps_en_str_style={"color": "#e74c3c"}
+
+
     daq_rf_center_freq_str = str(webInterface_inst.daq_center_freq)
     daq_sampling_freq_str  = str(webInterface_inst.daq_fs)
     bw = webInterface_inst.daq_fs / webInterface_inst.module_signal_processor.dsp_decimation
@@ -1680,7 +1688,8 @@ def update_daq_status():
            'body_daq_cpi': {'children': daq_cpi_str},
            'body_daq_if_gain': {'children': webInterface_inst.daq_if_gains},
            'body_max_amp': {'children': daq_max_amp_str},
-           'body_avg_powers': {'children': daq_avg_powers_str}
+           'body_avg_powers': {'children': daq_avg_powers_str},
+           'gps_status': {'children': gps_en_str}
     })
 
     app.push_mods({
@@ -1691,6 +1700,7 @@ def update_daq_status():
            'body_daq_delay_sync': {'style': delay_sync_style},
            'body_daq_iq_sync': {'style': iq_sync_style},
            'body_daq_noise_source': {'style': noise_source_style},
+           'gps_status': {'style': gps_en_str_style},
     })
 
     # Update local recording file size
@@ -1804,13 +1814,19 @@ def toggle_kraken_pro_key(doa_format_type):
 # Enable or Disable Heading Input Fields
 @app.callback(Output('heading_field', 'style'),
               [Input('loc_src_dropdown', 'value'),
-               Input(component_id='fixed_heading_check', component_property='value')])
-def toggle_location_info(static_loc, fixed_heading):
+               Input(component_id='fixed_heading_check', component_property='value')],
+              [State('heading_input', component_property='value')])
+def toggle_location_info(static_loc, fixed_heading, heading):
     if static_loc == "Static":
         webInterface_inst.module_signal_processor.fixed_heading = True
+        webInterface_inst.module_signal_processor.heading = heading
         return {'display': 'block'}
     elif static_loc == "gpsd" and fixed_heading:
+        webInterface_inst.module_signal_processor.heading = heading
         return {'display': 'block'}
+    elif static_loc == "gpsd" and not fixed_heading:
+        webInterface_inst.module_signal_processor.fixed_heading = False
+        return {'display': 'none'}
     elif static_loc == "None":
         webInterface_inst.module_signal_processor.fixed_heading = False
         return {'display': 'none'}
@@ -1831,10 +1847,12 @@ def toggle_location_info(toggle_value):
 # Set location data
 @app.callback_shared(None,
                      [Input(component_id="latitude_input", component_property='value'),
-                      Input(component_id="longitude_input", component_property='value')])
-def set_static_location(lat, lon):
-    webInterface_inst.module_signal_processor.latitude = lat
-    webInterface_inst.module_signal_processor.longitude = lon
+                      Input(component_id="longitude_input", component_property='value'),
+                      Input('loc_src_dropdown', 'value')])
+def set_static_location(lat, lon, toggle_value):
+    if toggle_value == "Static":
+        webInterface_inst.module_signal_processor.latitude = lat
+        webInterface_inst.module_signal_processor.longitude = lon
 
 
 # Enable Fixed Heading
@@ -1862,10 +1880,12 @@ def enable_gps(toggle_value):
     if toggle_value == "gpsd":
         status = webInterface_inst.module_signal_processor.enable_gps()
         if status:
+            webInterface_inst.module_signal_processor.usegps = True
             return ["Enabled", {"color": "#7ccc63"}]
         else:
             return ["Error", {"color": "#e74c3c"}]
     else:
+        webInterface_inst.module_signal_processor.usegps = False
         return ["-", {"color": "white"}]
 
 @app.callback_shared(
