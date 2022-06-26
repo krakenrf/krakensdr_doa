@@ -448,6 +448,8 @@ class SignalProcessor(threading.Thread):
                                     out = self.pool.apply_async(requests.post, args=[self.RDF_mapper_server, rdf_post])
                                 except:
                                     print("NO CONNECTION: Invalid RDF Mapper Server")
+                        elif self.DOA_data_format == "Kraken App":
+                            pass # Just do nothing, stop the invalid doa result error from showing
                         else:
                             self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
 
@@ -546,6 +548,7 @@ class SignalProcessor(threading.Thread):
             except (gpsd.NoFixError, UserWarning):
                 self.latitude = self.longitude = 0.0
                 self.heading if self.fixed_heading else 0.0
+                self.logger.error("gpsd error, nofix")
         else:
             self.logger.error("Trying to use GPS, but can't connect to gpsd")
 
