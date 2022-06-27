@@ -8,7 +8,7 @@ Running these two subsystems on separate processing units can grant higher throu
 ## Full Instructions
 Please [consult the Wiki on the kraken_docs repo](https://github.com/krakenrf/krakensdr_docs/wiki) for full documentation on the use of the KrakenSDR.
 
-## Pi 4 Image QUICKSTART (KerberosSDR, or beta KrakenSDR Testers)
+## Pi 4 Image QUICKSTART
 
 We have a beta Pi 4 SD card image available here
 
