@@ -172,7 +172,7 @@ Please be patient on the first run, at it can take 1-2 minutes for the JIT numba
 
 After starting the script a web based server opens at port number `8080`, which then can be accessed by typing `KRAKEN_IP:8080/` in the address bar of any web browser. You can find the IP address of the KrakenSDR Pi4 wither via your routers WiFi management page, or by typing `ip addr` into the terminal. You can also use the hostname of the Pi4 in place of the IP address, but this only works on local networks, and not the internet, or mobile hotspot networks.
 
-  ![image info](./doc/kraken_doadsp_main.png)
+![image](https://user-images.githubusercontent.com/78108016/175924475-2ce0a189-e119-4442-8893-0d32404847e2.png)
 
 ## Upcoming Features and Known Bugs
 
