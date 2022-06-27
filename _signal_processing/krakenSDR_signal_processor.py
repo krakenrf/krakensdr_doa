@@ -135,6 +135,7 @@ class SignalProcessor(threading.Thread):
         self.DOA_data_format = "Kraken App"  # XML, CSV, or JSON
 
         # Location parameters
+        self.gps_status = "Disabled"
         self.station_id = "NOCALL"
         self.latitude = 0.0
         self.longitude = 0.0
@@ -545,12 +546,15 @@ class SignalProcessor(threading.Thread):
                 self.latitude, self.longitude = packet.position()
                 if not self.fixed_heading:
                     self.heading = round(packet.movement().get('track'), 1)
+                self.gps_status = "Connected"
             except (gpsd.NoFixError, UserWarning):
                 self.latitude = self.longitude = 0.0
                 self.heading if self.fixed_heading else 0.0
                 self.logger.error("gpsd error, nofix")
+                self.gps_status = "Error"
         else:
             self.logger.error("Trying to use GPS, but can't connect to gpsd")
+            self.gps_status = "Error"
 
     def wr_xml(self, station_id, doa, conf, pwr, freq,
                latitude, longitude, heading):

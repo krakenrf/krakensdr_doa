@@ -1653,11 +1653,11 @@ def update_daq_status():
         daq_power_level_str = "OK"
         daq_power_level_style={"color": "#7ccc63"}
 
-    if webInterface_inst.module_signal_processor.usegps:
-        gps_en_str = "Enabled"
+    if  webInterface_inst.module_signal_processor.gps_status == "Connected": #webInterface_inst.module_signal_processor.usegps:
+        gps_en_str = "Connected"
         gps_en_str_style={"color": "#7ccc63"}
     else:
-        gps_en_str = "Disabled"
+        gps_en_str = webInterface_inst.module_signal_processor.gps_status
         gps_en_str_style={"color": "#e74c3c"}
 
 
@@ -1882,7 +1882,7 @@ def enable_gps(toggle_value):
         status = webInterface_inst.module_signal_processor.enable_gps()
         if status:
             webInterface_inst.module_signal_processor.usegps = True
-            return ["Enabled", {"color": "#7ccc63"}]
+            return ["Connected", {"color": "#7ccc63"}]
         else:
             return ["Error", {"color": "#e74c3c"}]
     else:
