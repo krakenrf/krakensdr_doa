@@ -81,7 +81,7 @@ Once you've set the center frequency, you can connect your antennas. In the Spec
 
 ## Software Quick Start
 
-1) Press start and the code will begin running.
+1) The code will automatically begin processing on boot, please wait for it to start. If started the "Frame Index" will be incrementing.
 2) Enter your desired center frequency and click on "Update Receiver Parameters" to tune and calibrate on that frequency.
 3) Enter your antenna array configuration details in the "DoA Configuration" card.
 4) Set the VFO-0 bandwidth to the bandwidth of your signal.
