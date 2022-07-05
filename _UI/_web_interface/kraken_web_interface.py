@@ -2098,7 +2098,7 @@ def plot_doa():
         update_data = []
         fig_type = []
         doa_max_str = ""
-        if webInterface_inst.doa_thetas is not None:
+        if webInterface_inst.doa_thetas is not None and webInterface_inst.doa_results[0].size > 0:
             doa_max_str = str(webInterface_inst.doas[0])+"°"
             update_data = dict(x=[webInterface_inst.doa_thetas], y=[webInterface_inst.doa_results[0]])
 
