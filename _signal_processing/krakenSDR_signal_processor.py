@@ -258,7 +258,7 @@ class SignalProcessor(threading.Thread):
                         DOA_str = ""
                         confidence_str = ""
                         max_power_level_str = ""
-                        doa_result_log = np.array([0,0,0])
+                        doa_result_log = np.array([])
 
                         theta_0_list = []
                         DOA_str_list = []
