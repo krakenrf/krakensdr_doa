@@ -119,7 +119,7 @@ conda install orjson
 conda install matplotlib
 conda install requests
 
-pip3 install dash_bootstrap_components
+pip3 install dash_bootstrap_components==1.1.0
 pip3 install quart_compress
 pip3 install dash_devices
 pip3 install pyargus
