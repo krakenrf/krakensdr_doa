@@ -201,7 +201,7 @@ class SignalProcessor(threading.Thread):
                     sampling_freq = self.module_receiver.iq_header.sampling_freq
 
                     global_decimation_factor = max(int(self.dsp_decimation), 1) #max(int(self.phasetest[0]), 1) #ps_len // 65536 #int(self.phasetest[0]) + 1
- 
+
                     if global_decimation_factor > 1:
                         self.processed_signal = signal.decimate(self.processed_signal, global_decimation_factor, n = global_decimation_factor * 5, ftype='fir')
                         sampling_freq = sampling_freq//global_decimation_factor
@@ -361,7 +361,7 @@ class SignalProcessor(threading.Thread):
                                 sub_message += f"{epoch_time}, {DOA_str_list[j]}, {confidence_str_list[j]}, {max_power_level_str_list[j]}, "
                                 sub_message += f"{freq_list[j]}, {self.DOA_ant_alignment}, {self.latency}, {self.station_id}, "
                                 sub_message += f"{self.latitude}, {self.longitude}, {self.heading}, {self.heading}, "
-                                sub_message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation 
+                                sub_message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation
 
                                 doa_result_log = doa_result_log_list[j] + np.abs(np.min(doa_result_log_list[j]))
                                 for i in range(len(doa_result_log)):
@@ -438,7 +438,7 @@ class SignalProcessor(threading.Thread):
                             if time_elapsed > 1: # Upload to RDF Mapper server only every 1s to ensure we dont overload his server
                                 self.rdf_mapper_last_write_time = time.time()
                                 elat, elng = calculate_end_lat_lng(self.latitude, self.longitude, int(DOA_str), self.heading)
-                                rdf_post = {'id': self.station_id, 
+                                rdf_post = {'id': self.station_id,
                                             'time': str(epoch_time),
                                             'slat': str(self.latitude),
                                             'slng': str(self.longitude),
@@ -558,6 +558,10 @@ class SignalProcessor(threading.Thread):
 
     def wr_xml(self, station_id, doa, conf, pwr, freq,
                latitude, longitude, heading):
+        # Kerberos-ify the data
+        confidence_str = "{}".format(np.max(int(float(conf)*100)))
+        max_power_level_str = "{:.1f}".format((np.maximum(-100, float(pwr)+100)))
+
         epoch_time = int(1000 * round(time.time(), 3))
         # create the file structure
         data = ET.Element('DATA')
@@ -579,8 +583,8 @@ class SignalProcessor(threading.Thread):
         xml_longitude.text = str(longitude)
         xml_heading.text = str(heading)
         xml_doa.text = doa
-        xml_pwr.text = pwr
-        xml_conf.text = conf
+        xml_pwr.text = max_power_level_str
+        xml_conf.text = confidence_str
 
         # create a new XML file with the results
         html_str = ET.tostring(data, encoding="unicode")
@@ -599,7 +603,7 @@ class SignalProcessor(threading.Thread):
             message = f"{epoch_time}, {DOA_str}, {confidence_str}, {max_power_level_str}, "
             message += f"{freq}, {self.DOA_ant_alignment}, {self.latency}, {station_id}, "
             message += f"{latitude}, {longitude}, {heading}, {heading}, "
-            message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation 
+            message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation
 
             doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
             for i in range(len(doa_result_log)):
@@ -884,9 +888,9 @@ def calculate_doa_papr(DOA_data):
     burst_stop_index  = len(self.filtered_signal) # CARL FIX: Initialize this to the length of the signal, incase the signal is active the entire time
     self.logger.info("Original burst stop index: {:d}".format(burst_stop_index))
 
-    min_burst_size = K                    
+    min_burst_size = K
     burst_stop_amp_val = 0
-    for n in np.arange(K, len(self.filtered_signal), 1):                        
+    for n in np.arange(K, len(self.filtered_signal), 1):
         if self.filtered_signal[n] < self.squelch_threshold:
             burst_stop_amp_val = self.filtered_signal[n]
             burst_stop_index = n
@@ -905,12 +909,12 @@ def calculate_doa_papr(DOA_data):
         self.logger.debug("The length of the captured burst size is under the minimum: {:d}".format(burst_stop_index))
         burst_stop_index = 0
 
-    if burst_stop_index !=0:                        
+    if burst_stop_index !=0:
         self.logger.info("INSIDE burst_stop_index != 0")
 
        self.logger.debug("Burst stop index: {:d}".format(burst_stop_index))
        self.logger.debug("Burst stop ampl val: {:f}".format(burst_stop_amp_val))
-       self.squelch_mask = np.zeros(len(self.filtered_signal))                        
+       self.squelch_mask = np.zeros(len(self.filtered_signal))
        self.squelch_mask[0 : burst_stop_index] = np.ones(burst_stop_index)*self.squelch_threshold
        # Next line removes the end parts of the samples after where the signal ended, truncating the array
        self.processed_signal = self.module_receiver.iq_samples[: burst_stop_index, self.squelch_mask == self.squelch_threshold]
@@ -922,9 +926,7 @@ def calculate_doa_papr(DOA_data):
        self.data_ready=True
    else:
        self.logger.info("Signal burst is not found, try to adjust the threshold levels")
-       #self.data_ready=True                            
+       #self.data_ready=True
        self.squelch_mask = np.ones(len(self.filtered_signal))*self.squelch_threshold
        self.processed_signal = np.zeros([self.channel_number, len(self.filtered_signal)])
 """
-
-
