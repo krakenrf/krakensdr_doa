@@ -482,7 +482,7 @@ option = [{"label":"", "value": 1}]
 def init_spectrum_fig(fig_layout, trace_colors):
     spectrum_fig = go.Figure(layout=fig_layout)
 
-    scatter_plot = go.Scatter(x=x,
+    scatter_plot = go.Scattergl(x=x,
                               y=y,
                               name="Channel {:d}".format(1),
                               line = dict(color = trace_colors[1], width = 1),
@@ -496,7 +496,7 @@ def init_spectrum_fig(fig_layout, trace_colors):
 
     VFO_color = dict(color = 'green', width=0) #trace_colors[webInterface_inst.module_receiver.M + 2], width = 0)
     VFO_squelch_color = dict(color = 'yellow', width=0) #trace_colors[webInterface_inst.module_receiver.M + 1], width = 0)
-    VFO_scatter = go.Scatter(x=x,
+    VFO_scatter = go.Scattergl(x=x,
                              y=y,
                              name="VFO" + str(0),
                              line = VFO_color, #dict(color = trace_colors[m], width = 0),
