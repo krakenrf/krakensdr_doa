@@ -17,3 +17,4 @@ sudo php -S $IPADDR:$IPPORT -t _android_web 2> /dev/null &
 
 # Start nodejs server for KrakenSDR Pro App
 node _nodejs/index.js  1> /dev/null &
+#node _nodejs/index.js

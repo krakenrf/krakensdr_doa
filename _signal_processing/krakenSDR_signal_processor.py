@@ -638,9 +638,9 @@ class SignalProcessor(threading.Thread):
 
         jsonDict = {}
         jsonDict["tStamp"] = int(time.time() * 1000)
-        jsonDict["latitude"] = 0
-        jsonDict["longitude"] = 0
-        jsonDict["gpsBearing"] = 0
+        jsonDict["latitude"] = str(latitude)
+        jsonDict["longitude"] = str(longitude)
+        jsonDict["gpsBearing"] = str(heading)
         jsonDict["radioBearing"] = DOA_str
         jsonDict["conf"] = confidence_str
         jsonDict["power"] = max_power_level_str

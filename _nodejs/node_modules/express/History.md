@@ -1,3 +1,18 @@
+4.17.3 / 2022-02-16
+===================
+
+  * deps: accepts@~1.3.8
+    - deps: mime-types@~2.1.34
+    - deps: negotiator@0.6.3
+  * deps: body-parser@1.19.2
+    - deps: bytes@3.1.2
+    - deps: qs@6.9.7
+    - deps: raw-body@2.4.3
+  * deps: cookie@0.4.2
+  * deps: qs@6.9.7
+    * Fix handling of `__proto__` keys
+  * pref: remove unnecessary regexp for trust proxy
+
 4.17.2 / 2021-12-16
 ===================
 
