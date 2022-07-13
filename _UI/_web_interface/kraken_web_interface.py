@@ -125,7 +125,6 @@ class webInterface():
         self.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
         self.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
 
-
         self.custom_array_x_meters = np.float_(dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
         self.custom_array_y_meters = np.float_(dsp_settings.get("custom_array_y_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
         self.module_signal_processor.custom_array_x = self.custom_array_x_meters / (300 / self.module_receiver.daq_center_freq)
@@ -160,6 +159,7 @@ class webInterface():
         self.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
         self.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
         self.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", 0)
+        self.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", 0)
         self.selected_vfo = 0
 
         for i in range(self.module_signal_processor.max_vfos):
@@ -266,6 +266,7 @@ class webInterface():
         data["en_fbavg"]        = self.module_signal_processor.en_DOA_FB_avg
         data["compass_offset"]  = self.compass_offset
         data["doa_fig_type"]    = self._doa_fig_type
+        data["en_peak_hold"]    = self.module_signal_processor.en_peak_hold
 
         # Web Interface
         data["en_hw_check"]         = dsp_settings.get("en_hw_check", 0)
@@ -650,6 +651,7 @@ def generate_config_page_layout(webInterface_inst):
     en_fb_avg_values      =[1] if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []
 
     en_optimize_short_bursts    =[1] if webInterface_inst.module_signal_processor.optimize_short_bursts     else []
+    en_peak_hold = [1] if webInterface_inst.module_signal_processor.en_peak_hold     else []
 
     en_fixed_heading = [1] if webInterface_inst.module_signal_processor.fixed_heading else []
 
@@ -1046,6 +1048,13 @@ def generate_config_page_layout(webInterface_inst):
         html.Div("Compass Offset [deg]:", className="field-label"),
         dcc.Input(id="compass_offset", value=webInterface_inst.compass_offset, type='number', debounce=True, className="field-body-textbox"),
         ], className="field"),
+
+        html.Div([
+            html.Div("Spectrum Peak Hold:", id="label_peak_hold", className="field-label"),
+            dcc.Checklist(options=option, id="en_peak_hold", className="field-body",
+                          value=en_peak_hold),
+        ], className="field"),
+
 
     ], className="card")
 
@@ -1539,6 +1548,7 @@ def settings_change_watcher():
         webInterface_inst.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
         webInterface_inst.compass_offset = dsp_settings.get("compass_offset", 0)
         webInterface_inst.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", 0)
+        webInterface_inst.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", 0)
 
         for i in range(webInterface_inst.module_signal_processor.max_vfos):
             webInterface_inst.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
@@ -2113,13 +2123,17 @@ def plot_doa():
                 'body_doa_max': {'children': doa_max_str}
             })
 
+
 def plot_spectrum():
     global spectrum_fig
     global waterfall_fig
     #if spectrum_fig == None:
     if webInterface_inst.reset_spectrum_graph_flag:
 
-        x=webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6
+        # Reset the peak hold each time the spectrum page is loaded
+        webInterface_inst.module_signal_processor.resetPeakHold()
+
+        x = webInterface_inst.spectrum[0, :] + webInterface_inst.daq_center_freq*10**6
 
         # Plot traces
         for m in range(np.size(webInterface_inst.spectrum, 0)-1):
@@ -2222,9 +2236,10 @@ def toggle_custom_array_fields(toggle_value):
     Input(component_id ="array_offset"           , component_property='value'),
     Input(component_id ="compass_offset"           , component_property='value'),
     Input(component_id ="custom_array_x_meters"           , component_property='value'),
-    Input(component_id ="custom_array_y_meters"           , component_property='value')],
+    Input(component_id ="custom_array_y_meters"           , component_property='value'),
+    Input(component_id ="en_peak_hold"           , component_property='value')],
 )
-def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, ula_direction, array_offset, compass_offset, custom_array_x_meters, custom_array_y_meters): #, input_value):
+def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, ula_direction, array_offset, compass_offset, custom_array_x_meters, custom_array_y_meters, en_peak_hold): #, input_value):
     webInterface_inst.ant_spacing_meters = spacing_meter
     wavelength = 300 / webInterface_inst.daq_center_freq
 
@@ -2283,6 +2298,10 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
     webInterface_inst.module_signal_processor.ula_direction = ula_direction
     webInterface_inst.module_signal_processor.array_offset = array_offset
 
+    if en_peak_hold is not None and len(en_peak_hold):
+        webInterface_inst.module_signal_processor.en_peak_hold = True
+    else:
+        webInterface_inst.module_signal_processor.en_peak_hold = False
 
     return [str(ant_spacing_wavelength), spacing_label, ambiguity_warning, smoothing_possibility]
 

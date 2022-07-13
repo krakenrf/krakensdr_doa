@@ -69,6 +69,13 @@ dsp_config_tooltips = html.Div([
     ),
 
     dbc.Tooltip([
+        html.P("Add a peak hold plot to the spectrum. Only works in 'Single Ch' spectrum calculation mode. ")],
+        target="label_peak_hold",
+        placement="bottom",
+        className="tooltip"
+    ),
+
+    dbc.Tooltip([
         html.P("Single Ch - Normal use. You must use this for intermittant signal squelching to work correctly."),
         html.P("All Ch - Only ever use this to test your antenna array connections. This mode will allow you to view all channels in the spectrum graph. Will NOT work with intermittant signals.")],
         target="label_spectrum_calculation",
