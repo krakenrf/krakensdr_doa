@@ -1068,6 +1068,7 @@ def generate_config_page_layout(webInterface_inst):
                 html.Div("Station ID:", id="station_id_label", className="field-label"),
                 dcc.Input(id='station_id_input',
                           value=webInterface_inst.module_signal_processor.station_id,
+                          pattern='[A-Za-z0-9\-]*',
                           type='text', className="field-body-textbox", debounce=True)
             ], className="field"),
             html.Div([
@@ -1774,12 +1775,10 @@ def set_doa_format(doa_format):
 
 
 # Update Station ID
-@app.callback_shared(Output(component_id='station_header', component_property='children'),
+@app.callback_shared(None,
                      [Input(component_id='station_id_input', component_property='value')])
 def set_station_id(station_id):
-    valid_id = re.sub('[^A-Za-z0-9\-]+', '-', station_id)
-    webInterface_inst.module_signal_processor.station_id = valid_id
-    return valid_id
+    webInterface_inst.module_signal_processor.station_id = station_id
 
 @app.callback_shared(None,
                      [Input(component_id='krakenpro_key', component_property='value')])
