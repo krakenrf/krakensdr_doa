@@ -12,7 +12,7 @@ Please [consult the Wiki on the kraken_docs repo](https://github.com/krakenrf/kr
 
 We have a beta Pi 4 SD card image available here
 
-**Latest Image V1.1 (270622):** https://github.com/krakenrf/krakensdr_doa/releases/
+**Latest Image:** https://github.com/krakenrf/krakensdr_doa/releases/
 
 **Older Images: **
 190522: https://drive.google.com/file/d/1e6AAR8uOb0MLig4TqesRi9qqQ-80J62k/view?usp=sharing
