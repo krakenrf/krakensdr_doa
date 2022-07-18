@@ -121,14 +121,14 @@ class webInterface():
         self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=self.logging_level)
         self.module_signal_processor.DOA_ant_alignment    = dsp_settings.get("ant_arrangement", "ULA")
         self.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
-        self.module_signal_processor.DOA_inter_elem_space = self.ant_spacing_meters / (300 / self.module_receiver.daq_center_freq)
+        self.module_signal_processor.DOA_inter_elem_space = self.ant_spacing_meters / (300 / float(dsp_settings.get("center_freq", 100.0)))
         self.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
         self.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
 
         self.custom_array_x_meters = np.float_(dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
         self.custom_array_y_meters = np.float_(dsp_settings.get("custom_array_y_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
-        self.module_signal_processor.custom_array_x = self.custom_array_x_meters / (300 / self.module_receiver.daq_center_freq)
-        self.module_signal_processor.custom_array_y = self.custom_array_y_meters / (300 / self.module_receiver.daq_center_freq)
+        self.module_signal_processor.custom_array_x = self.custom_array_x_meters / (300 / float(dsp_settings.get("center_freq", 100.0)))
+        self.module_signal_processor.custom_array_y = self.custom_array_y_meters / (300 / float(dsp_settings.get("center_freq", 100.0)))
         self.module_signal_processor.array_offset = int(dsp_settings.get("array_offset", 0))
 
         self.module_signal_processor.en_DOA_estimation    = dsp_settings.get("en_doa", 0)
