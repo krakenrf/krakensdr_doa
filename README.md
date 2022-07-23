@@ -102,7 +102,7 @@ sudo apt install php-cli nodejs
 
 2. Install Heimdall DAQ
 
-If not done already, first, follow the instructions at https://github.com/krakenrf/heimdall_daq_fw/tree/development to install the Heimdall DAQ Firmware.
+If not done already, first, follow the instructions at https://github.com/krakenrf/heimdall_daq_fw/tree/main to install the Heimdall DAQ Firmware.
 
 3. Set up Miniconda environment
 
