@@ -538,6 +538,8 @@ class SignalProcessor(threading.Thread):
         if self.DOA_algorithm == "MEM":  # self.en_DOA_MEM:
             DOA_MEM_res = de.DOA_MEM(R, scanning_vectors, column_select=0)
             self.DOA = DOA_MEM_res
+        if self.DOA_algorithm == "TNA":
+            self.DOA = DOA_TNA(R, scanning_vectors)
         if self.DOA_algorithm == "MUSIC":  # self.en_DOA_MUSIC:
             DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors,
                                       signal_dimension=1)  # de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
@@ -802,6 +804,37 @@ def channelize(processed_signal, freq, decimation_factor, sampling_freq):
 
     # return decimated_signal
 
+# NUMBA optimized Thermal Noise Algorithm (TNA) function.
+# Based on `pyargus` DOA_Capon
+@njit(fastmath=True, cache=True)
+def DOA_TNA(R, scanning_vectors):
+    # --> Input check
+    if np.size(R, 0) != np.size(R, 1):
+        print("ERROR: Correlation matrix is not quadratic")
+        return -1, -1
+    if np.size(R, 0) != np.size(scanning_vectors, 0):
+        print("ERROR: Correlation matrix dimension does not match with the antenna array dimension")
+        return -2, -2
+
+
+    ADSINR = np.zeros(np.size(scanning_vectors, 1),dtype=complex)
+
+    # --- Calculation ---
+    try:
+        R_inv_2  = np.linalg.matrix_power(R, -2)
+    except:
+        print("ERROR: Signular matrix")
+        return -3, -3
+
+    theta_index=0
+    for i in range(np.size(scanning_vectors, 1)):
+        S_theta_ = scanning_vectors[:, i]
+        ADSINR[theta_index]=np.dot(np.conj(S_theta_),np.dot(R_inv_2,S_theta_))
+        theta_index += 1
+
+    ADSINR = np.reciprocal(ADSINR)
+
+    return ADSINR
 
 # NUMBA optimized MUSIC function. About 100x faster on the Pi 4
 # @njit(fastmath=True, cache=True, parallel=True)
