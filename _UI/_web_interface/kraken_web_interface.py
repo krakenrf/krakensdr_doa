@@ -2075,7 +2075,7 @@ def plot_doa():
                 doa_fig.add_trace(go.Scatterpolargl(theta=x, #webInterface_inst.doa_thetas,
                                              r=y, #doa_result,
                                              name=label,
-                                             fill= 'toself'
+                                             fill= 'toself',
                                              ))
 
                 doa_fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
@@ -2109,16 +2109,24 @@ def plot_doa():
         doa_max_str = ""
         if webInterface_inst.doa_thetas is not None and webInterface_inst.doa_results[0].size > 0:
             doa_max_str = str(webInterface_inst.doas[0])+"°"
-            update_data = dict(x=[webInterface_inst.doa_thetas], y=[webInterface_inst.doa_results[0]])
+
+            thetas = webInterface_inst.doa_thetas
+            result = webInterface_inst.doa_results[0]
+
+            update_data = dict(x=[thetas], y=[result])
 
             if webInterface_inst._doa_fig_type == 'Polar' :
-                update_data = dict(theta=[webInterface_inst.doa_thetas], r=[webInterface_inst.doa_results[0]])
+                thetas = np.append(webInterface_inst.doa_thetas, webInterface_inst.doa_thetas[0])
+                result = np.append(webInterface_inst.doa_results[0], webInterface_inst.doa_results[0][0])
+                update_data = dict(theta=[thetas], r=[result])
             elif webInterface_inst._doa_fig_type == 'Compass' :
+                thetas = np.append(webInterface_inst.doa_thetas, webInterface_inst.doa_thetas[0])
+                result = np.append(webInterface_inst.doa_results[0], webInterface_inst.doa_results[0][0])
                 doa_max_str = (360-webInterface_inst.doas[0]+webInterface_inst.compass_offset)%360
-                update_data = dict(theta=[(360-webInterface_inst.doa_thetas+webInterface_inst.compass_offset)%360], r=[webInterface_inst.doa_results[0]])
+                update_data = dict(theta=[(360-thetas+webInterface_inst.compass_offset)%360], r=[result])
 
             app.push_mods({
-                'doa-graph': {'extendData': [update_data, [0], len(webInterface_inst.doa_thetas)]},
+                'doa-graph': {'extendData': [update_data, [0], len(thetas)]},
                 'body_doa_max': {'children': doa_max_str}
             })
 
