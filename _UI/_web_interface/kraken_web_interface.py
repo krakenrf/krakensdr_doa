@@ -2258,16 +2258,16 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
     # Max phase diff and ambiguity warning and Spatial smoothing control
     if ant_arrangement == "ULA":
         max_phase_diff = webInterface_inst.ant_spacing_meters / wavelength
-        smoothing_possibility = [{"label":"", "options": 1, "disabled": False}] # Enables the checkbox
+        smoothing_possibility = [{"label":"", "value": 1, "disabled": False}] # Enables the checkbox
         spacing_label = "Interelement Spacing [m]:"
     elif ant_arrangement == "UCA":
         UCA_ant_spacing = (np.sqrt(2)*webInterface_inst.ant_spacing_meters*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
         max_phase_diff = UCA_ant_spacing/wavelength
-        smoothing_possibility = [{"label":"", "options": 1, "disabled": True}] # Disables the checkbox
+        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
         spacing_label = "Array Radius [m]:"
     elif ant_arrangement == "Custom":
         max_phase_diff = 0.25 #ant_spacing_meter / wavelength
-        smoothing_possibility = [{"label":"", "options": 1, "disabled": True}] # Disables the checkbox
+        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
         spacing_label = "Interelement Spacing [m]"
 
     if max_phase_diff > 0.5:
@@ -2617,3 +2617,4 @@ html.Div([
     )
 ], className="card")
 """
+
