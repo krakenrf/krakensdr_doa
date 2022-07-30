@@ -824,7 +824,7 @@ def DOA_TNA(R, scanning_vectors):
     # --- Calculation ---
     try:
         R_inv_2 = np.linalg.matrix_power(R_, -2)
-    except np.linalg.LinAlgError:
+    except:
         print("ERROR: Singular or non-square matrix")
         return np.ones(1, dtype=np.complex64) * -3
 
