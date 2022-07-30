@@ -809,28 +809,30 @@ def channelize(processed_signal, freq, decimation_factor, sampling_freq):
 @njit(fastmath=True, cache=True)
 def DOA_TNA(R, scanning_vectors):
     # --> Input check
-    if np.size(R, 0) != np.size(R, 1):
+    if R.shape[0] != R.shape[1]:
         print("ERROR: Correlation matrix is not quadratic")
-        return -1, -1
-    if np.size(R, 0) != np.size(scanning_vectors, 0):
-        print("ERROR: Correlation matrix dimension does not match with the antenna array dimension")
-        return -2, -2
+        return np.ones(1, dtype=np.complex64) * -1
+    if R.shape[0] != scanning_vectors.shape[0]:
+        print(
+            "ERROR: Correlation matrix dimension does not match with the antenna array dimension"
+        )
+        return np.ones(1, dtype=np.complex64) * -2
 
+    ADSINR = np.zeros(scanning_vectors.shape[1], dtype=np.complex64)
 
-    ADSINR = np.zeros(np.size(scanning_vectors, 1),dtype=complex)
+    R_ = R.astype(np.complex64)
+    S_ = np.asfortranarray(scanning_vectors)
 
     # --- Calculation ---
     try:
-        R_inv_2  = np.linalg.matrix_power(R, -2)
+        R_inv_2 = np.linalg.matrix_power(R_, -2)
     except:
         print("ERROR: Signular matrix")
-        return -3, -3
+        return np.ones(1, dtype=np.complex64) * -3
 
-    theta_index=0
-    for i in range(np.size(scanning_vectors, 1)):
-        S_theta_ = scanning_vectors[:, i]
-        ADSINR[theta_index]=np.dot(np.conj(S_theta_),np.dot(R_inv_2,S_theta_))
-        theta_index += 1
+    for i in range(scanning_vectors.shape[1]):
+        S_theta_ = S_[:, i]
+        ADSINR[i] = np.dot(np.conj(S_theta_), np.dot(R_inv_2, S_theta_))
 
     ADSINR = np.reciprocal(ADSINR)
 
