@@ -809,9 +809,7 @@ def channelize(processed_signal, freq, decimation_factor, sampling_freq):
 @njit(fastmath=True, cache=True)
 def DOA_TNA(R, scanning_vectors):
     # --> Input check
-    if R.shape[0] != R.shape[1]:
-        print("ERROR: Correlation matrix is not quadratic")
-        return np.ones(1, dtype=np.complex64) * -1
+
     if R.shape[0] != scanning_vectors.shape[0]:
         print(
             "ERROR: Correlation matrix dimension does not match with the antenna array dimension"
@@ -826,8 +824,8 @@ def DOA_TNA(R, scanning_vectors):
     # --- Calculation ---
     try:
         R_inv_2 = np.linalg.matrix_power(R_, -2)
-    except:
-        print("ERROR: Signular matrix")
+    except np.linalg.LinAlgError as e:
+        print(f"ERROR: {e}")
         return np.ones(1, dtype=np.complex64) * -3
 
     for i in range(scanning_vectors.shape[1]):
