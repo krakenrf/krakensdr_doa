@@ -818,15 +818,22 @@ def DOA_TNA(R, scanning_vectors):
 
     ADSINR = np.zeros(scanning_vectors.shape[1], dtype=np.complex64)
 
-    R_ = R.astype(np.complex64)
+    # TODO: perhaps we can store scanning_vectors in column-major order from the very begining to
+    # avoid such conversion?
     S_ = np.asfortranarray(scanning_vectors)
 
     # --- Calculation ---
     try:
-        R_inv_2 = np.linalg.matrix_power(R_, -2)
+        R_inv_2 = np.linalg.matrix_power(R, -2)
     except:
         print("ERROR: Singular or non-square matrix")
         return np.ones(1, dtype=np.complex64) * -3
+
+    # TODO: it seems like rising correlation matrix to power benefits from added precision.
+    # This might be artifact of the testing and if it is then we can switching the whole
+    # processing chain from double to single precision for considerable performance uplift,
+    # especially on low grade hardware.
+    R_inv_2 = R_inv_2.astype(np.complex64)
 
     for i in range(scanning_vectors.shape[1]):
         S_theta_ = S_[:, i]
