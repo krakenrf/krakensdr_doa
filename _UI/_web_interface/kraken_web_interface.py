@@ -1081,13 +1081,14 @@ def generate_config_page_layout(webInterface_inst):
                                  {'label': 'Kerberos App', 'value': 'Kerberos App'},
                                  {'label': 'DF Aggregator', 'value': 'DF Aggregator'},
                                  {'label': 'RDF Mapper', 'value': 'RDF Mapper'},
+                                 {'label': 'Full POST', 'value': 'Full POST'},
                              ],
                              value=webInterface_inst.module_signal_processor.DOA_data_format,
                              style={"display": "inline-block"}, className="field-body"),
             ], className="field"),
 
             html.Div([
-                html.Div("RDF Mapper Server URL:", className="field-label"),
+                html.Div("RDF Mapper / Generic Server URL:", className="field-label"),
                 dcc.Input(id='rdf_mapper_server_address',
                           value=webInterface_inst.module_signal_processor.RDF_mapper_server,
                           type='text', className="field-body-textbox", debounce=True)
@@ -1814,7 +1815,7 @@ def toggle_kraken_pro_key(doa_format_type):
 @app.callback(Output('rdf_mapper_server_address_field', 'style'),
               [Input('doa_format_type', 'value')])
 def toggle_kraken_pro_key(doa_format_type):
-    if doa_format_type == "RDF Mapper":
+    if doa_format_type == "RDF Mapper" or doa_format_type == "Full POST":
         return {'display': 'block'}
     else:
         return {'display': 'none'}

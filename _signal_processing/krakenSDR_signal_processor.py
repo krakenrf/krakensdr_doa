@@ -31,6 +31,7 @@ import queue
 import math
 import xml.etree.ElementTree as ET
 import requests
+import json
 from multiprocessing.dummy import Pool
 
 # Import optimization modules
@@ -151,6 +152,7 @@ class SignalProcessor(threading.Thread):
         self.gps_connected = False
         self.krakenpro_key = "0"
         self.RDF_mapper_server = "http://MY_RDF_MAPPER_SERVER.com/save.php"
+        self.full_rest_server = "http://MY_REST_SERVER.com/save.php"
         self.pool = Pool()
         self.rdf_mapper_last_write_time = 0
         self.doa_max_list = [-1] * self.max_vfos
@@ -172,6 +174,11 @@ class SignalProcessor(threading.Thread):
             Main processing thread
         """
         # scipy.fft.set_workers(4)
+        myip = "127.0.0.1"
+        try:
+            myip = json.loads(requests.get("https://ip.seeip.org/jsonip?").text)["ip"]
+        except:
+            pass
         while True:
             self.is_running = False
             time.sleep(1)
@@ -475,6 +482,38 @@ class SignalProcessor(threading.Thread):
                                     out = self.pool.apply_async(requests.post, args=[self.RDF_mapper_server, rdf_post])
                                 except:
                                     print("NO CONNECTION: Invalid RDF Mapper Server")
+                        elif self.DOA_data_format == "Full POST":
+                            epoch_time = int(time.time() * 1000)
+
+                            time_elapsed = time.time() - self.rdf_mapper_last_write_time
+                            if time_elapsed > 1:  # reuse RDF mapper timer, it works the same
+                                self.rdf_mapper_last_write_time = time.time()
+
+                                message = ""
+                                doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
+                                for i in range(len(doa_result_log)):
+                                    message += ", " + "{:.2f}".format(doa_result_log[i])
+
+                                post = {'id': self.station_id,
+                                        'ip': myip,
+                                        'time': str(epoch_time),
+                                        'lat': str(self.latitude),
+                                        'lng': str(self.longitude),
+                                        'gpsheading': str(self.heading),
+                                        'radiobearing': DOA_str,
+                                        'conf': confidence_str,
+                                        'power': max_power_level_str,
+                                        'freq': str(write_freq),
+                                        'anttype': self.DOA_ant_alignment,
+                                        'latency': str(self.latency),
+                                        'doaarray': message
+                                }
+                                try:
+                                    # out = requests.post(self.RDF_mapper_server, data = rdf_post, timeout=5)
+                                    out = self.pool.apply_async(requests.post,
+                                                                args=[self.RDF_mapper_server, post])
+                                except:
+                                    print("NO CONNECTION: Invalid Server")
                         elif self.DOA_data_format == "Kraken App":
                             pass  # Just do nothing, stop the invalid doa result error from showing
                         else:
