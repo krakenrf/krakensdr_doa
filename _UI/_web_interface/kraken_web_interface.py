@@ -121,7 +121,14 @@ class webInterface():
         self.module_signal_processor = SignalProcessor(data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=self.logging_level)
         self.module_signal_processor.DOA_ant_alignment    = dsp_settings.get("ant_arrangement", "ULA")
         self.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
-        self.module_signal_processor.DOA_inter_elem_space = self.ant_spacing_meters / (300 / float(dsp_settings.get("center_freq", 100.0)))
+
+        if self.module_signal_processor.DOA_ant_alignment == "UCA":
+            # Convert RADIUS to INTERELEMENT SPACING
+            inter_elem_spacing = (np.sqrt(2)*self.ant_spacing_meters*np.sqrt(1-np.cos(np.deg2rad(360/self.module_signal_processor.channel_number))))
+            self.module_signal_processor.DOA_inter_elem_space = inter_elem_spacing / (300 / float(dsp_settings.get("center_freq", 100.0)))
+        else:
+            self.module_signal_processor.DOA_inter_elem_space = self.ant_spacing_meters / (300 / float(dsp_settings.get("center_freq", 100.0)))
+
         self.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
         self.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
 
@@ -1737,8 +1744,16 @@ def update_daq_params(input_value, f0, gain):
         webInterface_inst.config_daq_rf(f0,gain)
 
         wavelength = 300 / webInterface_inst.daq_center_freq
-        webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
-        ant_spacing_wavelength = round(webInterface_inst.ant_spacing_meters / wavelength, 3)
+        #webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
+
+        if webInterface_inst.module_signal_processor.DOA_ant_alignment == "UCA":
+            # Convert RADIUS to INTERELEMENT SPACING
+            inter_elem_spacing = (np.sqrt(2)*webInterface_inst.ant_spacing_meters*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
+            webInterface_inst.module_signal_processor.DOA_inter_elem_space = inter_elem_spacing / wavelength
+        else:
+            webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
+
+        ant_spacing_wavelength = round(webInterface_inst.module_signal_processor.DOA_inter_elem_space, 3)
         app.push_mods({
                'body_ant_spacing_wavelength': {'children': str(ant_spacing_wavelength)},
         })
@@ -2251,8 +2266,17 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
     webInterface_inst.ant_spacing_meters = spacing_meter
     wavelength = 300 / webInterface_inst.daq_center_freq
 
-    webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
-    ant_spacing_wavelength = round(webInterface_inst.ant_spacing_meters / wavelength, 3)
+    #webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
+
+    if ant_arrangement == "UCA":
+        # Convert RADIUS to INTERELEMENT SPACING
+        inter_elem_spacing = (np.sqrt(2) * webInterface_inst.ant_spacing_meters * np.sqrt(
+            1 - np.cos(np.deg2rad(360 / webInterface_inst.module_signal_processor.channel_number))))
+        webInterface_inst.module_signal_processor.DOA_inter_elem_space = inter_elem_spacing / wavelength
+    else:
+        webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
+
+    ant_spacing_wavelength = round(webInterface_inst.module_signal_processor.DOA_inter_elem_space, 3)
 
     spacing_label = ""
 
