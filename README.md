@@ -14,11 +14,6 @@ We have a beta Pi 4 SD card image available here
 
 **Latest Image:** https://github.com/krakenrf/krakensdr_doa/releases/
 
-**Older Images: **
-190522: https://drive.google.com/file/d/1e6AAR8uOb0MLig4TqesRi9qqQ-80J62k/view?usp=sharing
-
-150422: https://drive.google.com/file/d/1JT41DfkaYNSgGlxqaAvUwHQO_NwXewRW/view?usp=sharing 
-
 In this image the code will automatically run on boot. Note that it may take 2-3 minutes for the boot process to complete. 
 
 To run this code flash the image file to an SD Card using Etcher. The SD Card needs to be at least 8GB and we recommend using a class 10 card or faster. For advanced users the login/password details for SSH and terminal are "krakenrf"/"krakensdr"
