@@ -344,8 +344,7 @@ class SignalProcessor(threading.Thread):
 
                             # -----> DoA ESIMATION <-----
 
-                            if self.en_DOA_estimation and self.channel_number > 1 and max_amplitude > self.vfo_squelch[
-                                i] and (i == self.output_vfo or self.output_vfo < 0):
+                            if self.en_DOA_estimation and self.channel_number > 1 and max_amplitude > self.vfo_squelch[i] and (i == self.output_vfo or self.output_vfo < 0):
                                 write_freq = int(self.vfo_freq[i])
                                 # Do channelization
                                 vfo_channel = channelize(self.processed_signal, freq, decimation_factor, sampling_freq)
