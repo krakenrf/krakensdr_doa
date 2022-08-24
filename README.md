@@ -92,9 +92,8 @@ If you do not wish to use a Pi 4 as your KrakenSDR computing device, you can als
 See our Wiki for more information about our VirtualBox Image and where to download it https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox-and-Docker-Images#virtualbox
 
 ## Docker Image
-Third parties have created a Docker image that you can use for installing a ready to use image of the DOA software. Note that the Docker image will not work on Windows, due Docker not supporting USB passthrough from Windows to a Linux image. Also note that the Docker image is immutable, so any settings changes you save will not persist once the image is restarted.
 
-Docker Image Repository: https://github.com/godsic/krakensdr-containers/
+See our Wiki for more information about the third party Docker image https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox-and-Docker-Images#docker
 
 ## Manual Installation from a fresh OS
 
