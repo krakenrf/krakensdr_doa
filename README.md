@@ -102,6 +102,8 @@ Docker Image Repository: https://github.com/godsic/krakensdr-containers/
 
 ## Manual Installation from a fresh OS
 
+Manual is only required if you are not using the premade images, and are setting up the software from a clean system.
+
 1. Install the prerequisites
 
 ``` bash
