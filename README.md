@@ -89,11 +89,7 @@ You can also 'click to tune' in the spectrum. Either by clicking on the spectrum
 ## VirtualBox Image
 If you do not wish to use a Pi 4 as your KrakenSDR computing device, you can also use a Windows or Linux Laptop/PC with our VirtualBox pre-made image. This image file is currently in beta. It includes the KrakenSDR DOA, Passive Radar, and GNU Radio software.
 
-The image file is provided as an OVA file, so in VirtualBox go to File->Import to use it. Make sure you deselect the network interface upon install, and then before starting set networking to bridged mode, and select your own network interface.
-
-Note that this uses the VirtualBox USB3.0 implementation as we have found that the USB2.0 implementation is too slow and drops samples. The USB3.0 implementation works well. In order to use the USB3.0 implementation you will need the Oracle VM VirtualBox Extension Pack from https://www.virtualbox.org/wiki/Downloads installed to your VirtualBox. 
-
-DOWNLOAD COMING SOON
+See our Wiki for more information about our VirtualBox Image and where to download it https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox-and-Docker-Images#virtualbox
 
 ## Docker Image
 Third parties have created a Docker image that you can use for installing a ready to use image of the DOA software. Note that the Docker image will not work on Windows, due Docker not supporting USB passthrough from Windows to a Linux image. Also note that the Docker image is immutable, so any settings changes you save will not persist once the image is restarted.
