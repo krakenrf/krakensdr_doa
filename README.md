@@ -119,15 +119,15 @@ Please run the installs in this order as we need to ensure a specific version of
 ``` bash
 conda activate kraken
 
-conda install quart
 conda install pandas
 conda install orjson
 conda install matplotlib
 conda install requests
 
 pip3 install dash_bootstrap_components==1.1.0
-pip3 install quart_compress
-pip3 install dash_devices
+pip3 install quart_compress==0.21.0
+pip3 install quart==0.17.0
+pip3 install dash_devices==0.1.3
 pip3 install pyargus
 
 conda install dash==1.20.0
