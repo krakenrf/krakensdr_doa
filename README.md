@@ -97,7 +97,13 @@ See our Wiki for more information about the third party Docker image https://git
 
 ## Manual Installation from a fresh OS
 
-Manual is only required if you are not using the premade images, and are setting up the software from a clean system.
+### Install script
+
+You can use on of our install scripts to automate a manual install. Details on the Wiki at https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts
+
+###  Manual Install
+
+Manual install is only required if you are not using the premade images, and are setting up the software from a clean system.
 
 1. Install the prerequisites
 
@@ -162,13 +168,13 @@ cp krakensdr_doa/util/kraken_doa_stop.sh .
 ./kraken_doa_start.sh
 ```
 
-Please be patient on the first run, at it can take 1-2 minutes for the JIT numba compiler to compile the numba optimized functions, and during this compilation time it may appear that the software has gotten stuck. On subsqeuent runs this loading time will be much faster as it will read from cache.
+Please be patient on the first run, as it can take 1-2 minutes for the JIT numba compiler to compile the numba optimized functions (on Pi 4 hardware), and during this compilation time it may appear that the software has gotten stuck. On subsqeuent runs this loading time will be much faster as it will read from cache.
 
 ### Remote operation
 
-*UNTESTED*
+With remote operation you can run the DAQ on one machine on your network, and the DSP software on another. 
 
-1. Start the DAQ Subsystem either remotely. (Make sure that the `daq_chain_config.ini` contains the proper configuration) 
+1. Start the heimdall DAQ subsystem on your remote computing device. (Make sure that the `daq_chain_config.ini` contains the proper configuration) 
     (See:https://github.com/krakenrf/heimdall_daq_fw/Documentation)
 2. Set the IP address of the DAQ Subsystem in the `settings.json`, `default_ip` field.
 3. Start the DoA DSP software by typing:
