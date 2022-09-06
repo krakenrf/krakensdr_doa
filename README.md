@@ -45,34 +45,7 @@ To get the best performance we recommend adding aftermarket cooling to your Pi 4
     
 ### KerberosSDR Setup (KrakenSDR users Ignore)
 
-<details>
-    <summary>KerberosSDR Setup Information</summary>
-
-#### KerberosSDR BOOTING NOTE
-The Pi 4 hardware has a problem where it will not boot if a powered USB hub drawing current from the Pi 4 is plugged in. Inside the KerberosSDR is a powered USB hub and hence the Pi 4 will not boot if the KerberosSDR is plugged in. So please plug the KerberosSDR in after booting. For the KrakenSDR the hardware implementation forces external power only, so this problem does not occur. 
-    
-We strongly recommend making a small modification by removing a jumper on the KerberosSDR PCB to avoid this Pi 4 issue. This modification force external power only on the KerberosSDR by opening the enclosure, carefully removing the top calibration board, and then removing the `JP2` jumper from the PCB.
-
-![kerberos_jumper_mod](https://user-images.githubusercontent.com/78108016/163519259-bc6c8f37-87fc-4742-8f03-c3cae849e133.jpg)
-
-#### KerberosSDR EEPROM Update
-For KerberosSDR users you will need to initially flash the EEPROM to use the new serial numbering scheme. Connect a monitor and boot up the image file. The code will not start as the EEPROMs are incorrect.
-   
-There is a script in `~/krakensdr_doa/heimdall_daq_fw/util/eeprom_init.sh` that can guide your through this. Just plug in your KerberosSDR (ensuring it is powered from the power port), and run the script `./eeprom_init.sh`. The script will guide you to use the DIP switches to turn all units off, except the currently requested tuner. It will then flash the realtek_oem firmware, then the serial number, before asking you to turn off that tuner, and turn on the next one. Answer `Y` each time it asks to flash.
-
-Once the EEPROM is flashed you can reboot and follow the reconfiguration step below.
-
-#### KerberosSDR Reconfiguration
-The image is currently set up for the KrakenSDR. For KerberosSDR users, please update the EEPROM as described above first, then reboot. Once the web interface has loaded, expand the "Basic DAQ Settings" by clicking on the checkbox. Under "Preconfigured DAQ Files" select "kerberosSDR_default", and then click on "Reconfigure and Restart DAQ chain". This may take a minute or so, but after it's completed the software should connect and begin processing.
-
-#### KerberosSDR Retuning
-The KrakenSDR code is designed to autocalibrate phase on each retune. Unfortunately this feature is not available on the KerberosSDR due to the lack of a noise source switching circuit. So with the KerberosSDR every time you change the frequency or DAQ settings, you must make sure that you have the antennas disconnected. 
-    
-Also if you make any custom changes to the DAQ settings (which is not recommended), always ensure that `Calibration Track Mode` is set to `No Tracking` otherwise the software will attempt to recalibrate every X-minutes.
-
-Once you've set the center frequency, you can connect your antennas. In the Spectrum screen you can use 'click to tune' to tune to any frequency within the active bandwidth without needing to recalibrate.
-    
-</details>
+Consult the Wiki page at https://github.com/krakenrf/krakensdr_docs/wiki/11.-KerberosSDR-Setup-for-KrakenSDR-Software for information on setting up your KerberosSDR to work with the KrakenSDR software.
 
 ## Software Quick Start
 
