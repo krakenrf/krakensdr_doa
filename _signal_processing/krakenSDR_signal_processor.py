@@ -355,7 +355,7 @@ class SignalProcessor(threading.Thread):
                                     # print("IQ DIFFS: " + str(iq_diffs))
                                     # print("IQ DIFFS ANGLE: " + str(np.rad2deg(np.angle(iq_diffs))))
                                     ##########################
-                                    self.estimate_DOA(vfo_channel)
+                                    self.estimate_DOA(vfo_channel, self.vfo_freq[i])
 
                                     doa_result_log = DOA_plot_util(self.DOA)
 
@@ -550,7 +550,7 @@ class SignalProcessor(threading.Thread):
                     # Discard data, UI couldn't consume fast enough
                     pass
 
-    def estimate_DOA(self, processed_signal):
+    def estimate_DOA(self, processed_signal, vfo_freq):
         """
             Estimates the direction of arrival of the received RF signal
         """
@@ -563,11 +563,13 @@ class SignalProcessor(threading.Thread):
 
         M = self.channel_number
         scanning_vectors = []
+        frq_ratio = vfo_freq / self.module_receiver.daq_center_freq
         if self.DOA_ant_alignment == "UCA" or self.DOA_ant_alignment == "ULA":
-            scanning_vectors = gen_scanning_vectors(M, self.DOA_inter_elem_space, self.DOA_ant_alignment,
+            inter_element_spacing = self.DOA_inter_elem_space * frq_ratio
+            scanning_vectors = gen_scanning_vectors(M, inter_element_spacing, self.DOA_ant_alignment,
                                                     int(self.array_offset))
         elif self.DOA_ant_alignment == "Custom":
-            scanning_vectors = gen_scanning_vectors_custom(M, self.custom_array_x, self.custom_array_y)
+            scanning_vectors = gen_scanning_vectors_custom(M, self.custom_array_x * frq_ratio, self.custom_array_y * frq_ratio)
 
         # DOA estimation
         if self.DOA_algorithm == "Bartlett":  # self.en_DOA_Bartlett:
@@ -941,8 +943,11 @@ def gen_scanning_vectors(M, DOA_inter_elem_space, type, offset):
     thetas = np.linspace(0, 359,
                          360)  # Remember to change self.DOA_thetas too, we didn't include that in this function due to memoization cannot work with arrays
     if type == "UCA":
-        x = DOA_inter_elem_space * np.cos(2 * np.pi / M * np.arange(M))
-        y = -DOA_inter_elem_space * np.sin(2 * np.pi / M * np.arange(M))  # For this specific array only
+        # convert UCA inter element spacing back to its radius
+        to_r = 1.0 / (np.sqrt(2.0) * np.sqrt(1.0 - np.cos(2.0 * np.pi / M)))
+        r = DOA_inter_elem_space * to_r
+        x = r * np.cos(2 * np.pi / M * np.arange(M))
+        y = -r * np.sin(2 * np.pi / M * np.arange(M))  # For this specific array only
     elif "ULA":
         x = np.zeros(M)
         y = -np.arange(M) * DOA_inter_elem_space
