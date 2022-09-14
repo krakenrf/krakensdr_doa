@@ -29,6 +29,7 @@ import logging
 import threading
 import queue
 import math
+from typing import Tuple
 import xml.etree.ElementTree as ET
 import requests
 import json
@@ -96,6 +97,7 @@ class SignalProcessor(threading.Thread):
         # self.en_DOA_MUSIC    = False
         self.DOA_algorithm = "MUSIC"
         self.DOA_offset = 0
+        self.DOA_UCA_radius_m = np.Infinity
         self.DOA_inter_elem_space = 0.5
         self.DOA_ant_alignment = "ULA"
         self.ula_direction = "Both"
@@ -567,30 +569,59 @@ class SignalProcessor(threading.Thread):
             Estimates the direction of arrival of the received RF signal
         """
 
+        antennas_alignment = self.DOA_ant_alignment
+        if self.DOA_decorrelation_method != 'Off' and antennas_alignment == "UCA":
+            antennas_alignment = "VULA"
+
+        if antennas_alignment == "VULA":
+            processed_signal = transform_to_phase_mode_space(processed_signal,
+                                                             self.DOA_UCA_radius_m, vfo_freq)
+            # no idea on why this fliping of direction is needed
+            processed_signal = np.flip(processed_signal)
+
         # Calculating spatial correlation matrix
-        R = corr_matrix(processed_signal)  # de.corr_matrix_estimate(self.processed_signal.T, imp="fast")
+        R = corr_matrix(processed_signal)
+        M = R.shape[0]
 
         if self.DOA_decorrelation_method == 'FBA':
             R = de.forward_backward_avg(R)
         elif self.DOA_decorrelation_method == 'TOEP':
             R = toeplitzify(R)
         elif self.DOA_decorrelation_method == 'FBSS':
-            R = de.spatial_smoothing(processed_signal.T,
-                                     self.channel_number - 1,
-                                     "forward-backward")
+            # VULA must have odd number of elements after spatial averaging
+            smoothing_degree = 2 if antennas_alignment == "VULA" else 1
+            subarray_size = M - smoothing_degree
+            if subarray_size > 1:
+                R = de.spatial_smoothing(processed_signal.T, subarray_size,
+                                         "forward-backward")
+            else:
+                # Too few channels for spatial smoothing, skipping it.
+                pass
+
         elif self.DOA_decorrelation_method == 'FBTOEP':
             R = fb_toeplitz_reconstruction(R)
-
 
         M = R.shape[0]
         scanning_vectors = []
         frq_ratio = vfo_freq / self.module_receiver.daq_center_freq
-        if self.DOA_ant_alignment == "UCA" or self.DOA_ant_alignment == "ULA":
-            inter_element_spacing = self.DOA_inter_elem_space * frq_ratio
-            scanning_vectors = gen_scanning_vectors(M, inter_element_spacing, self.DOA_ant_alignment,
+        inter_element_spacing = self.DOA_inter_elem_space * frq_ratio
+
+        if antennas_alignment == "ULA":
+            scanning_vectors = gen_scanning_vectors(M, inter_element_spacing,
+                                                    antennas_alignment,
                                                     int(self.array_offset))
-        elif self.DOA_ant_alignment == "Custom":
-            scanning_vectors = gen_scanning_vectors_custom(M, self.custom_array_x * frq_ratio, self.custom_array_y * frq_ratio)
+        elif antennas_alignment == "UCA":
+            scanning_vectors = gen_scanning_vectors(M, inter_element_spacing,
+                                                    antennas_alignment,
+                                                    int(self.array_offset))
+        elif antennas_alignment == "VULA":
+            L = R.shape[0] // 2
+            scanning_vectors = gen_scanning_vectors_phase_modes_space(L,
+                                                                      self.array_offset)
+        elif antennas_alignment == "Custom":
+            scanning_vectors = gen_scanning_vectors_custom(M,
+                                                           self.custom_array_x * frq_ratio,
+                                                           self.custom_array_y * frq_ratio)
 
         # DOA estimation
         if self.DOA_algorithm == "Bartlett":  # self.en_DOA_Bartlett:
@@ -764,7 +795,7 @@ class SignalProcessor(threading.Thread):
             2)  # Convert to MB
 
 
-def calculate_end_lat_lng(s_lat: float, s_lng: float, doa: float, my_bearing: float) -> (float, float):
+def calculate_end_lat_lng(s_lat: float, s_lng: float, doa: float, my_bearing: float) -> Tuple[float, float]:
     R = 6372.795477598
     line_length = 100
     theta = math.radians(my_bearing + (360 - doa))
@@ -950,6 +981,54 @@ def DOA_MUSIC(R, scanning_vectors, signal_dimension, angle_resolution=1):
     return ADORT
 
 
+def xi(uca_radius_m: float, frequency_Hz: float) -> Tuple[float, int]:
+    wavelength_m = scipy.constants.speed_of_light / frequency_Hz
+    x = 2.0 * np.pi * uca_radius_m / wavelength_m
+    L = int(np.floor(x))
+    return x, L
+
+# The phase mode excitation transformation
+# as introduced by A. H. Tewfik and W. Hong,
+# "On the application of uniform linear array bearing estimation techniques to uniform circular arrays",
+# in IEEE Transactions on Signal Processing, vol. 40, no. 4, pp. 1008-1011, April 1992,
+# doi: 10.1109/78.127980.
+@lru_cache(maxsize=32)
+def T(uca_radius_m: float, frequency_Hz: float, N: int) -> np.ndarray:
+    x, L = xi(uca_radius_m, frequency_Hz)
+
+    # J
+    J = np.diag([
+        1.0 / ((1j**v) * scipy.special.jv(v, x))
+        for v in range(-L, L + 1, 1)
+    ])
+
+    # F
+    F = np.array([[np.exp(2.0j * np.pi * (m * n / N)) for n in range(0, N, 1)]
+                  for m in range(-L, L + 1, 1)])
+
+    return (J @ F) / float(N)
+
+
+# The so-called "prewhitening"
+# applied to turn A into unitary transformation
+def whiten(A: np.ndarray) -> np.ndarray:
+    A_H = A.conj().T
+    A_w = A @ A_H
+    A_w = scipy.linalg.fractional_matrix_power(A_w, -0.5)
+    return A_w @ A
+
+
+# @njit(fastmath=True, cache=True)
+def transform_to_phase_mode_space(signal: np.ndarray, uca_radius_m: float,
+                                  frequency_Hz: float) -> np.ndarray:
+    T_ = T(uca_radius_m, frequency_Hz, signal.shape[0])
+    # apparently T is not unitary and would "color" the noise in the input signal
+    # thus prewhitening needs to be applied particularly to make MUSIC work
+    Tw = whiten(T_)
+    x = Tw @ signal
+    return x
+
+
 # Numba optimized version of pyArgus corr_matrix_estimate with "fast". About 2x faster on Pi4
 # @njit(fastmath=True, cache=True)
 def corr_matrix(X):
@@ -983,6 +1062,18 @@ def fb_toeplitz_reconstruction(R: np.ndarray) -> np.ndarray:
     R_f = scipy.linalg.toeplitz(R[:, 0], R[0, :])
     R_b = scipy.linalg.toeplitz(np.flip(R[:, -1]), np.flip(R[-1, :]))
     return 0.5 * (R_f + R_b.conj())
+
+
+# LRU cache memoize about 1000x faster.
+@lru_cache(maxsize=32)
+def gen_scanning_vectors_phase_modes_space(L, offset):
+    thetas = np.deg2rad(np.linspace(0, 359, 360, dtype=float))
+    M = np.arange(-L, L + 1, dtype=float)
+    scanning_vectors = np.zeros((M.size, thetas.size), dtype=np.complex64)
+    for i in range(thetas.size):
+        scanning_vectors[:, i] = np.exp(1.0j * M * (thetas[i] + offset))
+
+    return np.ascontiguousarray(scanning_vectors)
 
 
 # LRU cache memoize about 1000x faster.
