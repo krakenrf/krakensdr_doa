@@ -468,6 +468,7 @@ doa_trace_colors =	{
   "DoA Bartlett": "#00B5F7",
   "DoA Capon"   : "rgb(226,26,28)",
   "DoA MEM"     : "#1CA71C",
+  "DoA TNA"     : "rgb(255, 0, 255)",
   "DoA MUSIC"   : "rgb(257,233,111)"
 }
 figure_font_size = 20
@@ -1005,6 +1006,7 @@ def generate_config_page_layout(webInterface_inst):
                 {'label': 'Bartlett', 'value': 'Bartlett'},
                 {'label': 'Capon'   , 'value': 'Capon'},
                 {'label': 'MEM'     , 'value': 'MEM'},
+                {'label': 'TNA'     , 'value': 'TNA'},
                 {'label': 'MUSIC'   , 'value': 'MUSIC'}
                 ],
         value=webInterface_inst.module_signal_processor.DOA_algorithm, style={"display":"inline-block"},className="field-body")

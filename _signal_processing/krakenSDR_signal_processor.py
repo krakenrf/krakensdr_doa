@@ -576,6 +576,8 @@ class SignalProcessor(threading.Thread):
         if self.DOA_algorithm == "MEM":  # self.en_DOA_MEM:
             DOA_MEM_res = de.DOA_MEM(R, scanning_vectors, column_select=0)
             self.DOA = DOA_MEM_res
+        if self.DOA_algorithm == "TNA":
+            self.DOA = DOA_TNA(R, scanning_vectors)
         if self.DOA_algorithm == "MUSIC":  # self.en_DOA_MUSIC:
             DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors,
                                       signal_dimension=1)  # de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
@@ -840,6 +842,44 @@ def channelize(processed_signal, freq, decimation_factor, sampling_freq):
 
     # return decimated_signal
 
+# NUMBA optimized Thermal Noise Algorithm (TNA) function.
+# Based on `pyargus` DOA_Capon
+@njit(fastmath=True, cache=True)
+def DOA_TNA(R, scanning_vectors):
+    # --> Input check
+
+    if R.shape[0] != scanning_vectors.shape[0]:
+        print(
+            "ERROR: Correlation matrix dimension does not match with the antenna array dimension"
+        )
+        return np.ones(1, dtype=np.complex64) * -2
+
+    ADSINR = np.zeros(scanning_vectors.shape[1], dtype=np.complex64)
+
+    # TODO: perhaps we can store scanning_vectors in column-major order from the very begining to
+    # avoid such conversion?
+    S_ = np.asfortranarray(scanning_vectors)
+
+    # --- Calculation ---
+    try:
+        R_inv_2 = np.linalg.matrix_power(R, -2)
+    except:
+        print("ERROR: Singular or non-square matrix")
+        return np.ones(1, dtype=np.complex64) * -3
+
+    # TODO: it seems like rising correlation matrix to power benefits from added precision.
+    # This might be artifact of the testing and if it is then we can switching the whole
+    # processing chain from double to single precision for considerable performance uplift,
+    # especially on low grade hardware.
+    R_inv_2 = R_inv_2.astype(np.complex64)
+
+    for i in range(scanning_vectors.shape[1]):
+        S_theta_ = S_[:, i]
+        ADSINR[i] = np.dot(np.conj(S_theta_), np.dot(R_inv_2, S_theta_))
+
+    ADSINR = np.reciprocal(ADSINR)
+
+    return ADSINR
 
 # NUMBA optimized MUSIC function. About 100x faster on the Pi 4
 # @njit(fastmath=True, cache=True, parallel=True)
