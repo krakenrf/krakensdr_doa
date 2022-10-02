@@ -9,7 +9,7 @@ const port = 8042
 const wsport = 8021
 const doaInterval = 1000    // Interval the clients should get new doa data in ms
 
-const remoteServer = 'kraken.tynet.eu:8044'
+const remoteServer = 'map.krakenrf.com:8044'
 const settingsJsonPath = 'settings.json'
 
 let lastDoaUpdate = Date.now()
