@@ -270,256 +270,259 @@ class SignalProcessor(threading.Thread):
                     que_data_packet.append(['max_amplitude', max_amplitude])
 
                     # -----> DoA PROCESSING <-----
-                    if self.data_ready:
-                        spectrum_window_size = len(self.spectrum[0, :])
-                        active_vfos = self.active_vfos if self.vfo_mode == 'Standard' else 1
-                        write_freq = 0
-                        update_list = [False] * self.max_vfos
-                        conf_val = 0
-                        theta_0 = 0
-                        DOA_str = ""
-                        confidence_str = ""
-                        max_power_level_str = ""
-                        doa_result_log = np.array([])
+                    try:
+                        if self.data_ready:
+                            spectrum_window_size = len(self.spectrum[0, :])
+                            active_vfos = self.active_vfos if self.vfo_mode == 'Standard' else 1
+                            write_freq = 0
+                            update_list = [False] * self.max_vfos
+                            conf_val = 0
+                            theta_0 = 0
+                            DOA_str = ""
+                            confidence_str = ""
+                            max_power_level_str = ""
+                            doa_result_log = np.array([])
 
-                        theta_0_list = []
-                        DOA_str_list = []
-                        confidence_str_list = []
-                        max_power_level_str_list = []
-                        freq_list = []
-                        doa_result_log_list = []
+                            theta_0_list = []
+                            DOA_str_list = []
+                            confidence_str_list = []
+                            max_power_level_str_list = []
+                            freq_list = []
+                            doa_result_log_list = []
 
-                        for i in range(active_vfos):
-                            # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
-                            if abs(self.vfo_freq[i] - self.module_receiver.daq_center_freq) > sampling_freq / 2:
-                                self.vfo_freq[i] = self.module_receiver.daq_center_freq
+                            for i in range(active_vfos):
+                                # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
+                                if abs(self.vfo_freq[i] - self.module_receiver.daq_center_freq) > sampling_freq / 2:
+                                    self.vfo_freq[i] = self.module_receiver.daq_center_freq
 
-                            freq = self.vfo_freq[
-                                       i] - self.module_receiver.daq_center_freq  # ch_freq is relative to -sample_freq/2 : sample_freq/2, so correct for that and get the actual freq
+                                freq = self.vfo_freq[
+                                           i] - self.module_receiver.daq_center_freq  # ch_freq is relative to -sample_freq/2 : sample_freq/2, so correct for that and get the actual freq
 
-                            if self.vfo_mode == 'Auto':  # Mode 1 is Auto Max Mode
-                                max_index = self.spectrum[1, :].argmax()
-                                freq = self.spectrum[0, max_index]
+                                if self.vfo_mode == 'Auto':  # Mode 1 is Auto Max Mode
+                                    max_index = self.spectrum[1, :].argmax()
+                                    freq = self.spectrum[0, max_index]
 
-                            decimation_factor = max((sampling_freq // self.vfo_bw[i]),
-                                                    1)  # How much decimation is required to get to the requested bandwidth
+                                decimation_factor = max((sampling_freq // self.vfo_bw[i]),
+                                                        1)  # How much decimation is required to get to the requested bandwidth
 
-                            # Get max amplitude of the channel from the FFT for squelching
-                            # From channel frequency determine array index of channel
-                            vfo_width_idx = int((spectrum_window_size * self.vfo_bw[i]) / (
-                                sampling_freq))  # Width of channel in array indexes based on FFT size
-                            vfo_width_idx = max(vfo_width_idx, 2)
+                                # Get max amplitude of the channel from the FFT for squelching
+                                # From channel frequency determine array index of channel
+                                vfo_width_idx = int((spectrum_window_size * self.vfo_bw[i]) / (
+                                    sampling_freq))  # Width of channel in array indexes based on FFT size
+                                vfo_width_idx = max(vfo_width_idx, 2)
 
-                            freqMin = -sampling_freq / 2
+                                freqMin = -sampling_freq / 2
 
-                            vfo_center_idx = int((((freq - freqMin) * spectrum_window_size) / sampling_freq))
+                                vfo_center_idx = int((((freq - freqMin) * spectrum_window_size) / sampling_freq))
 
-                            vfo_upper_bound = vfo_center_idx + vfo_width_idx // 2
-                            vfo_lower_bound = vfo_center_idx - vfo_width_idx // 2
+                                vfo_upper_bound = vfo_center_idx + vfo_width_idx // 2
+                                vfo_lower_bound = vfo_center_idx - vfo_width_idx // 2
 
-                            if self.spectrum_fig_type == 'Single':  # Do CH1 only (or make channel selectable)
-                                spectrum_channel = self.spectrum[1,
-                                                   max(vfo_lower_bound, 0): min(vfo_upper_bound, spectrum_window_size)]
-                                max_amplitude = np.max(spectrum_channel)
-                            else:
-                                spectrum_channel = self.spectrum[:,
-                                                   max(vfo_lower_bound, 0): min(vfo_upper_bound, spectrum_window_size)]
-                                max_amplitude = np.max(
-                                    spectrum_channel[1:self.module_receiver.iq_header.active_ant_chs + 1, :])
+                                if self.spectrum_fig_type == 'Single':  # Do CH1 only (or make channel selectable)
+                                    spectrum_channel = self.spectrum[1,
+                                                       max(vfo_lower_bound, 0): min(vfo_upper_bound, spectrum_window_size)]
+                                    max_amplitude = np.max(spectrum_channel)
+                                else:
+                                    spectrum_channel = self.spectrum[:,
+                                                       max(vfo_lower_bound, 0): min(vfo_upper_bound, spectrum_window_size)]
+                                    max_amplitude = np.max(
+                                        spectrum_channel[1:self.module_receiver.iq_header.active_ant_chs + 1, :])
 
-                            # *** HERE WE NEED TO PERFORM THE SPECTRUM UPDATE TOO ***
-                            if self.en_spectrum:
-                                # Selected Channel Window
-                                signal_window = np.zeros(spectrum_window_size) - 120
-                                signal_window[max(vfo_lower_bound, 4): min(vfo_upper_bound,
-                                                                           spectrum_window_size - 4)] = 0  # max_amplitude
-                                self.spectrum[self.channel_number + (2 * i + 1),
-                                :] = signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
+                                # *** HERE WE NEED TO PERFORM THE SPECTRUM UPDATE TOO ***
+                                if self.en_spectrum:
+                                    # Selected Channel Window
+                                    signal_window = np.zeros(spectrum_window_size) - 120
+                                    signal_window[max(vfo_lower_bound, 4): min(vfo_upper_bound,
+                                                                               spectrum_window_size - 4)] = 0  # max_amplitude
+                                    self.spectrum[self.channel_number + (2 * i + 1),
+                                    :] = signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
 
-                                # Squelch Window
-                                signal_window[max(vfo_lower_bound, 4): min(vfo_upper_bound, spectrum_window_size - 4)] = \
-                                self.vfo_squelch[i]
-                                self.spectrum[self.channel_number + (2 * i + 2),
-                                :] = signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
+                                    # Squelch Window
+                                    signal_window[max(vfo_lower_bound, 4): min(vfo_upper_bound, spectrum_window_size - 4)] = \
+                                    self.vfo_squelch[i]
+                                    self.spectrum[self.channel_number + (2 * i + 2),
+                                    :] = signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
 
-                            # -----> DoA ESIMATION <-----
+                                # -----> DoA ESIMATION <-----
 
-                            if self.en_DOA_estimation and self.channel_number > 1 and max_amplitude > self.vfo_squelch[i] and (i == self.output_vfo or self.output_vfo < 0):
-                                write_freq = int(self.vfo_freq[i])
-                                # Do channelization
-                                vfo_channel = channelize(self.processed_signal, freq, decimation_factor, sampling_freq)
+                                if self.en_DOA_estimation and self.channel_number > 1 and max_amplitude > self.vfo_squelch[i] and (i == self.output_vfo or self.output_vfo < 0):
+                                    write_freq = int(self.vfo_freq[i])
+                                    # Do channelization
+                                    vfo_channel = channelize(self.processed_signal, freq, decimation_factor, sampling_freq)
 
-                                ########################## Method to check IQ diffs when noise source forced ON
-                                # iq_diffs = calc_sync(self.processed_signal)
-                                # print("IQ DIFFS: " + str(iq_diffs))
-                                # print("IQ DIFFS ANGLE: " + str(np.rad2deg(np.angle(iq_diffs))))
-                                ##########################
-                                self.estimate_DOA(vfo_channel)
+                                    ########################## Method to check IQ diffs when noise source forced ON
+                                    # iq_diffs = calc_sync(self.processed_signal)
+                                    # print("IQ DIFFS: " + str(iq_diffs))
+                                    # print("IQ DIFFS ANGLE: " + str(np.rad2deg(np.angle(iq_diffs))))
+                                    ##########################
+                                    self.estimate_DOA(vfo_channel)
 
-                                doa_result_log = DOA_plot_util(self.DOA)
+                                    doa_result_log = DOA_plot_util(self.DOA)
 
-                                theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
-                                conf_val = calculate_doa_papr(self.DOA)
+                                    theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
+                                    conf_val = calculate_doa_papr(self.DOA)
 
-                                self.doa_max_list[i] = theta_0
-                                update_list[i] = True
+                                    self.doa_max_list[i] = theta_0
+                                    update_list[i] = True
 
-                                # DOA_str = str(int(theta_0))
-                                DOA_str = str(int(360 - theta_0))  # Change to this, once we upload new Android APK
-                                confidence_str = "{:.2f}".format(np.max(conf_val))
-                                max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
+                                    # DOA_str = str(int(theta_0))
+                                    DOA_str = str(int(360 - theta_0))  # Change to this, once we upload new Android APK
+                                    confidence_str = "{:.2f}".format(np.max(conf_val))
+                                    max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
 
-                                theta_0_list.append(theta_0)
-                                DOA_str_list.append(DOA_str)
-                                confidence_str_list.append(confidence_str)
-                                max_power_level_str_list.append(max_power_level_str)
-                                freq_list.append(write_freq)
-                                doa_result_log_list.append(doa_result_log)
+                                    theta_0_list.append(theta_0)
+                                    DOA_str_list.append(DOA_str)
+                                    confidence_str_list.append(confidence_str)
+                                    max_power_level_str_list.append(max_power_level_str)
+                                    freq_list.append(write_freq)
+                                    doa_result_log_list.append(doa_result_log)
 
-                        que_data_packet.append(['doa_thetas', self.DOA_theta])
-                        que_data_packet.append(['DoA Result', doa_result_log])
-                        que_data_packet.append(['DoA Max', theta_0])
-                        que_data_packet.append(['DoA Confidence', conf_val])
-                        que_data_packet.append(['DoA Squelch', update_list])
+                            que_data_packet.append(['doa_thetas', self.DOA_theta])
+                            que_data_packet.append(['DoA Result', doa_result_log])
+                            que_data_packet.append(['DoA Max', theta_0])
+                            que_data_packet.append(['DoA Confidence', conf_val])
+                            que_data_packet.append(['DoA Squelch', update_list])
 
-                        # Do Kraken App first as currently its the only one supporting multi-vfo out
-                        if self.DOA_data_format == "Kraken App" or self.en_data_record:  # and len(freq_list) > 0:
-                            epoch_time = int(time.time() * 1000)
-                            message = ""
-                            for j in range(len(freq_list)):
-                                # KrakenSDR Android App Output
-                                sub_message = ""
-                                sub_message += f"{epoch_time}, {DOA_str_list[j]}, {confidence_str_list[j]}, {max_power_level_str_list[j]}, "
-                                sub_message += f"{freq_list[j]}, {self.DOA_ant_alignment}, {self.latency}, {self.station_id}, "
-                                sub_message += f"{self.latitude}, {self.longitude}, {self.heading}, {self.heading}, "
-                                sub_message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation
-
-                                doa_result_log = doa_result_log_list[j] + np.abs(np.min(doa_result_log_list[j]))
-                                for i in range(len(doa_result_log)):
-                                    sub_message += ", " + "{:.2f}".format(doa_result_log[i])
-
-                                sub_message += " \n"
-
-                                if self.en_data_record:
-                                    time_elapsed = time.time() - self.last_write_time[
-                                        j]  # Make a list of 16 last_write_times
-                                    if time_elapsed > self.write_interval:
-                                        self.last_write_time[j] = time.time()
-                                        self.data_record_fd.write(sub_message)
-
-                                message += sub_message
-
-                            if self.DOA_data_format == "Kraken App":
-                                self.DOA_res_fd.seek(0)
-                                self.DOA_res_fd.write(message)
-                                self.DOA_res_fd.truncate()
-
-                        # Now create output for apps that only take one VFO
-                        DOA_str = str(int(theta_0))
-                        confidence_str = "{:.2f}".format(np.max(conf_val))
-                        max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
-
-                        # Outside the foor loop at this indent
-                        que_data_packet.append(['DoA Max List', self.doa_max_list])
-
-                        if self.DOA_data_format == "DF Aggregator":
-                            self.wr_xml(self.station_id,
-                                        DOA_str,
-                                        confidence_str,
-                                        max_power_level_str,
-                                        write_freq,
-                                        self.latitude,
-                                        self.longitude,
-                                        self.heading)
-                        elif self.DOA_data_format == "Kerberos App":
-                            self.wr_csv(self.station_id,
-                                        DOA_str,
-                                        confidence_str,
-                                        max_power_level_str,
-                                        write_freq,
-                                        doa_result_log,
-                                        self.latitude,
-                                        self.longitude,
-                                        self.heading,
-                                        "Kerberos")
-                        elif self.DOA_data_format == "Kraken Pro Local":
-                            self.wr_json(self.station_id,
-                                         DOA_str,
-                                         confidence_str,
-                                         max_power_level_str,
-                                         write_freq,
-                                         doa_result_log,
-                                         self.latitude,
-                                         self.longitude,
-                                         self.heading)
-                        elif self.DOA_data_format == "Kraken Pro Remote":
-                            self.wr_json(self.station_id,
-                                         DOA_str,
-                                         confidence_str,
-                                         max_power_level_str,
-                                         write_freq,
-                                         doa_result_log,
-                                         self.latitude,
-                                         self.longitude,
-                                         self.heading)
-                        elif self.DOA_data_format == "RDF Mapper":
-                            epoch_time = int(time.time() * 1000)
-
-                            time_elapsed = time.time() - self.rdf_mapper_last_write_time
-                            if time_elapsed > 1:  # Upload to RDF Mapper server only every 1s to ensure we dont overload his server
-                                self.rdf_mapper_last_write_time = time.time()
-                                elat, elng = calculate_end_lat_lng(self.latitude, self.longitude, int(DOA_str),
-                                                                   self.heading)
-                                rdf_post = {'id': self.station_id,
-                                            'time': str(epoch_time),
-                                            'slat': str(self.latitude),
-                                            'slng': str(self.longitude),
-                                            'elat': str(elat),
-                                            'elng': str(elng)}
-                                try:
-                                    # out = requests.post(self.RDF_mapper_server, data = rdf_post, timeout=5)
-                                    out = self.pool.apply_async(requests.post, args=[self.RDF_mapper_server, rdf_post])
-                                except:
-                                    print("NO CONNECTION: Invalid RDF Mapper Server")
-                        elif self.DOA_data_format == "Full POST":
-                            epoch_time = int(time.time() * 1000)
-
-                            time_elapsed = time.time() - self.rdf_mapper_last_write_time
-                            if time_elapsed > 1:  # reuse RDF mapper timer, it works the same
-                                self.rdf_mapper_last_write_time = time.time()
-
+                            # Do Kraken App first as currently its the only one supporting multi-vfo out
+                            if self.DOA_data_format == "Kraken App" or self.en_data_record:  # and len(freq_list) > 0:
+                                epoch_time = int(time.time() * 1000)
                                 message = ""
-                                doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
-                                for i in range(len(doa_result_log)):
-                                    message += ", " + "{:.2f}".format(doa_result_log[i])
+                                for j in range(len(freq_list)):
+                                    # KrakenSDR Android App Output
+                                    sub_message = ""
+                                    sub_message += f"{epoch_time}, {DOA_str_list[j]}, {confidence_str_list[j]}, {max_power_level_str_list[j]}, "
+                                    sub_message += f"{freq_list[j]}, {self.DOA_ant_alignment}, {self.latency}, {self.station_id}, "
+                                    sub_message += f"{self.latitude}, {self.longitude}, {self.heading}, {self.heading}, "
+                                    sub_message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation
 
-                                post = {'id': self.station_id,
-                                        'ip': myip,
-                                        'time': str(epoch_time),
-                                        'lat': str(self.latitude),
-                                        'lng': str(self.longitude),
-                                        'gpsheading': str(self.heading),
-                                        'radiobearing': DOA_str,
-                                        'conf': confidence_str,
-                                        'power': max_power_level_str,
-                                        'freq': str(write_freq),
-                                        'anttype': self.DOA_ant_alignment,
-                                        'latency': str(self.latency),
-                                        'doaarray': message
-                                }
-                                try:
-                                    # out = requests.post(self.RDF_mapper_server, data = rdf_post, timeout=5)
-                                    out = self.pool.apply_async(requests.post,
-                                                                args=[self.RDF_mapper_server, post])
-                                except:
-                                    print("NO CONNECTION: Invalid Server")
-                        elif self.DOA_data_format == "Kraken App":
-                            pass  # Just do nothing, stop the invalid doa result error from showing
-                        else:
-                            self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
+                                    doa_result_log = doa_result_log_list[j] + np.abs(np.min(doa_result_log_list[j]))
+                                    for i in range(len(doa_result_log)):
+                                        sub_message += ", " + "{:.2f}".format(doa_result_log[i])
 
-                        if self.hasgps and self.usegps:
-                            self.update_location()
+                                    sub_message += " \n"
+
+                                    if self.en_data_record:
+                                        time_elapsed = time.time() - self.last_write_time[
+                                            j]  # Make a list of 16 last_write_times
+                                        if time_elapsed > self.write_interval:
+                                            self.last_write_time[j] = time.time()
+                                            self.data_record_fd.write(sub_message)
+
+                                    message += sub_message
+
+                                if self.DOA_data_format == "Kraken App":
+                                    self.DOA_res_fd.seek(0)
+                                    self.DOA_res_fd.write(message)
+                                    self.DOA_res_fd.truncate()
+
+                            # Now create output for apps that only take one VFO
+                            DOA_str = str(int(theta_0))
+                            confidence_str = "{:.2f}".format(np.max(conf_val))
+                            max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
+
+                            # Outside the foor loop at this indent
+                            que_data_packet.append(['DoA Max List', self.doa_max_list])
+
+                            if self.DOA_data_format == "DF Aggregator":
+                                self.wr_xml(self.station_id,
+                                            DOA_str,
+                                            confidence_str,
+                                            max_power_level_str,
+                                            write_freq,
+                                            self.latitude,
+                                            self.longitude,
+                                            self.heading)
+                            elif self.DOA_data_format == "Kerberos App":
+                                self.wr_csv(self.station_id,
+                                            DOA_str,
+                                            confidence_str,
+                                            max_power_level_str,
+                                            write_freq,
+                                            doa_result_log,
+                                            self.latitude,
+                                            self.longitude,
+                                            self.heading,
+                                            "Kerberos")
+                            elif self.DOA_data_format == "Kraken Pro Local":
+                                self.wr_json(self.station_id,
+                                             DOA_str,
+                                             confidence_str,
+                                             max_power_level_str,
+                                             write_freq,
+                                             doa_result_log,
+                                             self.latitude,
+                                             self.longitude,
+                                             self.heading)
+                            elif self.DOA_data_format == "Kraken Pro Remote":
+                                self.wr_json(self.station_id,
+                                             DOA_str,
+                                             confidence_str,
+                                             max_power_level_str,
+                                             write_freq,
+                                             doa_result_log,
+                                             self.latitude,
+                                             self.longitude,
+                                             self.heading)
+                            elif self.DOA_data_format == "RDF Mapper":
+                                epoch_time = int(time.time() * 1000)
+
+                                time_elapsed = time.time() - self.rdf_mapper_last_write_time
+                                if time_elapsed > 1:  # Upload to RDF Mapper server only every 1s to ensure we dont overload his server
+                                    self.rdf_mapper_last_write_time = time.time()
+                                    elat, elng = calculate_end_lat_lng(self.latitude, self.longitude, int(DOA_str),
+                                                                       self.heading)
+                                    rdf_post = {'id': self.station_id,
+                                                'time': str(epoch_time),
+                                                'slat': str(self.latitude),
+                                                'slng': str(self.longitude),
+                                                'elat': str(elat),
+                                                'elng': str(elng)}
+                                    try:
+                                        # out = requests.post(self.RDF_mapper_server, data = rdf_post, timeout=5)
+                                        out = self.pool.apply_async(requests.post, args=[self.RDF_mapper_server, rdf_post])
+                                    except:
+                                        print("NO CONNECTION: Invalid RDF Mapper Server")
+                            elif self.DOA_data_format == "Full POST":
+                                epoch_time = int(time.time() * 1000)
+
+                                time_elapsed = time.time() - self.rdf_mapper_last_write_time
+                                if time_elapsed > 1:  # reuse RDF mapper timer, it works the same
+                                    self.rdf_mapper_last_write_time = time.time()
+
+                                    message = ""
+                                    doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
+                                    for i in range(len(doa_result_log)):
+                                        message += ", " + "{:.2f}".format(doa_result_log[i])
+
+                                    post = {'id': self.station_id,
+                                            'ip': myip,
+                                            'time': str(epoch_time),
+                                            'lat': str(self.latitude),
+                                            'lng': str(self.longitude),
+                                            'gpsheading': str(self.heading),
+                                            'radiobearing': DOA_str,
+                                            'conf': confidence_str,
+                                            'power': max_power_level_str,
+                                            'freq': str(write_freq),
+                                            'anttype': self.DOA_ant_alignment,
+                                            'latency': str(self.latency),
+                                            'doaarray': message
+                                    }
+                                    try:
+                                        # out = requests.post(self.RDF_mapper_server, data = rdf_post, timeout=5)
+                                        out = self.pool.apply_async(requests.post,
+                                                                    args=[self.RDF_mapper_server, post])
+                                    except:
+                                        print("NO CONNECTION: Invalid Server")
+                            elif self.DOA_data_format == "Kraken App":
+                                pass  # Just do nothing, stop the invalid doa result error from showing
+                            else:
+                                self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
+
+                            if self.hasgps and self.usegps:
+                                self.update_location()
+                    except:
+                        self.data_ready = False
 
                     # -----> SPECTRUM PROCESSING <-----
                     if self.en_spectrum and self.data_ready:
