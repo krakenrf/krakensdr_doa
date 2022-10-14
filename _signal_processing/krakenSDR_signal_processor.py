@@ -490,9 +490,10 @@ class SignalProcessor(threading.Thread):
                                     self.rdf_mapper_last_write_time = time.time()
 
                                     message = ""
-                                    doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
-                                    for i in range(len(doa_result_log)):
-                                        message += ", " + "{:.2f}".format(doa_result_log[i])
+                                    if doa_result_log:
+                                        doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
+                                        for i in range(len(doa_result_log)):
+                                            message += ", " + "{:.2f}".format(doa_result_log[i])
 
                                     post = {'id': self.station_id,
                                             'ip': myip,
