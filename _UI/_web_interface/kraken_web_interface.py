@@ -1340,8 +1340,8 @@ def generate_config_page_layout(webInterface_inst):
 
         html.Div([
           html.Div([html.Button('Restart Software', id='btn-restart_sw', className="btn-restart_sw", n_clicks=0)], className="field"),
-          html.Div([html.Button('Restart Pi', id='btn-restart_system', className="btn-restart_system", n_clicks=0)], className="field"),
-          html.Div([html.Button('Shutdown Pi', id='btn-shtudown_system', className="btn-shtudown_system", n_clicks=0)], className="field"),
+          html.Div([html.Button('Restart System', id='btn-restart_system', className="btn-restart_system", n_clicks=0)], className="field"),
+          html.Div([html.Button('Shutdown System', id='btn-shtudown_system', className="btn-shtudown_system", n_clicks=0)], className="field"),
           html.Div([html.Button('Clear Cache and Restart', id='btn-clear_cache', className="btn-clear_cache", n_clicks=0)], className="field")
         ], id='system_control_container'),
 
