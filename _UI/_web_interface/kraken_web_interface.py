@@ -193,6 +193,7 @@ class webInterface():
         self.daq_if_gains          ="[,,,,]"
         self.en_advanced_daq_cfg   = False
         self.en_basic_daq_cfg   = False
+        self.en_system_control     = False
         self.daq_ini_cfg_dict      = read_config_file_dict()
         self.active_daq_ini_cfg    = self.daq_ini_cfg_dict['config_name'] #"Default" # Holds the string identifier of the actively loaded DAQ ini configuration
         self.tmp_daq_ini_cfg       = "Default"
@@ -1328,8 +1329,25 @@ def generate_config_page_layout(webInterface_inst):
                     dcc.Input(id='vfo_' +str(i) + '_squelch', value=webInterface_inst.module_signal_processor.vfo_squelch[i], type='number', debounce=True, className="field-body-textbox")
                 ], className="field"),
         ], id="vfo"+str(i), className="card", style = {'display': 'block'} if i < webInterface_inst.module_signal_processor.active_vfos else {'display': 'none'} )
+        
+        
+        
+    system_control_card = \
+    html.Div([
+        html.Div([html.Div("Open System Control", id="label_en_system_control"     , className="field-label"),
+                dcc.Checklist(options=option     , id="en_system_control"     ,  className="field-body", value=webInterface_inst.en_system_control),
+        ], className="field"),
 
-    config_page_component_list = [start_stop_card, daq_status_card, daq_config_card, vfo_config_card, dsp_config_card, display_options_card, station_config_card, recording_config_card]
+        html.Div([
+          html.Div([html.Button('Restart Software', id='btn-restart_sw', className="btn-restart_sw", n_clicks=0)], className="field"),
+          html.Div([html.Button('Restart Pi', id='btn-restart_system', className="btn-restart_system", n_clicks=0)], className="field"),
+          html.Div([html.Button('Shutdown Pi', id='btn-shtudown_system', className="btn-shtudown_system", n_clicks=0)], className="field"),
+          html.Div([html.Button('Clear Cache and Restart', id='btn-clear_cache', className="btn-clear_cache", n_clicks=0)], className="field")
+        ], id='system_control_container'),
+
+    ], className="card")
+
+    config_page_component_list = [start_stop_card, daq_status_card, daq_config_card, vfo_config_card, dsp_config_card, display_options_card, station_config_card, recording_config_card, system_control_card]
 
     for i in range(webInterface_inst.module_signal_processor.max_vfos):
         config_page_component_list.append(vfo_card[i])
@@ -2030,7 +2048,43 @@ def stop_proc_btn(input_value):
 def save_config_btn(input_value):
     webInterface_inst.logger.info("Saving DAQ and DSP Configuration")
     webInterface_inst.save_configuration()
+    
+@app.callback_shared(
+    None,
+    [Input(component_id='btn-restart_sw', component_property='n_clicks')],
+)
+def restart_sw_btn(input_value):
+    webInterface_inst.logger.info("Restarting Software")
+    root_path             = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))    
+    os.chdir(root_path)
+    daq_start_script = subprocess.Popen(['bash', "kraken_doa_start.sh"])#,
 
+@app.callback_shared(
+    None,
+    [Input(component_id='btn-restart_system'     , component_property='n_clicks')],
+)
+def restart_system_btn(input_value):
+    webInterface_inst.logger.info("Restarting System")
+    subprocess.call(["reboot"])
+
+@app.callback_shared(
+    None,
+    [Input(component_id='btn-shtudown_system'     , component_property='n_clicks')],
+)
+def shutdown_system_btn(input_value):
+    webInterface_inst.logger.info("Shutting System Down")
+    subprocess.call(["shutdown -n now"])  
+    
+@app.callback_shared(
+    None,
+    [Input(component_id='btn-clear_cache'     , component_property='n_clicks')],
+)
+def clear_cache_btn(input_value):
+    webInterface_inst.logger.info("Clearing Python and Numba Caches")
+    root_path             = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))    
+    os.chdir(root_path)
+    daq_start_script = subprocess.Popen(['bash', "kraken_doa_start.sh", "-c"])#,
+    
 @app.callback_shared(
     None,
     [Input('spectrum-graph', 'clickData')]
@@ -2494,7 +2548,16 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
     webInterface_inst.needs_refresh = False
 
     return ["/config"]
-
+        
+@app.callback(Output('system_control_container', 'style'),
+             [Input("en_system_control", "value")]
+)
+def toggle_system_control(toggle_value):
+    webInterface_inst.en_system_control = toggle_value
+    if toggle_value:
+        return {'display': 'block'}
+    else:
+        return {'display': 'none'}    
 
 @app.callback([Output("placeholder_update_rx", "children")],
               [Input("settings-refresh-timer", "n_intervals")],
