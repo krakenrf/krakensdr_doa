@@ -2223,6 +2223,20 @@ def plot_spectrum():
         # Plot traces
         for m in range(np.size(webInterface_inst.spectrum, 0)-1):
             spectrum_fig.data[m]['x'] = x
+            
+        # As we use CH1 as the DISPLAY channel (due to lower noise characteristics), ensure we label it as CH1
+        # also we can hide the other channels
+        if webInterface_inst.module_signal_processor.spectrum_fig_type == 'Single':
+            spectrum_fig.update_layout(hovermode="closest")
+            spectrum_fig.data[0]['name'] = "Channel 1"
+            spectrum_fig.data[0]['visible'] = True
+            for m in range(1, webInterface_inst.module_receiver.M):
+                spectrum_fig.data[m]['visible'] = False
+        else:
+            spectrum_fig.update_layout(hovermode="x")
+            for m in range(webInterface_inst.module_receiver.M):
+                spectrum_fig.data[m]['name'] = "Channel {:d}".format(m)
+                spectrum_fig.data[m]['visible'] = True           
 
         # Hide non active traces
         for i in range(webInterface_inst.module_signal_processor.max_vfos):
