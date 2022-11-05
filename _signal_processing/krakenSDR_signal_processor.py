@@ -384,7 +384,12 @@ class SignalProcessor(threading.Thread):
                             que_data_packet.append(['DoA Squelch', update_list])
 
                             # Do Kraken App first as currently its the only one supporting multi-vfo out
-                            if self.DOA_data_format == "Kraken App" or self.en_data_record:  # and len(freq_list) > 0:
+                            if self.DOA_data_format == "Kraken App" or self.en_data_record or \
+                                                                       self.DOA_data_format == "Kraken Pro Local" or \
+                                                                       self.DOA_data_format == "Kraken Pro Remote" or \
+                                                                       self.DOA_data_format == "RDF Mapper" or \
+                                                                       self.DOA_data_format == "DF Aggregator" or \
+                                                                       self.DOA_data_format == "Full POST": # and len(freq_list) > 0:
                                 epoch_time = int(time.time() * 1000)
                                 message = ""
                                 for j in range(len(freq_list)):
@@ -410,7 +415,12 @@ class SignalProcessor(threading.Thread):
 
                                     message += sub_message
 
-                                if self.DOA_data_format == "Kraken App":
+                                if self.DOA_data_format == "Kraken App" or \
+                                   self.DOA_data_format == "Kraken Pro Local" or \
+                                   self.DOA_data_format == "Kraken Pro Remote" or \
+                                   self.DOA_data_format == "RDF Mapper" or \
+                                   self.DOA_data_format == "DF Aggregator" or \
+                                   self.DOA_data_format == "Full POST":
                                     self.DOA_res_fd.seek(0)
                                     self.DOA_res_fd.write(message)
                                     self.DOA_res_fd.truncate()
@@ -726,7 +736,8 @@ class SignalProcessor(threading.Thread):
         jsonDict["doaArray"] = doaString
 
         try:
-            r = requests.post('http://127.0.0.1:8042/doapost', json=jsonDict)
+            r = self.pool.apply_async(requests.post, kwds={'url': 'http://127.0.0.1:8042/doapost', 'json': jsonDict})
+            #r = requests.post('http://127.0.0.1:8042/doapost', json=jsonDict)
         except requests.exceptions.RequestException as e:
             self.logger.error("Error while posting to local websocket server")
 
