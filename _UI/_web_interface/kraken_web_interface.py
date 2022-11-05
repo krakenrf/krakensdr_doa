@@ -2073,7 +2073,7 @@ def restart_system_btn(input_value):
 )
 def shutdown_system_btn(input_value):
     webInterface_inst.logger.info("Shutting System Down")
-    subprocess.call(["shutdown -n now"])  
+    subprocess.call(["shutdown", "now"])  
     
 @app.callback_shared(
     None,
