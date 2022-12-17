@@ -45,7 +45,7 @@ To get the best performance we recommend adding aftermarket cooling to your Pi 4
     
 ### KerberosSDR Setup (KrakenSDR users Ignore)
 
-Consult the Wiki page at https://github.com/krakenrf/krakensdr_docs/wiki/11.-KerberosSDR-Setup-for-KrakenSDR-Software for information on setting up your KerberosSDR to work with the KrakenSDR software.
+Consult the Wiki page at https://github.com/krakenrf/krakensdr_docs/wiki/10.-KerberosSDR-Setup-for-KrakenSDR-Software for information on setting up your KerberosSDR to work with the KrakenSDR software.
 
 ## Software Quick Start
 
@@ -62,17 +62,17 @@ You can also 'click to tune' in the spectrum. Either by clicking on the spectrum
 ## VirtualBox Image
 If you do not wish to use a Pi 4 as your KrakenSDR computing device, you can also use a Windows or Linux Laptop/PC with our VirtualBox pre-made image. This image file is currently in beta. It includes the KrakenSDR DOA, Passive Radar, and GNU Radio software.
 
-See our Wiki for more information about our VirtualBox Image and where to download it https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox-and-Docker-Images#virtualbox
+See our Wiki for more information about our VirtualBox Image and where to download it https://github.com/krakenrf/krakensdr_docs/wiki/09.-VirtualBox,-Docker-Images-and-Install-Scripts#virtualbox
 
 ## Docker Image
 
-See our Wiki for more information about the third party Docker image https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox-and-Docker-Images#docker
+See our Wiki for more information about the third party Docker image https://github.com/krakenrf/krakensdr_docs/wiki/09.-VirtualBox,-Docker-Images-and-Install-Scripts#docker
 
 ## Manual Installation from a fresh OS
 
 ### Install script
 
-You can use on of our install scripts to automate a manual install. Details on the Wiki at https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts
+You can use on of our install scripts to automate a manual install. Details on the Wiki at https://github.com/krakenrf/krakensdr_docs/wiki/09.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts
 
 ###  Manual Install
 
@@ -148,7 +148,7 @@ Please be patient on the first run, as it can take 1-2 minutes for the JIT numba
 With remote operation you can run the DAQ on one machine on your network, and the DSP software on another. 
 
 1. Start the heimdall DAQ subsystem on your remote computing device. (Make sure that the `daq_chain_config.ini` contains the proper configuration) 
-    (See:https://github.com/krakenrf/heimdall_daq_fw/Documentation)
+    (See:https://github.com/krakenrf/heimdall_daq_fw/blob/main/Documentation/HDAQ_firmware_ver1.0.20201130.pdf)
 2. Set the IP address of the DAQ Subsystem in the `settings.json`, `default_ip` field.
 3. Start the DoA DSP software by typing:
 `./gui_run.sh`
