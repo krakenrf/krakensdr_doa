@@ -6,12 +6,12 @@ const { syncBuiltinESMExports } = require('module');
 var logArray = [];
 var logIndex = 0;
 try {
-  const data = fs.readFileSync('krakenLog_swdrf.csv', 'UTF-8');
+  const data = fs.readFileSync('redoubt360.csv', 'UTF-8');
   const lines = data.split(/\r?\n/);
 
   lines.forEach(line => {
     var logData = line.split(',');
-
+    
     var logEntry = {
       tStamp: parseInt(logData[0]),
       latitude: parseFloat(logData[1]),
@@ -25,6 +25,22 @@ try {
       latency: parseInt(logData[10]),
       doaArray: logData.slice(12, logData.length-1).map(x => parseFloat(x))+",", 
     };
+/*
+    // new Format
+    var logEntry = {
+      tStamp: parseInt(logData[0]),
+      latitude: parseFloat(logData[8]),
+      longitude: parseFloat(logData[9]),
+      gpsBearing: parseFloat(logData[10]),
+      radioBearing: parseFloat(logData[1]),
+      conf: parseFloat(logData[2]),
+      power: parseFloat(logData[3]),
+      freq: parseInt(logData[4]),
+      antType: logData[5],
+      latency: parseInt(logData[6]),
+      doaArray: logData.slice(17, logData.length).map(x => parseFloat(x))+",",  
+    };*/
+    //console.log(logEntry.doaArray);
     logArray.push(logEntry);
   });
 
