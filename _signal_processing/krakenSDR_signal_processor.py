@@ -104,6 +104,7 @@ class SignalProcessor(threading.Thread):
         self.custom_array_x = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
         self.custom_array_y = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
         self.array_offset = 0
+        self.DOA_expected_num_of_sources = 1
 
         # Processing parameters
         self.spectrum_window_size = fft.next_fast_len(4096)
@@ -596,7 +597,7 @@ class SignalProcessor(threading.Thread):
             self.DOA = DOA_TNA(R, scanning_vectors)
         if self.DOA_algorithm == "MUSIC":  # self.en_DOA_MUSIC:
             DOA_MUSIC_res = DOA_MUSIC(R, scanning_vectors,
-                                      signal_dimension=1)  # de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
+                                      signal_dimension=self.DOA_expected_num_of_sources)  # de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
             self.DOA = DOA_MUSIC_res
 
         # ULA Array, choose bewteen the full omnidirecitonal 360 data, or forward/backward data only

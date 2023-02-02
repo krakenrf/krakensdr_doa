@@ -131,6 +131,7 @@ class webInterface():
 
         self.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
         self.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
+        self.module_signal_processor.DOA_expected_num_of_sources = dsp_settings.get("expected_num_of_sources", 1)
 
         self.custom_array_x_meters = np.float_(dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
         self.custom_array_y_meters = np.float_(dsp_settings.get("custom_array_y_meters", "0.1,0.2,0.3,0.4,0.5").split(","))
@@ -275,6 +276,7 @@ class webInterface():
         data["compass_offset"]  = self.compass_offset
         data["doa_fig_type"]    = self._doa_fig_type
         data["en_peak_hold"]    = self.module_signal_processor.en_peak_hold
+        data["expected_num_of_sources"] = self.module_signal_processor.DOA_expected_num_of_sources
 
         # Web Interface
         data["en_hw_check"]         = dsp_settings.get("en_hw_check", 0)
@@ -1033,7 +1035,17 @@ def generate_config_page_layout(webInterface_inst):
                       value=webInterface_inst.module_signal_processor.array_offset, #webInterface_inst.module_signal_processor.station_id,
                       type='number', className="field-body-textbox", debounce=True)
         ], className="field"),
-
+        html.Div([
+        html.Div("Expected number of RF sources:", id="label_expected_num_of_sources", className="field-label"),
+        dcc.Dropdown(id='expected_num_of_sources',
+                options=[
+                    {'label': '1', 'value': 1},
+                    {'label': '2', 'value': 2},
+                    {'label': '3', 'value': 3},
+                    {'label': '4', 'value': 4},
+                    ],
+            value=webInterface_inst.module_signal_processor.DOA_expected_num_of_sources, style={"display":"inline-block"}, className="field-body"),
+        ], className="field"),
     ], className="card")
 
     #-----------------------------
@@ -1587,6 +1599,7 @@ def settings_change_watcher():
 
 
         webInterface_inst.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
+        webInterface_inst.module_signal_processor.DOA_expected_num_of_sources = dsp_settings.get("expected_num_of_sources", 1)
         webInterface_inst._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
         webInterface_inst.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
         webInterface_inst.module_signal_processor.array_offset = int(dsp_settings.get("array_offset", 0))
@@ -2324,7 +2337,9 @@ def toggle_custom_array_fields(toggle_value):
     [Output(component_id="body_ant_spacing_wavelength",  component_property='children'),
     Output(component_id="label_ant_spacing_meter",  component_property='children'),
     Output(component_id="ambiguity_warning",  component_property='children'),
-    Output(component_id="en_fb_avg_check",  component_property="options")],
+    Output(component_id="en_fb_avg_check",  component_property="options"),
+    Output(component_id="expected_num_of_sources",  component_property="options"),
+    Output(component_id="expected_num_of_sources",  component_property="disabled"),],
     [Input(component_id ="placeholder_update_freq"       , component_property='children'),
     Input(component_id ="en_doa_check"       , component_property='value'),
     Input(component_id ="en_fb_avg_check"           , component_property='value'),
@@ -2333,13 +2348,14 @@ def toggle_custom_array_fields(toggle_value):
     Input(component_id ="doa_fig_type"           , component_property='value'),
     Input(component_id ="doa_method"           , component_property='value'),
     Input(component_id ="ula_direction"           , component_property='value'),
+    Input(component_id ="expected_num_of_sources"           , component_property='value'),
     Input(component_id ="array_offset"           , component_property='value'),
     Input(component_id ="compass_offset"           , component_property='value'),
     Input(component_id ="custom_array_x_meters"           , component_property='value'),
     Input(component_id ="custom_array_y_meters"           , component_property='value'),
     Input(component_id ="en_peak_hold"           , component_property='value')],
 )
-def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, ula_direction, array_offset, compass_offset, custom_array_x_meters, custom_array_y_meters, en_peak_hold): #, input_value):
+def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, ula_direction, expected_num_of_sources, array_offset, compass_offset, custom_array_x_meters, custom_array_y_meters, en_peak_hold): #, input_value):
     webInterface_inst.ant_spacing_meters = spacing_meter
     wavelength = 300 / webInterface_inst.daq_center_freq
 
@@ -2412,7 +2428,25 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
     else:
         webInterface_inst.module_signal_processor.en_peak_hold = False
 
-    return [str(ant_spacing_wavelength), spacing_label, ambiguity_warning, smoothing_possibility]
+    webInterface_inst.module_signal_processor.DOA_expected_num_of_sources = expected_num_of_sources
+    num_of_sources = [
+        {
+            "label": f"{c}",
+            "value": c,
+        } for c in range(
+            1, webInterface_inst.module_signal_processor.channel_number)
+    ] if doa_method == "MUSIC" else [{
+        "label": 'N/A',
+        "value": c,
+    } for c in range(1,
+                     webInterface_inst.module_signal_processor.channel_number)]
+
+    num_of_sources_state = False if doa_method == "MUSIC" else True
+
+    return [
+        str(ant_spacing_wavelength), spacing_label, ambiguity_warning,
+        smoothing_possibility, num_of_sources, num_of_sources_state
+    ]
 
 @app.callback(
     None,

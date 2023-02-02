@@ -115,6 +115,13 @@ dsp_config_tooltips = html.Div([
         className="tooltip"
     ),
     dbc.Tooltip([
+        html.P("DoA methods that separate noise and signal subspaces, such as MUSIC, require a priori knowledge of number of signal sources."),
+        html.P("Setting this to larger than expected number of rf sources might give misleading results.")],
+        target="label_expected_num_of_sources",
+        placement="bottom",
+        className="tooltip"
+    ),
+    dbc.Tooltip([
         html.P("Linear arrays cannot differentiate between a signal in front or behind the array. If you have prior knowledge about the signal source location, choose if the signal is in front or behind the array.")],
         target="label_ula_direction",
         placement="bottom",
