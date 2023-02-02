@@ -15,6 +15,7 @@
   "compass_offset": 0,
   "doa_fig_type": "Linear",
   "en_peak_hold": false,
+  "expected_num_of_sources": 1,
   "en_hw_check": 0,
   "logging_level": 5,
   "disable_tooltips": 0,
