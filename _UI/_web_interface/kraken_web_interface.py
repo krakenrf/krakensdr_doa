@@ -81,6 +81,21 @@ from krakenSDR_receiver import ReceiverRTLSDR
 from krakenSDR_signal_processor import SignalProcessor
 import tooltips
 
+DECORRELATION_OPTIONS = [
+    {
+        'label': 'Off',
+        'value': 'Off'
+    },
+    {
+        'label': 'F-B Averaging',
+        'value': 'FBA'
+    },
+    {
+        'label': 'Toeplizification',
+        'value': 'TOEP'
+    },
+]
+
 class webInterface():
 
     def __init__(self):
@@ -139,8 +154,8 @@ class webInterface():
         self.module_signal_processor.custom_array_y = self.custom_array_y_meters / (300 / float(dsp_settings.get("center_freq", 100.0)))
         self.module_signal_processor.array_offset = int(dsp_settings.get("array_offset", 0))
 
-        self.module_signal_processor.en_DOA_estimation    = dsp_settings.get("en_doa", 0)
-        self.module_signal_processor.en_DOA_FB_avg        = dsp_settings.get("en_fbavg", 0)
+        self.module_signal_processor.en_DOA_estimation        = dsp_settings.get("en_doa", 0)
+        self.module_signal_processor.DOA_decorrelation_method = dsp_settings.get("doa_decorrelation_method", "Off")
         self.module_signal_processor.start()
 
         #############################################
@@ -271,12 +286,12 @@ class webInterface():
         data["custom_array_y_meters"]     = ','.join(['%.2f' % num for num in self.custom_array_y_meters])
         data["array_offset"] = int(self.module_signal_processor.array_offset)
 
-        data["doa_method"]      = self.module_signal_processor.DOA_algorithm
-        data["en_fbavg"]        = self.module_signal_processor.en_DOA_FB_avg
-        data["compass_offset"]  = self.compass_offset
-        data["doa_fig_type"]    = self._doa_fig_type
-        data["en_peak_hold"]    = self.module_signal_processor.en_peak_hold
-        data["expected_num_of_sources"] = self.module_signal_processor.DOA_expected_num_of_sources
+        data["doa_method"]                = self.module_signal_processor.DOA_algorithm
+        data["doa_decorrelation_method"]  = self.module_signal_processor.DOA_decorrelation_method
+        data["compass_offset"]            = self.compass_offset
+        data["doa_fig_type"]              = self._doa_fig_type
+        data["en_peak_hold"]              = self.module_signal_processor.en_peak_hold
+        data["expected_num_of_sources"]   = self.module_signal_processor.DOA_expected_num_of_sources
 
         # Web Interface
         data["en_hw_check"]         = dsp_settings.get("en_hw_check", 0)
@@ -659,7 +674,6 @@ def generate_config_page_layout(webInterface_inst):
 
     en_data_record        =[1] if webInterface_inst.module_signal_processor.en_data_record    else []
     en_doa_values         =[1] if webInterface_inst.module_signal_processor.en_DOA_estimation else []
-    en_fb_avg_values      =[1] if webInterface_inst.module_signal_processor.en_DOA_FB_avg     else []
 
     en_optimize_short_bursts    =[1] if webInterface_inst.module_signal_processor.optimize_short_bursts     else []
     en_peak_hold = [1] if webInterface_inst.module_signal_processor.en_peak_hold     else []
@@ -1015,8 +1029,10 @@ def generate_config_page_layout(webInterface_inst):
         value=webInterface_inst.module_signal_processor.DOA_algorithm, style={"display":"inline-block"},className="field-body")
         ], className="field"),
 
-        html.Div([html.Div("Enable F-B Averaging:", id="label_en_fb_avg"   , className="field-label"),
-                dcc.Checklist(options=option     , id="en_fb_avg_check"   , className="field-body", value=en_fb_avg_values),
+        html.Div([html.Div("Decorrelation:", id="label_decorrelation"   , className="field-label"),
+        dcc.Dropdown(id='doa_decorrelation_method',
+                options=DECORRELATION_OPTIONS,
+            value=webInterface_inst.module_signal_processor.DOA_decorrelation_method, style={"display":"inline-block"}, className="field-body"),
         ], className="field"),
 
         html.Div([html.Div("ULA Output Direction:", id="label_ula_direction"     , className="field-label"),
@@ -1562,8 +1578,8 @@ def settings_change_watcher():
         DOA_ant_alignment = dsp_settings.get("ant_arrangement")
         webInterface_inst.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
-        webInterface_inst.module_signal_processor.en_DOA_estimation    = dsp_settings.get("en_doa", 0)
-        webInterface_inst.module_signal_processor.en_DOA_FB_avg        = dsp_settings.get("en_fbavg", 0)
+        webInterface_inst.module_signal_processor.en_DOA_estimation        = dsp_settings.get("en_doa", 0)
+        webInterface_inst.module_signal_processor.DOA_decorrelation_method = dsp_settings.get("doa_decorrelation_method", 0)
 
         webInterface_inst.module_signal_processor.DOA_ant_alignment = dsp_settings.get("ant_arrangement", "ULA")
         webInterface_inst.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
@@ -2343,12 +2359,13 @@ def toggle_custom_array_fields(toggle_value):
     [Output(component_id="body_ant_spacing_wavelength",  component_property='children'),
     Output(component_id="label_ant_spacing_meter",  component_property='children'),
     Output(component_id="ambiguity_warning",  component_property='children'),
-    Output(component_id="en_fb_avg_check",  component_property="options"),
+    Output(component_id="doa_decorrelation_method",  component_property="options"),
+    Output(component_id="doa_decorrelation_method",  component_property="disabled"),
     Output(component_id="expected_num_of_sources",  component_property="options"),
     Output(component_id="expected_num_of_sources",  component_property="disabled"),],
     [Input(component_id ="placeholder_update_freq"       , component_property='children'),
     Input(component_id ="en_doa_check"       , component_property='value'),
-    Input(component_id ="en_fb_avg_check"           , component_property='value'),
+    Input(component_id ="doa_decorrelation_method"           , component_property='value'),
     Input(component_id ="ant_spacing_meter"           , component_property='value'),
     Input(component_id ="radio_ant_arrangement"           , component_property='value'),
     Input(component_id ="doa_fig_type"           , component_property='value'),
@@ -2361,7 +2378,7 @@ def toggle_custom_array_fields(toggle_value):
     Input(component_id ="custom_array_y_meters"           , component_property='value'),
     Input(component_id ="en_peak_hold"           , component_property='value')],
 )
-def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrangement, doa_fig_type, doa_method, ula_direction, expected_num_of_sources, array_offset, compass_offset, custom_array_x_meters, custom_array_y_meters, en_peak_hold): #, input_value):
+def update_dsp_params(update_freq, en_doa, doa_decorrelation_method, spacing_meter, ant_arrangement, doa_fig_type, doa_method, ula_direction, expected_num_of_sources, array_offset, compass_offset, custom_array_x_meters, custom_array_y_meters, en_peak_hold): #, input_value):
     webInterface_inst.ant_spacing_meters = spacing_meter
     wavelength = 300 / webInterface_inst.daq_center_freq
 
@@ -2390,16 +2407,13 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
     # Max phase diff and ambiguity warning and Spatial smoothing control
     if ant_arrangement == "ULA":
         max_phase_diff = webInterface_inst.ant_spacing_meters / wavelength
-        smoothing_possibility = [{"label":"", "value": 1, "disabled": False}] # Enables the checkbox
         spacing_label = "Interelement Spacing [m]:"
     elif ant_arrangement == "UCA":
         UCA_ant_spacing = (np.sqrt(2)*webInterface_inst.ant_spacing_meters*np.sqrt(1-np.cos(np.deg2rad(360/webInterface_inst.module_signal_processor.channel_number))))
         max_phase_diff = UCA_ant_spacing/wavelength
-        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
         spacing_label = "Array Radius [m]:"
     elif ant_arrangement == "Custom":
         max_phase_diff = 0.25 #ant_spacing_meter / wavelength
-        smoothing_possibility = [{"label":"", "value": 1, "disabled": True}] # Disables the checkbox
         spacing_label = "Interelement Spacing [m]"
 
     if max_phase_diff > 0.5:
@@ -2417,11 +2431,15 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
 
     webInterface_inst.module_signal_processor.DOA_algorithm = doa_method
 
-    if en_fb_avg is not None and len(en_fb_avg):
-        webInterface_inst.logger.debug("FB averaging enabled")
-        webInterface_inst.module_signal_processor.en_DOA_FB_avg   = True
-    else:
-        webInterface_inst.module_signal_processor.en_DOA_FB_avg   = False
+    webInterface_inst.module_signal_processor.DOA_decorrelation_method = doa_decorrelation_method if ant_arrangement == "ULA" else DECORRELATION_OPTIONS[
+        0]['value']
+
+    doa_decorrelation_method_options = DECORRELATION_OPTIONS if ant_arrangement == "ULA" else [
+        {
+            **DECORRELATION_OPTION, 'label': 'N/A'
+        } for DECORRELATION_OPTION in DECORRELATION_OPTIONS
+    ]
+    doa_decorrelation_method_state = False if ant_arrangement == "ULA" else True
 
     webInterface_inst.module_signal_processor.DOA_ant_alignment=ant_arrangement
     webInterface_inst._doa_fig_type = doa_fig_type
@@ -2451,7 +2469,8 @@ def update_dsp_params(update_freq, en_doa, en_fb_avg, spacing_meter, ant_arrange
 
     return [
         str(ant_spacing_wavelength), spacing_label, ambiguity_warning,
-        smoothing_possibility, num_of_sources, num_of_sources_state
+        doa_decorrelation_method_options, doa_decorrelation_method_state, num_of_sources,
+        num_of_sources_state
     ]
 
 @app.callback(
@@ -2702,7 +2721,7 @@ def reconfig_daq_chain(input_value, freq, gain):
     DOA_ant_alignment = webInterface_inst.module_signal_processor.DOA_ant_alignment
     DOA_inter_elem_space = webInterface_inst.module_signal_processor.DOA_inter_elem_space
     en_DOA_estimation = webInterface_inst.module_signal_processor.en_DOA_estimation
-    en_DOA_FB_avg = webInterface_inst.module_signal_processor.en_DOA_FB_avg
+    doa_decorrelation_method = webInterface_inst.module_signal_processor.DOA_decorrelation_method
     ula_direction = webInterface_inst.module_signal_processor.ula_direction
 
     doa_format = webInterface_inst.module_signal_processor.DOA_data_format
@@ -2725,11 +2744,11 @@ def reconfig_daq_chain(input_value, freq, gain):
     webInterface_inst.module_receiver.rec_ip_addr       = rec_ip_addr
 
     webInterface_inst.module_signal_processor = SignalProcessor(data_que=webInterface_inst.sp_data_que, module_receiver=webInterface_inst.module_receiver, logging_level=logging_level)
-    webInterface_inst.module_signal_processor.DOA_ant_alignment    = DOA_ant_alignment
-    webInterface_inst.module_signal_processor.DOA_inter_elem_space = DOA_inter_elem_space
-    webInterface_inst.module_signal_processor.en_DOA_estimation    = en_DOA_estimation
-    webInterface_inst.module_signal_processor.en_DOA_FB_avg        = en_DOA_FB_avg
-    webInterface_inst.module_signal_processor.ula_direction        = ula_direction
+    webInterface_inst.module_signal_processor.DOA_ant_alignment        = DOA_ant_alignment
+    webInterface_inst.module_signal_processor.DOA_inter_elem_space     = DOA_inter_elem_space
+    webInterface_inst.module_signal_processor.en_DOA_estimation        = en_DOA_estimation
+    webInterface_inst.module_signal_processor.DOA_decorrelation_method = doa_decorrelation_method
+    webInterface_inst.module_signal_processor.ula_direction            = ula_direction
 
 
     webInterface_inst.module_signal_processor.DOA_data_format = doa_format
@@ -2776,4 +2795,3 @@ html.Div([
     )
 ], className="card")
 """
-

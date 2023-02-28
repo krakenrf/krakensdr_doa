@@ -11,7 +11,7 @@
   "custom_array_y_meters": "0.00,-0.20,-0.12,0.12,0.20",
   "array_offset": 0,
   "doa_method": "MUSIC",
-  "en_fbavg": false,
+  "doa_decorrelation_method": "Off",
   "compass_offset": 0,
   "doa_fig_type": "Linear",
   "en_peak_hold": false,

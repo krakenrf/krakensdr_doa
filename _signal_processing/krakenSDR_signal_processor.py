@@ -94,7 +94,6 @@ class SignalProcessor(threading.Thread):
         # self.en_DOA_Capon    = False
         # self.en_DOA_MEM      = False
         # self.en_DOA_MUSIC    = False
-        self.en_DOA_FB_avg = False
         self.DOA_algorithm = "MUSIC"
         self.DOA_offset = 0
         self.DOA_inter_elem_space = 0.5
@@ -105,6 +104,7 @@ class SignalProcessor(threading.Thread):
         self.custom_array_y = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
         self.array_offset = 0
         self.DOA_expected_num_of_sources = 1
+        self.DOA_decorrelation_method = 'Off'
 
         # Processing parameters
         self.spectrum_window_size = fft.next_fast_len(4096)
@@ -570,8 +570,10 @@ class SignalProcessor(threading.Thread):
         # Calculating spatial correlation matrix
         R = corr_matrix(processed_signal)  # de.corr_matrix_estimate(self.processed_signal.T, imp="fast")
 
-        if self.en_DOA_FB_avg:
+        if self.DOA_decorrelation_method == 'FBA':
             R = de.forward_backward_avg(R)
+        elif self.DOA_decorrelation_method == 'TOEP':
+            R = toeplitzify(R)
 
         M = self.channel_number
         scanning_vectors = []
@@ -948,6 +950,17 @@ def corr_matrix(X):
     R = np.dot(X, X.conj().T)
     R = np.divide(R, N)
     return R
+
+
+# This is so-called "Rectification" or "Toeplizification" of correlation matrix method
+# investigated by P. Vallet and P. Loubaton, "Toeplitz rectification and DOA estimation with MUSIC",
+# 2014 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP),
+# Florence, Italy, 2014, pp. 2237-2241, doi: 10.1109/ICASSP.2014.6853997. and references therein.
+def toeplitzify(R: np.ndarray) -> np.ndarray:
+    M = R.shape[0]
+    ms = np.arange(0, -M, -1, dtype=int)
+    c = [1.0 / (float(M - abs(m))) * np.trace(R, m) for m in ms]
+    return scipy.linalg.toeplitz(c)
 
 
 # LRU cache memoize about 1000x faster.
