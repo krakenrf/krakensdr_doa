@@ -2243,14 +2243,20 @@ def plot_spectrum():
         if webInterface_inst.module_signal_processor.spectrum_fig_type == 'Single':
             spectrum_fig.update_layout(hovermode="closest")
             spectrum_fig.data[0]['name'] = "Channel 1"
-            spectrum_fig.data[0]['visible'] = True
-            for m in range(1, webInterface_inst.module_receiver.M):
-                spectrum_fig.data[m]['visible'] = False
+            hide_channels_from = 2 if webInterface_inst.module_signal_processor.en_peak_hold else 1
+            if hide_channels_from > 1:
+                spectrum_fig.data[1]['name'] = "Peak Hold"
+                peak_hold_color_rgb = px.colors.label_rgb(px.colors.hex_to_rgb(spectrum_fig.data[0]['line']['color']))
+                peak_hold_color_rgba = f"rgba{peak_hold_color_rgb[3:-1]}, 0.5)"
+                spectrum_fig.data[1]['line']['color']=peak_hold_color_rgba
+            for m in range(webInterface_inst.module_receiver.M):
+                spectrum_fig.data[m]['visible'] = True if m < hide_channels_from else False
         else:
             spectrum_fig.update_layout(hovermode="x")
             for m in range(webInterface_inst.module_receiver.M):
                 spectrum_fig.data[m]['name'] = "Channel {:d}".format(m)
-                spectrum_fig.data[m]['visible'] = True           
+                spectrum_fig.data[m]['visible'] = True
+                spectrum_fig.data[m]['line']['color'] = trace_colors[m]
 
         # Hide non active traces
         for i in range(webInterface_inst.module_signal_processor.max_vfos):
