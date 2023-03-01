@@ -574,8 +574,12 @@ class SignalProcessor(threading.Thread):
             R = de.forward_backward_avg(R)
         elif self.DOA_decorrelation_method == 'TOEP':
             R = toeplitzify(R)
+        elif self.DOA_decorrelation_method == 'FBSS':
+            R = de.spatial_smoothing(processed_signal.T,
+                                     self.channel_number - 1,
+                                     "forward-backward")
 
-        M = self.channel_number
+        M = R.shape[0]
         scanning_vectors = []
         frq_ratio = vfo_freq / self.module_receiver.daq_center_freq
         if self.DOA_ant_alignment == "UCA" or self.DOA_ant_alignment == "ULA":

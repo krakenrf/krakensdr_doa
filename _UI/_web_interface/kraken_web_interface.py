@@ -94,6 +94,10 @@ DECORRELATION_OPTIONS = [
         'label': 'Toeplizification',
         'value': 'TOEP'
     },
+    {
+        'label': 'Spatial Smoothing',
+        'value': 'FBSS'
+    },
 ]
 
 class webInterface():
