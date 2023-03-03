@@ -98,6 +98,10 @@ DECORRELATION_OPTIONS = [
         'label': 'Spatial Smoothing',
         'value': 'FBSS'
     },
+    {
+        'label': 'F-B Toeplitz',
+        'value': 'FBTOEP'
+    },
 ]
 
 class webInterface():

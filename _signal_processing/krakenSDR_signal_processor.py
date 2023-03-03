@@ -578,6 +578,9 @@ class SignalProcessor(threading.Thread):
             R = de.spatial_smoothing(processed_signal.T,
                                      self.channel_number - 1,
                                      "forward-backward")
+        elif self.DOA_decorrelation_method == 'FBTOEP':
+            R = fb_toeplitz_reconstruction(R)
+
 
         M = R.shape[0]
         scanning_vectors = []
@@ -965,6 +968,21 @@ def toeplitzify(R: np.ndarray) -> np.ndarray:
     ms = np.arange(0, -M, -1, dtype=int)
     c = [1.0 / (float(M - abs(m))) * np.trace(R, m) for m in ms]
     return scipy.linalg.toeplitz(c)
+
+
+# This is one of so-called "Toeplitz Reconstruction" of correlation matrix methods
+# investigated A. M. McDonald and M. A. van Wyk,
+# "A Condition for Unbiased Direction-of-Arrival Estimation with Toeplitz Decorrelation Techniques",
+# 2019 IEEE Asia Pacific Conference on Postgraduate Research in Microelectronics and Electronics (PrimeAsia),
+# Bangkok, Thailand, 2019, pp. 45-48, doi: 10.1109/PrimeAsia47521.2019.8950749. and references therein.
+# with important addition of the F-B averaging suggested by R. M. Shubair, et al.,
+# "A new technique for UCA-based DOA estimation of coherent signals,"
+# 2016 16th Mediterranean Microwave Symposium (MMS),
+# Abu Dhabi, United Arab Emirates, 2016, pp. 1-3, doi: 10.1109/MMS.2016.7803806. and references therein.
+def fb_toeplitz_reconstruction(R: np.ndarray) -> np.ndarray:
+    R_f = scipy.linalg.toeplitz(R[:, 0], R[0, :])
+    R_b = scipy.linalg.toeplitz(np.flip(R[:, -1]), np.flip(R[-1, :]))
+    return 0.5 * (R_f + R_b.conj())
 
 
 # LRU cache memoize about 1000x faster.
