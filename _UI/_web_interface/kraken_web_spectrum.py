@@ -1,7 +1,7 @@
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from variables import *
+from variables import figure_font_size, trace_colors, x, y
 
 
 def init_spectrum_fig(webInterface_inst, fig_layout, trace_colors):
@@ -56,7 +56,7 @@ def init_spectrum_fig(webInterface_inst, fig_layout, trace_colors):
 
     # Now add the angle display text
     # webInterface_inst.module_signal_processor.active_vfos):
-    for i in range(webInterface_inst.module_signal_processor.max_vfos):
+    for _ in range(webInterface_inst.module_signal_processor.max_vfos):
         spectrum_fig.add_annotation(
             x=415640000,
             y=-5,
