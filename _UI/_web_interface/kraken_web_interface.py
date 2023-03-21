@@ -217,7 +217,7 @@ class webInterface():
         self.daq_if_gains          ="[,,,,]"
         self.en_advanced_daq_cfg   = False
         self.en_basic_daq_cfg   = False
-        self.en_system_control     = False
+        self.en_system_control     = []
         self.daq_ini_cfg_dict      = read_config_file_dict()
         self.active_daq_ini_cfg    = self.daq_ini_cfg_dict['config_name'] #"Default" # Holds the string identifier of the actively loaded DAQ ini configuration
         self.tmp_daq_ini_cfg       = "Default"
