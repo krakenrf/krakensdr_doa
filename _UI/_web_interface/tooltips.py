@@ -101,9 +101,9 @@ dsp_config_tooltips = html.Div([
     #        ),
     # Enable F-B averaging
     dbc.Tooltip([
-        html.P("Forward-backward averaging improves the performance of DoA estimation in multipath environments"),
+        html.P("Decorrelation methods that might improve performance of DoA estimation in multipath and (or) low SNR environments."),
         html.P("(Available only for ULA antenna arrays)")],
-        target="label_en_fb_avg",
+        target="label_decorrelation",
         placement="bottom",
         className="tooltip"
     ),
