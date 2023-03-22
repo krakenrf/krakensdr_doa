@@ -1,0 +1,10 @@
+[tool.isort]
+profile = 'black'
+
+[tool.black]
+line-length = 120
+
+[tool.flake8]
+ignore = ['E402', 'E501', 'E203', 'W503']
+max-line-length = 120
+count = true

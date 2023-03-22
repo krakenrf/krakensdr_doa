@@ -1,0 +1,13 @@
+name: Formatting
+
+on: [push, pull_request]
+
+jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: isort/isort-action@v1.1.0
+      - uses: psf/black@stable
+        with:
+          options: "--check --verbose"
