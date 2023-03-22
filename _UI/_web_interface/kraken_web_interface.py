@@ -1384,7 +1384,7 @@ def generate_config_page_layout(webInterface_inst):
           html.Div([html.Button('Restart System', id='btn-restart_system', className="btn-restart_system", n_clicks=0)], className="field"),
           html.Div([html.Button('Shutdown System', id='btn-shtudown_system', className="btn-shtudown_system", n_clicks=0)], className="field"),
           html.Div([html.Button('Clear Cache and Restart', id='btn-clear_cache', className="btn-clear_cache", n_clicks=0)], className="field"),
-          html.Div("Version 1.42")
+          html.Div("Version 1.5")
         ], id='system_control_container'),
 
     ], className="card")
