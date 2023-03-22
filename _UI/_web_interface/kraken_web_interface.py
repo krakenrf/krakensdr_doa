@@ -79,6 +79,7 @@ if os.path.exists(settings_file_path):
 import ini_checker
 from krakenSDR_receiver import ReceiverRTLSDR
 from krakenSDR_signal_processor import SignalProcessor
+from krakenSDR_signal_processor import xi
 import tooltips
 
 DECORRELATION_OPTIONS = [
@@ -146,10 +147,12 @@ class webInterface():
         self.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
         if self.module_signal_processor.DOA_ant_alignment == "UCA":
+            self.module_signal_processor.DOA_UCA_radius_m = self.ant_spacing_meters
             # Convert RADIUS to INTERELEMENT SPACING
             inter_elem_spacing = (np.sqrt(2)*self.ant_spacing_meters*np.sqrt(1-np.cos(np.deg2rad(360/self.module_signal_processor.channel_number))))
             self.module_signal_processor.DOA_inter_elem_space = inter_elem_spacing / (300 / float(dsp_settings.get("center_freq", 100.0)))
         else:
+            self.module_signal_processor.DOA_UCA_radius_m = np.Infinity
             self.module_signal_processor.DOA_inter_elem_space = self.ant_spacing_meters / (300 / float(dsp_settings.get("center_freq", 100.0)))
 
         self.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
@@ -1042,6 +1045,8 @@ def generate_config_page_layout(webInterface_inst):
                 options=DECORRELATION_OPTIONS,
             value=webInterface_inst.module_signal_processor.DOA_decorrelation_method, style={"display":"inline-block"}, className="field-body"),
         ], className="field"),
+
+        html.Div([html.Div("", id="uca_decorrelation_warning" , className="field", style={"color":"#f39c12"})]),
 
         html.Div([html.Div("ULA Output Direction:", id="label_ula_direction"     , className="field-label"),
         dcc.Dropdown(id='ula_direction',
@@ -2369,6 +2374,7 @@ def toggle_custom_array_fields(toggle_value):
     Output(component_id="ambiguity_warning",  component_property='children'),
     Output(component_id="doa_decorrelation_method",  component_property="options"),
     Output(component_id="doa_decorrelation_method",  component_property="disabled"),
+    Output(component_id="uca_decorrelation_warning",  component_property="children"),
     Output(component_id="expected_num_of_sources",  component_property="options"),
     Output(component_id="expected_num_of_sources",  component_property="disabled"),],
     [Input(component_id ="placeholder_update_freq"       , component_property='children'),
@@ -2393,11 +2399,13 @@ def update_dsp_params(update_freq, en_doa, doa_decorrelation_method, spacing_met
     #webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
 
     if ant_arrangement == "UCA":
+        webInterface_inst.module_signal_processor.DOA_UCA_radius_m = webInterface_inst.ant_spacing_meters
         # Convert RADIUS to INTERELEMENT SPACING
         inter_elem_spacing = (np.sqrt(2) * webInterface_inst.ant_spacing_meters * np.sqrt(
             1 - np.cos(np.deg2rad(360 / webInterface_inst.module_signal_processor.channel_number))))
         webInterface_inst.module_signal_processor.DOA_inter_elem_space = inter_elem_spacing / wavelength
     else:
+        webInterface_inst.module_signal_processor.DOA_UCA_radius_m = np.Infinity
         webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
 
     ant_spacing_wavelength = round(webInterface_inst.module_signal_processor.DOA_inter_elem_space, 3)
@@ -2439,15 +2447,30 @@ def update_dsp_params(update_freq, en_doa, doa_decorrelation_method, spacing_met
 
     webInterface_inst.module_signal_processor.DOA_algorithm = doa_method
 
-    webInterface_inst.module_signal_processor.DOA_decorrelation_method = doa_decorrelation_method if ant_arrangement == "ULA" else DECORRELATION_OPTIONS[
+    is_odd_number_of_channels = (
+        webInterface_inst.module_signal_processor.channel_number % 2 != 0)
+    is_decorrelation_applicable = (ant_arrangement != "Custom" and is_odd_number_of_channels)
+    # UCA->VULA transformation works best if we have odd number of channels
+    webInterface_inst.module_signal_processor.DOA_decorrelation_method = doa_decorrelation_method if is_decorrelation_applicable else DECORRELATION_OPTIONS[
         0]['value']
 
-    doa_decorrelation_method_options = DECORRELATION_OPTIONS if ant_arrangement == "ULA" else [
+    doa_decorrelation_method_options = DECORRELATION_OPTIONS if is_decorrelation_applicable else [
         {
             **DECORRELATION_OPTION, 'label': 'N/A'
         } for DECORRELATION_OPTION in DECORRELATION_OPTIONS
     ]
-    doa_decorrelation_method_state = False if ant_arrangement == "ULA" else True
+    doa_decorrelation_method_state = False if is_decorrelation_applicable else True
+
+    if ant_arrangement == "UCA" and webInterface_inst.module_signal_processor.DOA_decorrelation_method != DECORRELATION_OPTIONS[0]['value']:
+        uca_decorrelation_warning = "WARNING: Using decorrelation methods with UCA array is still experimental as it might produce inconsistent results."
+        _, L = xi(webInterface_inst.ant_spacing_meters, webInterface_inst.daq_center_freq * 1.0e6)
+        M = webInterface_inst.module_signal_processor.channel_number // 2
+        if L < M:
+            if ambiguity_warning != "":
+                ambiguity_warning += "\n"
+            ambiguity_warning += "WARNING: If decorrelation is used with UCA, please try to keep radius of the array as large as possible."
+    else:
+        uca_decorrelation_warning = ""
 
     webInterface_inst.module_signal_processor.DOA_ant_alignment=ant_arrangement
     webInterface_inst._doa_fig_type = doa_fig_type
@@ -2477,8 +2500,9 @@ def update_dsp_params(update_freq, en_doa, doa_decorrelation_method, spacing_met
 
     return [
         str(ant_spacing_wavelength), spacing_label, ambiguity_warning,
-        doa_decorrelation_method_options, doa_decorrelation_method_state, num_of_sources,
-        num_of_sources_state
+        doa_decorrelation_method_options, doa_decorrelation_method_state,
+        uca_decorrelation_warning,
+        num_of_sources, num_of_sources_state
     ]
 
 @app.callback(
