@@ -16,4 +16,5 @@ repos:
         -   flake8-black>=0.3.6
         -   Flake8-pyproject>=1.2.3
         -   flake8-bugbear>=23.3.23
+        -   dlint>=0.14.0
         language_version: python3
