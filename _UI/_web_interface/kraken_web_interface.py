@@ -27,7 +27,6 @@ import time
 import subprocess
 #import orjson
 import json
-import csv
 
 import dash_core_components as dcc
 import dash_html_components as html
@@ -35,7 +34,6 @@ import dash_html_components as html
 import dash_devices as dash
 from dash_devices.dependencies import Input, Output, State
 
-from dash.dash import no_update
 import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
