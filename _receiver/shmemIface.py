@@ -49,13 +49,13 @@ class outShmemIface():
         try:
             shmem_A = shared_memory.SharedMemory(name=shmem_name+'_A',create=False, size=shmem_size)
             shmem_A.close()
-            #shmem_A.unkink()
+            shmem_A.unlink()
         except FileNotFoundError as err:
             self.logger.warning("Shared memory not exist")
         try:
             shmem_B = shared_memory.SharedMemory(name=shmem_name+'_B',create=False, size=shmem_size)
             shmem_B.close()
-            #shmem_B.unkink()
+            shmem_B.unlink()
         except FileNotFoundError as err:
             self.logger.warning("Shared memory not exist")
         
@@ -144,10 +144,10 @@ class inShmemIface():
         self.shmem_name = shmem_name
         
         self.memories = []
-        self.buffers = []        
+        self.buffers = []
         try:
             self.fw_ctr_fifo = os.open(ctr_fifo_path+'fw_'+shmem_name, os.O_RDONLY)
-            self.bw_ctr_fifo = os.open(ctr_fifo_path+'bw_'+shmem_name, os.O_WRONLY)                         
+            self.bw_ctr_fifo = os.open(ctr_fifo_path+'bw_'+shmem_name, os.O_WRONLY)
         except OSError as err:
             self.logger.critical("OS error: {0}".format(err))
             self.logger.critical("Failed to open control fifos")
