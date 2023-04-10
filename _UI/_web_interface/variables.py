@@ -61,6 +61,7 @@ fig_layout = go.Layout(
                      t=0 #top margin
                  )
              )
+doa_fig = go.Figure(layout=fig_layout)
 
 option = [{"label":"", "value": 1}]
 

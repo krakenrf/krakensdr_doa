@@ -1,6 +1,89 @@
 import numpy as np
 import plotly.express as px
 from variables import *
+import plotly.graph_objects as go
+
+def init_spectrum_fig(webInterface_inst, fig_layout, trace_colors):
+    spectrum_fig = go.Figure(layout=fig_layout)
+
+    scatter_plot = go.Scattergl(x=x,
+                              y=y,
+                              name="Channel {:d}".format(1),
+                              line = dict(color = trace_colors[1], width = 1),
+                              )
+
+    for m in range(0, webInterface_inst.module_receiver.M): #+1 for the auto decimation window selection
+        scatter = scatter_plot
+        scatter['name'] = "Channel {:d}".format(m)
+        scatter['line'] = dict(color = trace_colors[m], width = 1)
+        spectrum_fig.add_trace(scatter)
+
+    VFO_color = dict(color = 'green', width=0) #trace_colors[webInterface_inst.module_receiver.M + 2], width = 0)
+    VFO_squelch_color = dict(color = 'yellow', width=0) #trace_colors[webInterface_inst.module_receiver.M + 1], width = 0)
+    VFO_scatter = go.Scattergl(x=x,
+                             y=y,
+                             name="VFO" + str(0),
+                             line = VFO_color, #dict(color = trace_colors[m], width = 0),
+                             opacity = 0.33,
+                             fill='toself',
+                             visible=False
+                             )
+    for i in range(webInterface_inst.module_signal_processor.max_vfos):
+        scatter = VFO_scatter
+        scatter['name'] = "VFO" + str(i)
+        scatter['line'] = VFO_color
+        spectrum_fig.add_trace(scatter)
+
+        scatter['name'] = "VFO" + str(i) +" Squelch"
+        scatter['line'] = VFO_squelch_color
+        spectrum_fig.add_trace(scatter)
+
+        spectrum_fig.add_annotation(
+        x=415640000,
+        y=-5,
+        text="VFO-" + str(i),
+        font=dict(size=12,family='Courier New'),
+        showarrow=False,
+        yshift=10,
+        visible=False)
+
+    # Now add the angle display text
+    for i in range(webInterface_inst.module_signal_processor.max_vfos): #webInterface_inst.module_signal_processor.active_vfos):
+        spectrum_fig.add_annotation(
+        x=415640000,
+        y=-5,
+        text="Angle",
+        font=dict(size=12,family='Courier New'),
+        showarrow=False,
+        yshift=-5,
+        visible=False)
+
+    spectrum_fig.update_xaxes(
+                    color='rgba(255,255,255,1)',
+                    title_font_size=20,
+                    tickfont_size= 15, #figure_font_size,
+                    #range=[np.min(x), np.max(x)],
+                    #rangemode='normal',
+                    mirror=True,
+                    ticks='outside',
+                    showline=True,
+                    #fixedrange=True
+                    )
+    spectrum_fig.update_yaxes(title_text="Amplitude [dB]",
+                    color='rgba(255,255,255,1)',
+                    title_font_size=20,
+                    tickfont_size=figure_font_size,
+                    range=[-90, 0],
+                    mirror=True,
+                    ticks='outside',
+                    showline=True,
+                    #fixedrange=True
+                    )
+
+    spectrum_fig.update_layout(margin=go.layout.Margin(b=5, t=0), hoverdistance=10000)
+    spectrum_fig.update(layout_showlegend=False)
+
+    return spectrum_fig
 
 def plot_spectrum(app, webInterface_inst, spectrum_fig, waterfall_fig):
     # if spectrum_fig == None:
