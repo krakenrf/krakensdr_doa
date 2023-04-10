@@ -20,14 +20,10 @@
 
 # Import built-in modules
 import logging
-import os
-import sys
 import queue
 import time
 import subprocess
-#import orjson
 import json
-import csv
 
 import dash_core_components as dcc
 import dash_html_components as html
@@ -35,41 +31,17 @@ import dash_html_components as html
 import dash_devices as dash
 from dash_devices.dependencies import Input, Output, State
 
-from dash.dash import no_update
 import plotly.graph_objects as go
-import plotly.express as px
 import numpy as np
+from utils import *
 from configparser import ConfigParser
-
+from variables import *
 from threading import Timer
+from kraken_web_spectrum import plot_spectrum
+from kraken_web_doa import plot_doa
 
-# Import Kraken SDR modules
-current_path          = os.path.dirname(os.path.realpath(__file__))
-root_path             = os.path.dirname(os.path.dirname(current_path))
-receiver_path         = os.path.join(root_path, "_receiver")
-signal_processor_path = os.path.join(root_path, "_signal_processing")
-ui_path               = os.path.join(root_path, "_UI")
-
-sys.path.insert(0, receiver_path)
-sys.path.insert(0, signal_processor_path)
-sys.path.insert(0, ui_path)
-
-daq_subsystem_path    = os.path.join(
-                        os.path.join(os.path.dirname(root_path),
-                        "heimdall_daq_fw"),
-                        "Firmware")
-daq_preconfigs_path   = os.path.join(
-                        os.path.join(os.path.dirname(root_path),
-                        "heimdall_daq_fw"),
-                        "config_files")
-daq_config_filename   = os.path.join(daq_subsystem_path, "daq_chain_config.ini")
-daq_stop_filename     = "daq_stop.sh"
-daq_start_filename    = "daq_start_sm.sh"
-#daq_start_filename    = "daq_synthetic_start.sh"
-sys.path.insert(0, daq_subsystem_path)
-
-settings_file_path = os.path.join(root_path, "settings.json")
 # Load settings file
+settings_file_path = os.path.join(root_path, "settings.json")
 settings_found = False
 if os.path.exists(settings_file_path):
     settings_found = True
@@ -81,29 +53,6 @@ from krakenSDR_receiver import ReceiverRTLSDR
 from krakenSDR_signal_processor import SignalProcessor
 from krakenSDR_signal_processor import xi
 import tooltips
-
-DECORRELATION_OPTIONS = [
-    {
-        'label': 'Off',
-        'value': 'Off'
-    },
-    {
-        'label': 'F-B Averaging',
-        'value': 'FBA'
-    },
-    {
-        'label': 'Toeplizification',
-        'value': 'TOEP'
-    },
-    {
-        'label': 'Spatial Smoothing',
-        'value': 'FBSS'
-    },
-    {
-        'label': 'F-B Toeplitz',
-        'value': 'FBTOEP'
-    },
-]
 
 class webInterface():
 
@@ -369,48 +318,6 @@ class webInterface():
         webInterface_inst.logger.info("Center frequency: {:f} MHz".format(f0))
         webInterface_inst.logger.info("Gain: {:f} dB".format(gain))
 
-
-def read_config_file_dict(config_fname=daq_config_filename):
-    parser = ConfigParser()
-    found = parser.read([config_fname])
-    ini_data = {}
-    if not found:
-        return None
-
-    ini_data['config_name'] = parser.get('meta', 'config_name')
-    ini_data['num_ch'] = parser.getint('hw', 'num_ch')
-    ini_data['en_bias_tee'] = parser.get('hw', 'en_bias_tee')
-    ini_data['daq_buffer_size'] = parser.getint('daq','daq_buffer_size')
-    ini_data['sample_rate'] = parser.getint('daq','sample_rate')
-    ini_data['en_noise_source_ctr'] =  parser.getint('daq','en_noise_source_ctr')
-    ini_data['cpi_size'] = parser.getint('pre_processing', 'cpi_size')
-    ini_data['decimation_ratio'] = parser.getint('pre_processing', 'decimation_ratio')
-    ini_data['fir_relative_bandwidth'] = parser.getfloat('pre_processing', 'fir_relative_bandwidth')
-    ini_data['fir_tap_size'] = parser.getint('pre_processing', 'fir_tap_size')
-    ini_data['fir_window'] = parser.get('pre_processing','fir_window')
-    ini_data['en_filter_reset'] = parser.getint('pre_processing','en_filter_reset')
-    ini_data['corr_size'] = parser.getint('calibration','corr_size')
-    ini_data['std_ch_ind'] = parser.getint('calibration','std_ch_ind')
-    ini_data['en_iq_cal'] = parser.getint('calibration','en_iq_cal')
-    ini_data['gain_lock_interval'] = parser.getint('calibration','gain_lock_interval')
-    ini_data['require_track_lock_intervention'] = parser.getint('calibration','require_track_lock_intervention')
-    ini_data['cal_track_mode'] = parser.getint('calibration','cal_track_mode')
-    ini_data['amplitude_cal_mode'] = parser.get('calibration','amplitude_cal_mode')
-    ini_data['cal_frame_interval'] = parser.getint('calibration','cal_frame_interval')
-    ini_data['cal_frame_burst_size'] = parser.getint('calibration','cal_frame_burst_size')
-    ini_data['amplitude_tolerance'] = parser.getint('calibration','amplitude_tolerance')
-    ini_data['phase_tolerance'] = parser.getint('calibration','phase_tolerance')
-    ini_data['maximum_sync_fails'] = parser.getint('calibration','maximum_sync_fails')
-    ini_data['iq_adjust_source'] = parser.get('calibration', 'iq_adjust_source')
-    ini_data['iq_adjust_amplitude'] = parser.get('calibration', 'iq_adjust_amplitude')
-    ini_data['iq_adjust_time_delay_ns'] = parser.get('calibration', 'iq_adjust_time_delay_ns')
-
-    ini_data['adpis_gains_init'] = parser.get('adpis', 'adpis_gains_init')
-
-    ini_data['out_data_iface_type'] = parser.get('data_interface','out_data_iface_type')
-
-    return ini_data
-
 def write_config_file_dict(param_dict):
     webInterface_inst.logger.info("Write config file: {0}".format(param_dict))
     parser = ConfigParser()
@@ -486,36 +393,6 @@ webInterface_inst = webInterface()
 #############################################
 #       Prepare component dependencies      #
 #############################################
-
-trace_colors = px.colors.qualitative.Plotly
-trace_colors[3] = 'rgb(255,255,51)'
-valid_fir_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen' , 'bohman', 'blackmanharris', 'nuttall', 'barthann']
-valid_sample_rates = [0.25, 0.900001, 1.024, 1.4, 1.8, 1.92, 2.048, 2.4, 2.56, 3.2]
-valid_daq_buffer_sizes = (2**np.arange(10,21,1)).tolist()
-calibration_tack_modes = [['No tracking',0] , ['Periodic tracking',2]]
-doa_trace_colors =	{
-  "DoA Bartlett": "#00B5F7",
-  "DoA Capon"   : "rgb(226,26,28)",
-  "DoA MEM"     : "#1CA71C",
-  "DoA TNA"     : "rgb(255, 0, 255)",
-  "DoA MUSIC"   : "rgb(257,233,111)"
-}
-figure_font_size = 20
-
-y=np.random.normal(0,1,2**1)
-x=np.arange(2**1)
-
-fig_layout = go.Layout(
-                 paper_bgcolor='rgba(0,0,0,0)',
-                 plot_bgcolor='rgba(0,0,0,0)',
-                 template='plotly_dark',
-                 showlegend=True,
-                 margin=go.layout.Margin(
-                     t=0 #top margin
-                 )
-             )
-
-option = [{"label":"", "value": 1}]
 
 def init_spectrum_fig(fig_layout, trace_colors):
     spectrum_fig = go.Figure(layout=fig_layout)
@@ -1567,9 +1444,9 @@ def fetch_dsp_data():
     if (webInterface_inst.pathname == "/config" or webInterface_inst.pathname == "/" or webInterface_inst.pathname == "/init") and daq_status_update_flag:
         update_daq_status()
     elif webInterface_inst.pathname == "/spectrum" and spectrum_update_flag:
-        plot_spectrum()
+        plot_spectrum(app, webInterface_inst, spectrum_fig, waterfall_fig)
     elif (webInterface_inst.pathname == "/doa" and doa_update_flag): #or (webInterface_inst.pathname == "/doa" and webInterface_inst.reset_doa_graph_flag):
-        plot_doa()
+        plot_doa(app, webInterface_inst, doa_fig)
 
     webInterface_inst.dsp_timer = Timer(.01, fetch_dsp_data)
     webInterface_inst.dsp_timer.start()
@@ -2064,7 +1941,7 @@ def display_page(pathname):
     elif pathname == "/doa":
         webInterface_inst.module_signal_processor.en_spectrum = False
         webInterface_inst.reset_doa_graph_flag = True
-        plot_doa()
+        plot_doa(app, webInterface_inst, doa_fig)
         return [generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"]
     return Output('dummy_output', 'children', '')
 
@@ -2133,228 +2010,14 @@ def clear_cache_btn(input_value):
     [Input('spectrum-graph', 'clickData')]
 )
 def click_to_set_freq_spectrum(clickData):
-    set_clicked(clickData)
+    set_clicked(webInterface_inst, clickData)
 
 @app.callback_shared(
     None,
     [Input('waterfall-graph', 'clickData')]
 )
 def click_to_set_waterfall_spectrum(clickData):
-    set_clicked(clickData)
-
-def set_clicked(clickData):
-    M = webInterface_inst.module_receiver.M
-    curveNumber = clickData["points"][0]["curveNumber"]
-
-    if curveNumber >= M:
-        vfo_idx = int((curveNumber - M) / 2)
-        webInterface_inst.selected_vfo = vfo_idx
-        if webInterface_inst.module_signal_processor.output_vfo >= 0:
-            webInterface_inst.module_signal_processor.output_vfo = vfo_idx
-    else:
-        idx = 0
-        if webInterface_inst.module_signal_processor.output_vfo >= 0:
-            idx = max(webInterface_inst.module_signal_processor.output_vfo, 0)
-        else:
-            idx = webInterface_inst.selected_vfo
-        webInterface_inst.module_signal_processor.vfo_freq[idx] = int(clickData["points"][0]["x"])
-
-
-def plot_doa():
-    global doa_fig
-
-    if webInterface_inst.reset_doa_graph_flag == True:
-        doa_fig.data = []
-        #Just generate with junk data initially, as the spectrum array may not be ready yet if we have sqeulching active etc.
-        if True: #webInterface_inst.doa_thetas is not None:
-            # --- Linear plot ---
-            if webInterface_inst._doa_fig_type == 'Linear':
-                # Plot traces
-                doa_fig.add_trace(go.Scattergl(x=x, #webInterface_inst.doa_thetas,
-                                  y=y,
-                            ))
-
-                doa_fig.update_xaxes(title_text="Incident angle [deg]",
-                            color='rgba(255,255,255,1)',
-                            title_font_size=20,
-                            tickfont_size=figure_font_size,
-                            mirror=True,
-                            ticks='outside',
-                            showline=True)
-                doa_fig.update_yaxes(title_text="Amplitude [dB]",
-                            color='rgba(255,255,255,1)',
-                            title_font_size=20,
-                            tickfont_size=figure_font_size,
-                            #range=[-5, 5],
-                            mirror=True,
-                            ticks='outside',
-                            showline=True)
-# --- Polar plot ---
-            elif webInterface_inst._doa_fig_type == 'Polar':
-
-                label = "DOA Angle" #webInterface_inst.doa_labels[i]
-                doa_fig.add_trace(go.Scatterpolargl(theta=x, #webInterface_inst.doa_thetas,
-                                             r=y, #doa_result,
-                                             name=label,
-                                             fill= 'toself',
-                                             ))
-
-                doa_fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
-                                           angularaxis = dict(rotation=90,
-                                                              tickfont_size = figure_font_size)
-                                                             )
-                                     )
-
-            # --- Compass  ---
-            elif webInterface_inst._doa_fig_type == 'Compass' :
-                doa_fig.update_layout(polar = dict(radialaxis_tickfont_size = figure_font_size,
-                                        angularaxis = dict(rotation=90+webInterface_inst.compass_offset,
-                                                            direction="clockwise",
-                                                            tickfont_size = figure_font_size)
-                                                          )
-                                     )
-
-                label = "DOA Angle"
-
-                doa_fig.add_trace(go.Scatterpolargl(theta=x, #(360-webInterface_inst.doa_thetas+webInterface_inst.compass_offset)%360,
-                                                r=y, #doa_result,
-                                                name= label,
-                                               # line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
-                                                fill= 'toself'
-                                                ))
-
-        webInterface_inst.reset_doa_graph_flag = False
-    else:
-        update_data = []
-        fig_type = []
-        doa_max_str = ""
-        if webInterface_inst.doa_thetas is not None and webInterface_inst.doa_results[0].size > 0:
-            doa_max_str = str(webInterface_inst.doas[0])+"°"
-
-            thetas = webInterface_inst.doa_thetas
-            result = webInterface_inst.doa_results[0]
-
-            update_data = dict(x=[thetas], y=[result])
-
-            if webInterface_inst._doa_fig_type == 'Polar' :
-                thetas = np.append(webInterface_inst.doa_thetas, webInterface_inst.doa_thetas[0])
-                result = np.append(webInterface_inst.doa_results[0], webInterface_inst.doa_results[0][0])
-                update_data = dict(theta=[thetas], r=[result])
-            elif webInterface_inst._doa_fig_type == 'Compass' :
-                thetas = np.append(webInterface_inst.doa_thetas, webInterface_inst.doa_thetas[0])
-                result = np.append(webInterface_inst.doa_results[0], webInterface_inst.doa_results[0][0])
-                doa_max_str = (360-webInterface_inst.doas[0]+webInterface_inst.compass_offset)%360
-                update_data = dict(theta=[(360-thetas+webInterface_inst.compass_offset)%360], r=[result])
-
-            app.push_mods({
-                'doa-graph': {'extendData': [update_data, [0], len(thetas)]},
-                'body_doa_max': {'children': doa_max_str}
-            })
-
-
-def plot_spectrum():
-    global spectrum_fig
-    global waterfall_fig
-    #if spectrum_fig == None:
-    if webInterface_inst.reset_spectrum_graph_flag:
-
-        # Reset the peak hold each time the spectrum page is loaded
-        webInterface_inst.module_signal_processor.resetPeakHold()
-
-        x = webInterface_inst.spectrum[0, :] + webInterface_inst.daq_center_freq*10**6
-
-        # Plot traces
-        for m in range(np.size(webInterface_inst.spectrum, 0)-1):
-            spectrum_fig.data[m]['x'] = x
-            
-        # As we use CH1 as the DISPLAY channel (due to lower noise characteristics), ensure we label it as CH1
-        # also we can hide the other channels
-        if webInterface_inst.module_signal_processor.spectrum_fig_type == 'Single':
-            spectrum_fig.update_layout(hovermode="closest")
-            spectrum_fig.data[0]['name'] = "Channel 1"
-            hide_channels_from = 2 if webInterface_inst.module_signal_processor.en_peak_hold else 1
-            if hide_channels_from > 1:
-                spectrum_fig.data[1]['name'] = "Peak Hold"
-                peak_hold_color_rgb = px.colors.label_rgb(px.colors.hex_to_rgb(spectrum_fig.data[0]['line']['color']))
-                peak_hold_color_rgba = f"rgba{peak_hold_color_rgb[3:-1]}, 0.5)"
-                spectrum_fig.data[1]['line']['color']=peak_hold_color_rgba
-            for m in range(webInterface_inst.module_receiver.M):
-                spectrum_fig.data[m]['visible'] = True if m < hide_channels_from else False
-        else:
-            spectrum_fig.update_layout(hovermode="x")
-            for m in range(webInterface_inst.module_receiver.M):
-                spectrum_fig.data[m]['name'] = "Channel {:d}".format(m)
-                spectrum_fig.data[m]['visible'] = True
-                spectrum_fig.data[m]['line']['color'] = trace_colors[m]
-
-        # Hide non active traces
-        for i in range(webInterface_inst.module_signal_processor.max_vfos):
-            if i < webInterface_inst.module_signal_processor.active_vfos:
-                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2)]['visible'] = True
-                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2+1)]['visible'] = True
-                spectrum_fig.layout.annotations[i]['visible'] = True
-                spectrum_fig.layout.annotations[webInterface_inst.module_signal_processor.max_vfos+i]['visible'] = True
-            else:
-                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2)]['visible'] = False
-                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2+1)]['visible'] = False
-                spectrum_fig.layout.annotations[i]['visible'] = False
-                spectrum_fig.layout.annotations[webInterface_inst.module_signal_processor.max_vfos+i]['visible'] = False
-
-        waterfall_fig.data[0]['x'] = x
-        waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], showgrid=False)
-
-        webInterface_inst.reset_spectrum_graph_flag = False
-        app.push_mods({
-               'spectrum-graph': {'figure': spectrum_fig},
-               'waterfall-graph': {'figure': waterfall_fig},
-        })
-
-    else:
-        # Update entire graph to update VFO-0 text. There is no way to just update annotations in Dash, but updating the entire spectrum is fast
-        # enough to do on click
-        x = webInterface_inst.spectrum[0,:] + webInterface_inst.daq_center_freq*10**6
-        for i in range(webInterface_inst.module_signal_processor.active_vfos):
-
-            # Find center of VFO display window
-            maxIndex = webInterface_inst.spectrum[webInterface_inst.module_receiver.M+(i*2+1),:].argmax()
-
-            reverseSpectrum = webInterface_inst.spectrum[webInterface_inst.module_receiver.M+(i*2+1),::-1]
-            maxIndexReverse = reverseSpectrum.argmax()
-            maxIndexReverse = len(reverseSpectrum) - maxIndexReverse - 1
-            maxIndexCenter = (maxIndex + maxIndexReverse)//2
-
-            # Update VFO Text Bearing
-            doa = webInterface_inst.max_doas_list[i]
-            if webInterface_inst._doa_fig_type == "Compass":
-                doa = (360-doa+webInterface_inst.compass_offset)%360
-            spectrum_fig.layout.annotations[webInterface_inst.module_signal_processor.max_vfos + i]['text'] = \
-                                  str(doa)+"°"
-
-            maxX = x[maxIndexCenter]
-            spectrum_fig.layout.annotations[i]['x'] = maxX
-            spectrum_fig.layout.annotations[webInterface_inst.module_signal_processor.max_vfos + i]['x'] = maxX
-
-            # Update selected VFO border
-            width = 0
-            if webInterface_inst.selected_vfo == i:
-                width = 3
-
-            # Update squelch/active colors
-            if webInterface_inst.squelch_update[i]:
-                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2)]['line'] = dict(color='green', width=width)
-            else:
-                spectrum_fig.data[webInterface_inst.module_receiver.M + (i*2)]['line'] = dict(color='red', width=width)
-
-        # Make y values too so that the graph does not rapidly flash with random data on every click
-        for m in range(1, np.size(webInterface_inst.spectrum, 0)):
-            spectrum_fig.data[m-1]['x'] = x
-            spectrum_fig.data[m-1]['y'] = webInterface_inst.spectrum[m,:]
-
-        z = webInterface_inst.spectrum[1, :]
-        app.push_mods({
-            'spectrum-graph': {'figure': spectrum_fig},
-            'waterfall-graph': {'extendData': [dict(z = [[z]]), [0], 50]}, #Add up spectrum for waterfall
-        })
+    set_clicked(webInterface_inst, clickData)
 
 
 # Enable custom input fields
@@ -2817,13 +2480,3 @@ if __name__ == "__main__":
     # Debug mode does not work when the data interface is set to shared-memory "shmem"! 
     app.run_server(debug=False, host="0.0.0.0", port=8080)
 
-"""
-html.Div([
-    html.H2("System Logs"),
-    dcc.Textarea(
-        placeholder = "Enter a value...",
-        value = "System logs .. - Curently NOT used",
-        style = {"width": "100%", "background-color": "#000000", "color":"#02c93d"}
-    )
-], className="card")
-"""
