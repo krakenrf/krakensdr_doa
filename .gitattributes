@@ -1,0 +1,16 @@
+* text eol=lf
+
+*.js text
+*.html text
+*.json text
+*.py text
+*.css text
+*.md text
+*.sh text
+*.yml text
+*.yaml text
+*.toml text
+
+*.png binary
+*.jpg binary
+*.ico binary
