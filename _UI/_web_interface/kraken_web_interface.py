@@ -54,12 +54,13 @@ from krakenSDR_receiver import ReceiverRTLSDR
 from krakenSDR_signal_processor import SignalProcessor
 from krakenSDR_signal_processor import xi
 
+
 class webInterface():
 
     def __init__(self):
         self.user_interface = None
 
-        self.logging_level = dsp_settings.get("logging_level", 0)*10
+        self.logging_level = dsp_settings.get("logging_level", 0) * 10
         logging.basicConfig(level=self.logging_level)
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(self.logging_level)
@@ -753,7 +754,7 @@ def update_daq_params(input_value, f0, gain):
     if webInterface_inst.module_signal_processor.run_processing:
         webInterface_inst.daq_center_freq = f0
         webInterface_inst.config_daq_rf(f0,gain)
-        
+
         for i in range(webInterface_inst.module_signal_processor.max_vfos):
             webInterface_inst.module_signal_processor.vfo_freq[i] = f0
             app.push_mods({
@@ -794,7 +795,7 @@ def update_data_recording_params(filename, en_data_record, write_interval):
     webInterface_inst.module_signal_processor.write_interval = float(write_interval)
 
 @app.callback_shared(
-    Output("download_recorded_file", "data"), 
+    Output("download_recorded_file", "data"),
     [Input("btn_download_file", "n_clicks")]
 )
 def send_recorded_file(n_clicks):
@@ -816,7 +817,7 @@ def set_station_id(station_id):
 @app.callback_shared(None,
                      [Input(component_id='krakenpro_key', component_property='value')])
 def set_kraken_pro_key(key):
-    webInterface_inst.module_signal_processor.krakenpro_key = key 
+    webInterface_inst.module_signal_processor.krakenpro_key = key
 
 @app.callback_shared(None,
                      [Input(component_id='rdf_mapper_server_address', component_property='value')])
@@ -1039,14 +1040,14 @@ def stop_proc_btn(input_value):
 def save_config_btn(input_value):
     webInterface_inst.logger.info("Saving DAQ and DSP Configuration")
     webInterface_inst.save_configuration()
-    
+
 @app.callback_shared(
     None,
     [Input(component_id='btn-restart_sw', component_property='n_clicks')],
 )
 def restart_sw_btn(input_value):
     webInterface_inst.logger.info("Restarting Software")
-    root_path             = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))    
+    root_path             = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))
     os.chdir(root_path)
     daq_start_script = subprocess.Popen(['bash', "kraken_doa_start.sh"])#,
 
@@ -1064,18 +1065,18 @@ def restart_system_btn(input_value):
 )
 def shutdown_system_btn(input_value):
     webInterface_inst.logger.info("Shutting System Down")
-    subprocess.call(["shutdown", "now"])  
-    
+    subprocess.call(["shutdown", "now"])
+
 @app.callback_shared(
     None,
     [Input(component_id='btn-clear_cache'     , component_property='n_clicks')],
 )
 def clear_cache_btn(input_value):
     webInterface_inst.logger.info("Clearing Python and Numba Caches")
-    root_path             = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))    
+    root_path             = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))
     os.chdir(root_path)
     daq_start_script = subprocess.Popen(['bash', "kraken_doa_start.sh", "-c"])#,
-    
+
 @app.callback_shared(
     None,
     [Input('spectrum-graph', 'clickData')]
@@ -1388,7 +1389,7 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
     webInterface_inst.needs_refresh = False
 
     return ["/config"]
-        
+
 @app.callback(Output('system_control_container', 'style'),
              [Input("en_system_control", "value")]
 )
@@ -1397,7 +1398,7 @@ def toggle_system_control(toggle_value):
     if toggle_value:
         return {'display': 'block'}
     else:
-        return {'display': 'none'}    
+        return {'display': 'none'}
 
 @app.callback([Output("placeholder_update_rx", "children")],
               [Input("settings-refresh-timer", "n_intervals")],
