@@ -146,8 +146,8 @@ class inShmemIface:
         self.memories = []
         self.buffers = []
         try:
-            self.fw_ctr_fifo = os.open(ctr_fifo_path+'fw_'+shmem_name, os.O_RDONLY)
-            self.bw_ctr_fifo = os.open(ctr_fifo_path+'bw_'+shmem_name, os.O_WRONLY)
+            self.fw_ctr_fifo = os.open(ctr_fifo_path + "fw_" + shmem_name, os.O_RDONLY)
+            self.bw_ctr_fifo = os.open(ctr_fifo_path + "bw_" + shmem_name, os.O_WRONLY)
         except OSError as err:
             self.logger.critical("OS error: {0}".format(err))
             self.logger.critical("Failed to open control fifos")
