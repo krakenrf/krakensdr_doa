@@ -12,4 +12,3 @@ sudo kill -${KILL_SIGNAL} $(ps ax | grep "[p]ython3 _UI/_web_interface/kraken_we
 sudo kill -${KILL_SIGNAL} $(ps ax | grep "[p]hp" | awk '{print $1}') 2> /dev/null
 sudo pkill -f node
 #sudo pkill -f gunicorn
-
