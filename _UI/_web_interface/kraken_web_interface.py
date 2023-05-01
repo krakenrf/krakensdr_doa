@@ -1606,7 +1606,7 @@ def reconfig_daq_chain(input_value, freq, gain):
 
     # TODO: Check data interface mode here !
     #    Update DAQ Subsystem config file
-    config_res, config_err = write_config_file_dict(webInterface_inst.daq_ini_cfg_dict, dsp_settings)
+    config_res, config_err = write_config_file_dict(webInterface_inst, webInterface_inst.daq_ini_cfg_dict, dsp_settings)
     if config_res:
         webInterface_inst.daq_cfg_ini_error = config_err[0]
         return Output("placeholder_recofnig_daq", "children", "-1")
