@@ -1,10 +1,10 @@
 from configparser import ConfigParser
 
+from variables import *
 import dash_core_components as dcc
 import dash_html_components as html
 import ini_checker
 import tooltips
-from variables import *
 
 
 def get_preconfigs(config_files_path):
