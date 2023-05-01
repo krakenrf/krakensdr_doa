@@ -31,7 +31,8 @@ dsp_config_tooltips = html.Div(
         ),
         dbc.Tooltip(
             [
-                html.P("Calculation of the array spacing in wavelength. Depends on frequency and array size."),
+                html.P(
+                    "Calculation of the array spacing in wavelength. Depends on frequency and array size."),
                 html.P(
                     "This must be kept under 0.5 to avoid ambiguities (more than one valid bearing). Closer to 0.5 results in better angular resolution."
                 ),
@@ -47,7 +48,8 @@ dsp_config_tooltips = html.Div(
             className="tooltip",
         ),
         dbc.Tooltip(
-            [html.P("The number of active VFO channels available to use in the active spectrum.")],
+            [html.P(
+                "The number of active VFO channels available to use in the active spectrum.")],
             target="label_active_vfos",
             placement="bottom",
             className="tooltip",
@@ -167,7 +169,8 @@ dsp_config_tooltips = html.Div(
                 html.P(
                     "DoA methods that separate noise and signal subspaces, such as MUSIC, require a priori knowledge of number of signal sources."
                 ),
-                html.P("Setting this to larger than expected number of rf sources might give misleading results."),
+                html.P(
+                    "Setting this to larger than expected number of rf sources might give misleading results."),
             ],
             target="label_expected_num_of_sources",
             placement="bottom",
@@ -190,7 +193,8 @@ dsp_config_tooltips = html.Div(
             className="tooltip",
         ),
         dbc.Tooltip(
-            [html.P("The data output format for the file recording. Currently only Kraken App is available.")],
+            [html.P(
+                "The data output format for the file recording. Currently only Kraken App is available.")],
             target="data_format_label",
             placement="bottom",
             className="tooltip",
@@ -212,7 +216,8 @@ dsp_config_tooltips = html.Div(
             className="tooltip",
         ),
         dbc.Tooltip(
-            [html.P("Please ensure that there is sufficient space on your device for the data file.")],
+            [html.P(
+                "Please ensure that there is sufficient space on your device for the data file.")],
             target="label_file_size",
             placement="bottom",
             className="tooltip",
@@ -294,7 +299,8 @@ dsp_config_tooltips = html.Div(
             className="tooltip",
         ),
         dbc.Tooltip(
-            [html.P("The currently tuned center frequency. Change in the RF Receiver Configuration card.")],
+            [html.P(
+                "The currently tuned center frequency. Change in the RF Receiver Configuration card.")],
             target="label_daq_rf_center_freq",
             placement="bottom",
             className="tooltip",
@@ -328,7 +334,8 @@ dsp_config_tooltips = html.Div(
             className="tooltip",
         ),
         dbc.Tooltip(
-            [html.P("Currently set RF gains on each channel. Set in RF Receiver Configuration settings.")],
+            [html.P(
+                "Currently set RF gains on each channel. Set in RF Receiver Configuration settings.")],
             target="label_daq_if_gain",
             placement="bottom",
             className="tooltip",
@@ -345,7 +352,8 @@ dsp_config_tooltips = html.Div(
 daq_ini_config_tooltips = html.Div(
     [
         dbc.Tooltip(
-            [html.P("Edit DAQ settings. For most users these settings should never be touched.")],
+            [html.P(
+                "Edit DAQ settings. For most users these settings should never be touched.")],
             target="label_en_basic_daq_cfg",
             placement="bottom",
             className="tooltip",
@@ -357,7 +365,8 @@ daq_ini_config_tooltips = html.Div(
             className="tooltip",
         ),
         dbc.Tooltip(
-            [html.P("Choose a sampling bandwidth. Can only be an integer division of the RTL-SDR sampling rate.")],
+            [html.P(
+                "Choose a sampling bandwidth. Can only be an integer division of the RTL-SDR sampling rate.")],
             target="label_daq_decimated_bw",
             placement="bottom",
             className="tooltip",
@@ -412,7 +421,8 @@ daq_ini_config_tooltips = html.Div(
             [
                 html.P("Anti-aliasing filter bandwith after decimation"),
                 html.P("Should take values on range: (0, 1]"),
-                html.P("E.g.: ADC sampling frequency: 1 MHz (IQ!) , Decimation ratio: 2,  FIR relative bandwith:0.25"),
+                html.P(
+                    "E.g.: ADC sampling frequency: 1 MHz (IQ!) , Decimation ratio: 2,  FIR relative bandwith:0.25"),
                 html.P("Resulting passband bandwidth: 125 kHz "),
             ],
             target="label_fir_relative_bw",
@@ -422,7 +432,8 @@ daq_ini_config_tooltips = html.Div(
         # FIR tap size
         dbc.Tooltip(
             [
-                html.P("Anti-aliasing FIR filter tap size - Do not set too large, or CPU utilization will be 100%"),
+                html.P(
+                    "Anti-aliasing FIR filter tap size - Do not set too large, or CPU utilization will be 100%"),
                 html.P("Should be greater than the decimation ratio"),
             ],
             target="label_fir_tap_size",
@@ -432,7 +443,8 @@ daq_ini_config_tooltips = html.Div(
         # FIR tap size
         dbc.Tooltip(
             [
-                html.P("Window function type for designing the anti-aliasing FIR filter"),
+                html.P(
+                    "Window function type for designing the anti-aliasing FIR filter"),
                 html.P("https://en.wikipedia.org/wiki/Window_function"),
             ],
             target="label_fir_window",
@@ -452,7 +464,8 @@ daq_ini_config_tooltips = html.Div(
         ),
         # Correlation size
         dbc.Tooltip(
-            [html.P("Number of samples used for the calibration procedure (sample delay and IQ compensation)")],
+            [html.P(
+                "Number of samples used for the calibration procedure (sample delay and IQ compensation)")],
             target="label_correlation_size",
             placement="bottom",
             className="tooltip",
@@ -466,14 +479,16 @@ daq_ini_config_tooltips = html.Div(
         ),
         # Enable IQ calibration
         dbc.Tooltip(
-            [html.P("Enables to compensate the amplitude and phase differences of the receiver channels")],
+            [html.P(
+                "Enables to compensate the amplitude and phase differences of the receiver channels")],
             target="label_en_iq_calibration",
             placement="bottom",
             className="tooltip",
         ),
         # Gain lock interval
         dbc.Tooltip(
-            [html.P("Minimum number of stable frames before terminating the gain tuning procedure")],
+            [html.P(
+                "Minimum number of stable frames before terminating the gain tuning procedure")],
             target="label_gain_lock_interval",
             placement="bottom",
             className="tooltip",
@@ -481,7 +496,8 @@ daq_ini_config_tooltips = html.Div(
         # Require track lock intervention
         dbc.Tooltip(
             [
-                html.P("When enabled the DAQ firmware waits for manual intervention during the calibraiton procedure"),
+                html.P(
+                    "When enabled the DAQ firmware waits for manual intervention during the calibraiton procedure"),
                 html.P("Should be used only for hardave version 1.0"),
             ],
             target="label_require_track_lock",
@@ -491,12 +507,14 @@ daq_ini_config_tooltips = html.Div(
         # Amplitude calibraiton mode
         dbc.Tooltip(
             [
-                html.P("Amplitude difference compensation method applied as part of the IQ compensation"),
+                html.P(
+                    "Amplitude difference compensation method applied as part of the IQ compensation"),
                 html.P(
                     "default: Amplitude differences are estimated by calculating the cross-correlations of the channels"
                 ),
                 html.P("disabled: Amplitude differences are not compensated"),
-                html.P("channel_power: Ampltiude compensation is set in a way to achieve equal channel powers"),
+                html.P(
+                    "channel_power: Ampltiude compensation is set in a way to achieve equal channel powers"),
             ],
             target="label_amplitude_calibration_mode",
             placement="bottom",
@@ -527,7 +545,8 @@ daq_ini_config_tooltips = html.Div(
         ),
         # Calibration frame burst size
         dbc.Tooltip(
-            [html.P("Number of calibration frames generated in the periodic calibration mode")],
+            [html.P(
+                "Number of calibration frames generated in the periodic calibration mode")],
             target="label_calibration_frame_burst_size",
             placement="bottom",
             className="tooltip",
@@ -548,7 +567,8 @@ daq_ini_config_tooltips = html.Div(
         ),
         # Maximum sync fails
         dbc.Tooltip(
-            [html.P("Maximum allowed consecutive IQ difference check failures before initiating a recalibration")],
+            [html.P(
+                "Maximum allowed consecutive IQ difference check failures before initiating a recalibration")],
             target="label_max_sync_fails",
             placement="bottom",
             className="tooltip",
@@ -615,9 +635,11 @@ station_parameters_tooltips = html.Div(
         dbc.Tooltip(
             [
                 html.P("Location Source"),
-                html.P("None: Don't use location data, use this if you're only using the android app."),
+                html.P(
+                    "None: Don't use location data, use this if you're only using the android app."),
                 html.P("Static: A fixed location for a stationary receiver."),
-                html.P("GPS: Uses gpsd and a USB gps. If this is greyed out, the gpsd python library is not installed"),
+                html.P(
+                    "GPS: Uses gpsd and a USB gps. If this is greyed out, the gpsd python library is not installed"),
             ],
             target="location_src_label",
             placement="bottom",
@@ -626,7 +648,8 @@ station_parameters_tooltips = html.Div(
         dbc.Tooltip(
             [
                 html.P("Fixed Heading"),
-                html.P("If you're getting location from a GPS, but aren't moving, use this to set a static heading."),
+                html.P(
+                    "If you're getting location from a GPS, but aren't moving, use this to set a static heading."),
                 html.P("GPS Heading information is only reliable when you're moving."),
             ],
             target="fixed_heading_label",

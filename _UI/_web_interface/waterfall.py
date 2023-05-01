@@ -1,11 +1,13 @@
 from variables import *
 import plotly.graph_objects as go
 
+
 def init_waterfall(webInterface_inst):
     waterfall_fig = go.Figure(layout=fig_layout)
     waterfall_init_x = list(range(0,
                                   webInterface_inst.module_signal_processor.spectrum_plot_size - 1))  # [1] * webInterface_inst.module_signal_processor.spectrum_window_size
-    waterfall_init = [[-80] * webInterface_inst.module_signal_processor.spectrum_plot_size] * 50
+    waterfall_init = [
+        [-80] * webInterface_inst.module_signal_processor.spectrum_plot_size] * 50
 
     waterfall_fig.add_trace(go.Heatmapgl(
         x=waterfall_init_x,
