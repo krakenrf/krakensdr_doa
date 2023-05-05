@@ -956,7 +956,7 @@ class SignalProcessor(threading.Thread):
         jsonDict["processing_time"] = self.processing_time
         jsonDict["doaArray"] = doaString
         jsonDict["adc_overdrive"] = adc_overdrive
-        jsonDict["num_corr_sources"] = num_corr_sources
+        jsonDict["num_corr_sources"] = str(num_corr_sources)
         jsonDict["snr_db"] = snr_db
 
         try:
