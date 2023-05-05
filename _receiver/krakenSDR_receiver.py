@@ -33,12 +33,6 @@ import numpy as np
 from iq_header import IQHeader
 from shmemIface import inShmemIface
 
-import timeit
-
-
-# import copy
-
-
 class ReceiverRTLSDR:
     def __init__(self, data_que, data_interface="eth", logging_level=10):
         """
