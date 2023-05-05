@@ -70,12 +70,9 @@ class ReceiverRTLSDR:
         self.receiverBufferSize = 2**18
 
         # -> Shared memory
-        root_path = os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__)))
+        root_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
         daq_path = os.path.join(os.path.dirname(root_path), "heimdall_daq_fw")
-        self.daq_shmem_control_path = os.path.join(
-            os.path.join(daq_path, "Firmware"), "_data_control/")
+        self.daq_shmem_control_path = os.path.join(os.path.join(daq_path, "Firmware"), "_data_control/")
         self.init_data_iface()
 
         # Control interface
@@ -92,8 +89,7 @@ class ReceiverRTLSDR:
     def init_data_iface(self):
         if self.data_interface == "shmem":
             # Open shared memory interface to capture the DAQ firmware output
-            self.in_shmem_iface = inShmemIface(
-                "delay_sync_iq", self.daq_shmem_control_path)
+            self.in_shmem_iface = inShmemIface("delay_sync_iq", self.daq_shmem_control_path)
             if not self.in_shmem_iface.init_ok:
                 self.logger.critical("Shared memory initialization failed")
                 self.in_shmem_iface.destory_sm_buffer()
@@ -116,13 +112,10 @@ class ReceiverRTLSDR:
                     self.M = self.iq_header.active_ant_chs
 
                 # Establish control interface connection
-                self.ctr_iface_socket.connect(
-                    (self.rec_ip_addr, self.ctr_iface_port))
+                self.ctr_iface_socket.connect((self.rec_ip_addr, self.ctr_iface_port))
                 self.receiver_connection_status = True
                 self.ctr_iface_init()
-                self.logger.info(
-                    "CTR INIT Center freq: {0}".format(
-                        self.daq_center_freq))
+                self.logger.info("CTR INIT Center freq: {0}".format(self.daq_center_freq))
                 self.set_center_freq(self.daq_center_freq)
                 self.set_if_gain(self.daq_rx_gain)
         except Exception as error:
@@ -150,8 +143,7 @@ class ReceiverRTLSDR:
         try:
             if self.receiver_connection_status:
                 if self.data_interface == "eth":
-                    self.socket_inst.sendall(
-                        str.encode("q"))  # Send exit message
+                    self.socket_inst.sendall(str.encode("q"))  # Send exit message
                     self.socket_inst.close()
                     self.socket_inst = socket.socket()  # Re-instantiating socket
 
@@ -190,15 +182,13 @@ class ReceiverRTLSDR:
                 return -1
 
         if self.data_interface == "eth":
-            self.socket_inst.sendall(
-                str.encode("IQDownload"))  # Send iq request command
+            self.socket_inst.sendall(str.encode("IQDownload"))  # Send iq request command
             self.iq_samples = self.receive_iq_frame()
 
         elif self.data_interface == "shmem":
             active_buff_index = self.in_shmem_iface.wait_buff_free()
             if active_buff_index < 0 or active_buff_index > 1:
-                self.logger.info(
-                    "Terminating.., signal: {:d}".format(active_buff_index))
+                self.logger.info("Terminating.., signal: {:d}".format(active_buff_index))
                 return -1
 
             buffer = self.in_shmem_iface.buffers[active_buff_index]
@@ -211,14 +201,11 @@ class ReceiverRTLSDR:
                 self.M = self.iq_header.active_ant_chs
 
             incoming_payload_size = (
-                self.iq_header.cpi_length * self.iq_header.active_ant_chs *
-                2 * (self.iq_header.sample_bit_depth // 8)
+                self.iq_header.cpi_length * self.iq_header.active_ant_chs * 2 * (self.iq_header.sample_bit_depth // 8)
             )
 
             shape = (self.iq_header.active_ant_chs, self.iq_header.cpi_length)
-            iq_samples_in = buffer[1024:1024 + incoming_payload_size].view(dtype=np.complex64).reshape(
-                shape
-            )
+            iq_samples_in = buffer[1024 : 1024 + incoming_payload_size].view(dtype=np.complex64).reshape(shape)
             # self.iq_samples = iq_samples_in.copy()
 
             # Reuse the memory allocated for self.iq_samples if it has the
@@ -236,16 +223,14 @@ class ReceiverRTLSDR:
         """
         total_received_bytes = 0
         recv_bytes_count = 0
-        iq_header_bytes = bytearray(
-            self.iq_header.header_size)  # allocate array
+        iq_header_bytes = bytearray(self.iq_header.header_size)  # allocate array
         view = memoryview(iq_header_bytes)  # Get buffer
 
         self.logger.debug("Starting IQ header reception")
 
         while total_received_bytes < self.iq_header.header_size:
             # Receive into buffer
-            recv_bytes_count = self.socket_inst.recv_into(
-                view, self.iq_header.header_size - total_received_bytes)
+            recv_bytes_count = self.socket_inst.recv_into(view, self.iq_header.header_size - total_received_bytes)
             view = view[recv_bytes_count:]  # reset memory region
             total_received_bytes += recv_bytes_count
 
@@ -261,20 +246,16 @@ class ReceiverRTLSDR:
             total_bytes_to_receive = incoming_payload_size
             receiver_buffer_size = 2**18
 
-            self.logger.debug(
-                "Total bytes to receive: {:d}".format(total_bytes_to_receive))
+            self.logger.debug("Total bytes to receive: {:d}".format(total_bytes_to_receive))
 
             total_received_bytes = 0
             recv_bytes_count = 0
-            iq_data_bytes = bytearray(
-                total_bytes_to_receive +
-                receiver_buffer_size)  # allocate array
+            iq_data_bytes = bytearray(total_bytes_to_receive + receiver_buffer_size)  # allocate array
             view = memoryview(iq_data_bytes)  # Get buffer
 
             while total_received_bytes < total_bytes_to_receive:
                 # Receive into buffer
-                recv_bytes_count = self.socket_inst.recv_into(
-                    view, receiver_buffer_size)
+                recv_bytes_count = self.socket_inst.recv_into(view, receiver_buffer_size)
                 view = view[recv_bytes_count:]  # reset memory region
                 total_received_bytes += recv_bytes_count
 
@@ -299,8 +280,7 @@ class ReceiverRTLSDR:
             cmd = "INIT"
             msg_bytes = cmd.encode() + bytearray(124)
             try:
-                _thread.start_new_thread(
-                    self.ctr_iface_communication, (msg_bytes,))
+                _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))
             except Exception as error:
                 self.logger.error("Unable to start communication thread")
                 self.logger.error(f"Error message: {error}")
@@ -337,8 +317,7 @@ class ReceiverRTLSDR:
             self.data_que.put(que_data_packet)
 
         else:
-            self.logger.error(
-                "Failed to set the requested parameter, reply: {0}".format(status))
+            self.logger.error("Failed to set the requested parameter, reply: {0}".format(status))
 
     def set_center_freq(self, center_freq):
         """
@@ -356,8 +335,7 @@ class ReceiverRTLSDR:
             freq_bytes = pack("Q", int(center_freq))
             msg_bytes = cmd.encode() + freq_bytes + bytearray(116)
             try:
-                _thread.start_new_thread(
-                    self.ctr_iface_communication, (msg_bytes,))
+                _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))
             except Exception as error:
                 self.logger.error("Unable to start communication thread")
                 self.logger.error(f"Error message: {error}")
@@ -383,8 +361,7 @@ class ReceiverRTLSDR:
             gain_bytes = pack("I" * self.M, *gain_list)
             msg_bytes = cmd.encode() + gain_bytes + bytearray(128 - (self.M + 1) * 4)
             try:
-                _thread.start_new_thread(
-                    self.ctr_iface_communication, (msg_bytes,))
+                _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))
             except Exception as error:
                 self.logger.error("Unable to start communication thread")
                 self.logger.error(f"Error message: {error}")
