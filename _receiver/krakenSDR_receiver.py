@@ -254,8 +254,7 @@ class ReceiverRTLSDR:
         # self.iq_header.dump_header()
 
         incoming_payload_size = (
-            self.iq_header.cpi_length * self.iq_header.active_ant_chs *
-            2 * int(self.iq_header.sample_bit_depth / 8)
+            self.iq_header.cpi_length * self.iq_header.active_ant_chs * 2 * int(self.iq_header.sample_bit_depth / 8)
         )
         if incoming_payload_size > 0:
             # Calculate total bytes to receive from the iq header data
