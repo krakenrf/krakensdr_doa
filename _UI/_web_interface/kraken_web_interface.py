@@ -165,6 +165,8 @@ class webInterface:
         self.module_signal_processor.latitude = dsp_settings.get("latitude", 0.0)
         self.module_signal_processor.longitude = dsp_settings.get("longitude", 0.0)
         self.module_signal_processor.heading = dsp_settings.get("heading", 0.0)
+        self.module_signal_processor.gps_min_speed_for_valid_heading=dsp_settings.get("gps_min_speed", 2)
+        self.module_signal_processor.gps_min_duration_for_valid_heading=dsp_settings.get("gps_min_speed_duration", 3)
 
         # Kraken Pro Remote Key
         self.module_signal_processor.krakenpro_key = dsp_settings.get("krakenpro_key", 0.0)
@@ -306,6 +308,8 @@ class webInterface:
         data["heading"] = self.module_signal_processor.heading
         data["krakenpro_key"] = self.module_signal_processor.krakenpro_key
         data["rdf_mapper_server"] = self.module_signal_processor.RDF_mapper_server
+        data["gps_min_speed"] = self.module_signal_processor.gps_min_speed_for_valid_heading
+        data["gps_min_speed_duration"] = self.module_signal_processor.gps_min_duration_for_valid_heading
 
         # VFO Information
         data["spectrum_calculation"] = self.module_signal_processor.spectrum_fig_type
