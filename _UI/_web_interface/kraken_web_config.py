@@ -1,17 +1,27 @@
+import os
 from configparser import ConfigParser
 
-from variables import *
 import dash_core_components as dcc
 import dash_html_components as html
 import ini_checker
 import tooltips
+from variables import (
+    DECORRELATION_OPTIONS,
+    calibration_tack_modes,
+    daq_config_filename,
+    daq_preconfigs_path,
+    option,
+    valid_daq_buffer_sizes,
+    valid_fir_windows,
+    valid_sample_rates,
+)
 
 
 def get_preconfigs(config_files_path):
     parser = ConfigParser()
     preconfigs = []
     preconfigs.append([daq_config_filename, "Current"])
-    for root, dirs, files in os.walk(config_files_path):
+    for root, _, files in os.walk(config_files_path):
         if len(files):
             config_file_path = os.path.join(root, files[0])
             parser.read([config_file_path])
@@ -98,9 +108,6 @@ def generate_config_page_layout(webInterface_inst):
     en_advanced_daq_cfg = [1] if webInterface_inst.en_advanced_daq_cfg else []
     en_basic_daq_cfg = [1] if webInterface_inst.en_basic_daq_cfg else []
     # Calulcate spacings
-    wavelength = 300 / webInterface_inst.daq_center_freq
-    ant_spacing_wavelength = webInterface_inst.module_signal_processor.DOA_inter_elem_space
-    # round(wavelength * ant_spacing_wavelength, 3)
     ant_spacing_meter = webInterface_inst.ant_spacing_meters
 
     decimated_bw = ((daq_cfg_dict["sample_rate"]) / daq_cfg_dict["decimation_ratio"]) / 10**3
@@ -1242,6 +1249,39 @@ def generate_config_page_layout(webInterface_inst):
                     ),
                 ],
                 id="gps_status_info",
+            ),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Div("Min speed for heading [m/s]:", className="field-label"),
+                            dcc.Input(
+                                id="min_speed_input",
+                                value=webInterface_inst.module_signal_processor.gps_min_speed_for_valid_heading,
+                                type="number",
+                                className="field-body-textbox",
+                                debounce=True,
+                            ),
+                        ],
+                        id="min_speed_field",
+                        className="field",
+                    ),
+                    html.Div(
+                        [
+                            html.Div("Min speed duration for heading [s]", className="field-label"),
+                            dcc.Input(
+                                id="min_speed_duration_input",
+                                value=webInterface_inst.module_signal_processor.gps_min_duration_for_valid_heading,
+                                type="number",
+                                className="field-body-textbox",
+                                debounce=True,
+                            ),
+                        ],
+                        id="min_speed_duration_field",
+                        className="field",
+                    ),
+                ],
+                id="min_speed_heading_fields",
             ),
         ],
         className="card",

@@ -633,5 +633,20 @@ station_parameters_tooltips = html.Div(
             placement="bottom",
             className="tooltip",
         ),
+        dbc.Tooltip(
+            [
+                html.P("Filter out unreliable heading"),
+                html.P("Most consumer-grade GPS modules require it to move to estimate heading."),
+                html.P("Typically those measurements are not reliable when speed is too low."),
+                html.P("Please set minimum speed and its minumum duration to filter out bogus heading readings."),
+                html.P(
+                    """Note that u-blox GPS modules might implement these logic internally, but it needs to be configured and activated."""
+                    """If you did so, then feel free to disable this filter by setting zero values."""
+                ),
+            ],
+            target="min_speed_heading_fields",
+            placement="bottom",
+            className="tooltip",
+        ),
     ]
 )

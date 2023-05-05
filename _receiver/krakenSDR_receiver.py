@@ -82,7 +82,7 @@ class ReceiverRTLSDR:
         self.ctr_iface_thread_lock = Lock()  # Used to synchronize the operation of the ctr_iface thread
 
         self.iq_frame_bytes = None
-        self.iq_samples = None
+        self.iq_samples = np.empty(0)
         self.iq_header = IQHeader()
         self.M = 0  # Number of receiver channels, updated after establishing connection
 

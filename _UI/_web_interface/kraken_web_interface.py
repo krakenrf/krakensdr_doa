@@ -20,17 +20,33 @@
 
 import json
 import logging
+import os
 import queue
 import subprocess
 import time
-from configparser import ConfigParser
 from threading import Timer
 
 import dash_core_components as dcc
 import dash_devices as dash
 import dash_html_components as html
 import numpy as np
-import plotly.graph_objects as go
+
+# isort: off
+from variables import (
+    DECORRELATION_OPTIONS,
+    trace_colors,
+    doa_fig,
+    root_path,
+    fig_layout,
+    daq_config_filename,
+    current_path,
+    daq_subsystem_path,
+    daq_stop_filename,
+    daq_start_filename,
+)
+
+# isort: on
+
 from dash_devices.dependencies import Input, Output, State
 from kraken_web_config import generate_config_page_layout, write_config_file_dict
 from kraken_web_doa import generate_doa_page_layout, plot_doa
@@ -39,8 +55,7 @@ from krakenSDR_receiver import ReceiverRTLSDR
 
 # Import built-in modules
 from krakenSDR_signal_processor import SignalProcessor, xi
-from utils import *
-from variables import *
+from utils import read_config_file_dict, set_clicked
 from waterfall import init_waterfall
 
 # Load settings file
@@ -150,6 +165,8 @@ class webInterface:
         self.module_signal_processor.latitude = dsp_settings.get("latitude", 0.0)
         self.module_signal_processor.longitude = dsp_settings.get("longitude", 0.0)
         self.module_signal_processor.heading = dsp_settings.get("heading", 0.0)
+        self.module_signal_processor.gps_min_speed_for_valid_heading = dsp_settings.get("gps_min_speed", 2)
+        self.module_signal_processor.gps_min_duration_for_valid_heading = dsp_settings.get("gps_min_speed_duration", 3)
 
         # Kraken Pro Remote Key
         self.module_signal_processor.krakenpro_key = dsp_settings.get("krakenpro_key", 0.0)
@@ -291,6 +308,8 @@ class webInterface:
         data["heading"] = self.module_signal_processor.heading
         data["krakenpro_key"] = self.module_signal_processor.krakenpro_key
         data["rdf_mapper_server"] = self.module_signal_processor.RDF_mapper_server
+        data["gps_min_speed"] = self.module_signal_processor.gps_min_speed_for_valid_heading
+        data["gps_min_speed_duration"] = self.module_signal_processor.gps_min_duration_for_valid_heading
 
         # VFO Information
         data["spectrum_calculation"] = self.module_signal_processor.spectrum_fig_type
@@ -591,7 +610,6 @@ def settings_change_watcher():
         center_freq = float(dsp_settings.get("center_freq", 100.0))
         gain = float(dsp_settings.get("uniform_gain", 1.4))
 
-        DOA_ant_alignment = dsp_settings.get("ant_arrangement")
         webInterface_inst.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
         webInterface_inst.module_signal_processor.en_DOA_estimation = dsp_settings.get("en_doa", 0)
@@ -931,32 +949,30 @@ def toggle_gps_fields(toggle_value):
 
 
 # Enable of Disable Kraken Pro Key Box
-
-
-@app.callback(Output("krakenpro_field", "style"), [Input("doa_format_type", "value")])
+@app.callback(
+    [Output("krakenpro_field", "style"), Output("rdf_mapper_server_address_field", "style")],
+    [Input("doa_format_type", "value")],
+)
 def toggle_kraken_pro_key(doa_format_type):
-    if doa_format_type == "Kraken Pro Remote":
-        return {"display": "block"}
-    else:
-        return {"display": "none"}
-
-
-# Enable of Disable Kraken Pro Key Box
-@app.callback(Output("rdf_mapper_server_address_field", "style"), [Input("doa_format_type", "value")])
-def toggle_kraken_pro_key(doa_format_type):
-    if doa_format_type == "RDF Mapper" or doa_format_type == "Full POST":
-        return {"display": "block"}
-    else:
-        return {"display": "none"}
+    kraken_pro_field_style = {"display": "block"} if doa_format_type == "Kraken Pro Remote" else {"display": "none"}
+    rdf_mapper_server_address_field_style = (
+        {"display": "block"}
+        if doa_format_type == "RDF Mapper" or doa_format_type == "Full POST"
+        else {"display": "none"}
+    )
+    return kraken_pro_field_style, rdf_mapper_server_address_field_style
 
 
 # Enable or Disable Heading Input Fields
 @app.callback(
     Output("heading_field", "style"),
-    [Input("loc_src_dropdown", "value"), Input(component_id="fixed_heading_check", component_property="value")],
+    [
+        Input("loc_src_dropdown", "value"),
+        Input(component_id="fixed_heading_check", component_property="value"),
+    ],
     [State("heading_input", component_property="value")],
 )
-def toggle_location_info(static_loc, fixed_heading, heading):
+def toggle_heading_info(static_loc, fixed_heading, heading):
     if static_loc == "Static":
         webInterface_inst.module_signal_processor.fixed_heading = True
         webInterface_inst.module_signal_processor.heading = heading
@@ -979,6 +995,19 @@ def toggle_location_info(static_loc, fixed_heading, heading):
 def toggle_location_info(toggle_value):
     webInterface_inst.location_source = toggle_value
     if toggle_value == "Static":
+        return {"display": "block"}
+    else:
+        return {"display": "none"}
+
+
+# Enable or Disable Location Input Fields
+@app.callback(
+    Output("min_speed_heading_fields", "style"),
+    [Input("loc_src_dropdown", "value"), Input("fixed_heading_check", "value")],
+)
+def toggle_min_speed_heading_filter(toggle_value, fixed_heading):
+    webInterface_inst.location_source = toggle_value
+    if toggle_value == "gpsd" and not fixed_heading:
         return {"display": "block"}
     else:
         return {"display": "none"}
@@ -1012,13 +1041,27 @@ def set_fixed_heading(fixed):
 
 # Set heading data
 @app.callback_shared(None, [Input(component_id="heading_input", component_property="value")])
-def set_static_location(heading):
+def set_static_heading(heading):
     webInterface_inst.module_signal_processor.heading = heading
 
 
-# Enable GPS (note that we need this to fire on load, so we cannot use
-# callback_shared!)
-@app.callback([Output("gps_status", "children"), Output("gps_status", "style")], [Input("loc_src_dropdown", "value")])
+# Set minimum speed for trustworthy GPS heading
+@app.callback_shared(None, [Input(component_id="min_speed_input", component_property="value")])
+def set_min_speed_for_valid_gps_heading(min_speed):
+    webInterface_inst.module_signal_processor.gps_min_speed_for_valid_heading = min_speed
+
+
+# Set minimum speed duration for trustworthy GPS heading
+@app.callback_shared(None, [Input(component_id="min_speed_duration_input", component_property="value")])
+def set_min_speed_duration_for_valid_gps_heading(min_speed_duration):
+    webInterface_inst.module_signal_processor.gps_min_duration_for_valid_heading = min_speed_duration
+
+
+# Enable GPS (note that we need this to fire on load, so we cannot use callback_shared!)
+@app.callback(
+    [Output("gps_status", "children"), Output("gps_status", "style")],
+    [Input("loc_src_dropdown", "value")],
+)
 def enable_gps(toggle_value):
     if toggle_value == "gpsd":
         status = webInterface_inst.module_signal_processor.enable_gps()
@@ -1150,7 +1193,7 @@ def restart_sw_btn(input_value):
     webInterface_inst.logger.info("Restarting Software")
     root_path = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))
     os.chdir(root_path)
-    daq_start_script = subprocess.Popen(["bash", "kraken_doa_start.sh"])  # ,
+    subprocess.Popen(["bash", "kraken_doa_start.sh"])  # ,
 
 
 @app.callback_shared(
@@ -1179,7 +1222,7 @@ def clear_cache_btn(input_value):
     webInterface_inst.logger.info("Clearing Python and Numba Caches")
     root_path = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))
     os.chdir(root_path)
-    daq_start_script = subprocess.Popen(["bash", "kraken_doa_start.sh", "-c"])  # ,
+    subprocess.Popen(["bash", "kraken_doa_start.sh", "-c"])  # ,
 
 
 @app.callback_shared(None, [Input("spectrum-graph", "clickData")])
@@ -1301,7 +1344,9 @@ def update_dsp_params(
             np.rad2deg(2 * np.pi * max_phase_diff)
         )
     elif max_phase_diff < 0.1:
-        ambiguity_warning = "WARNING: Array size may be too small.".format(np.rad2deg(2 * np.pi * max_phase_diff))
+        ambiguity_warning = "WARNING: Array size may be too small.  Max phase difference: {:.1f}°.".format(
+            np.rad2deg(2 * np.pi * max_phase_diff)
+        )
     else:
         ambiguity_warning = ""
 

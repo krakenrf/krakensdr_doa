@@ -2,11 +2,11 @@ import dash_core_components as dcc
 import dash_html_components as html
 import numpy as np
 import plotly.graph_objects as go
-from variables import *
+from variables import doa_fig, figure_font_size, x, y
 
 
 def plot_doa(app, webInterface_inst, doa_fig):
-    if webInterface_inst.reset_doa_graph_flag == True:
+    if webInterface_inst.reset_doa_graph_flag:
         doa_fig.data = []
         # Just generate with junk data initially, as the spectrum array may not
         # be ready yet if we have sqeulching active etc.
@@ -87,7 +87,6 @@ def plot_doa(app, webInterface_inst, doa_fig):
         webInterface_inst.reset_doa_graph_flag = False
     else:
         update_data = []
-        fig_type = []
         doa_max_str = ""
         if webInterface_inst.doa_thetas is not None and webInterface_inst.doa_results[0].size > 0:
             doa_max_str = str(webInterface_inst.doas[0]) + "°"

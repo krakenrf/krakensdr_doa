@@ -1,5 +1,5 @@
 import plotly.graph_objects as go
-from variables import *
+from variables import fig_layout
 
 
 def init_waterfall(webInterface_inst):
