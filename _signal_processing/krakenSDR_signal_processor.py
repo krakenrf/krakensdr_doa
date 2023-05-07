@@ -135,6 +135,10 @@ class SignalProcessor(threading.Thread):
         self.vfo_bw = [12500] * self.max_vfos
         self.vfo_freq = [self.module_receiver.daq_center_freq] * self.max_vfos
         self.vfo_squelch = [-120] * self.max_vfos
+        self.vfo_default_demod = "None"
+        self.vfo_demod = ["Default"] * self.max_vfos
+        self.vfo_default_iq = "False"
+        self.vfo_iq = ["Default"] * self.max_vfos
 
         self.en_fm_demod = False
         self.vfo_fm_demod = [False] * self.max_vfos
