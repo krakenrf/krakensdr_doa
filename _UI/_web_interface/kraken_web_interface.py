@@ -111,6 +111,7 @@ class webInterface:
             data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=self.logging_level
         )
         self.module_signal_processor.DOA_ant_alignment = dsp_settings.get("ant_arrangement", "ULA")
+        self.module_signal_processor.doa_measure = self._doa_fig_type
         self.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
         if self.module_signal_processor.DOA_ant_alignment == "UCA":
@@ -684,6 +685,7 @@ def settings_change_watcher():
             "expected_num_of_sources", 1
         )
         webInterface_inst._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
+        webInterface_inst.module_signal_processor.doa_measure = webInterface_inst._doa_fig_type
         webInterface_inst.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
         webInterface_inst.module_signal_processor.array_offset = int(dsp_settings.get("array_offset", 0))
 
@@ -1410,6 +1412,7 @@ def update_dsp_params(
 
     webInterface_inst.module_signal_processor.DOA_ant_alignment = ant_arrangement
     webInterface_inst._doa_fig_type = doa_fig_type
+    webInterface_inst.module_signal_processor.doa_measure = doa_fig_type
     webInterface_inst.compass_offset = compass_offset
     webInterface_inst.module_signal_processor.ula_direction = ula_direction
     webInterface_inst.module_signal_processor.array_offset = array_offset
