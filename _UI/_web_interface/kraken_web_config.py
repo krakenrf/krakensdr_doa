@@ -1388,6 +1388,7 @@ def generate_config_page_layout(webInterface_inst):
                         options=[
                             {"label": "Standard", "value": "Standard"},
                             {"label": "VFO-0 Auto Max", "value": "Auto"},
+                            {"label": "VFOs Scan", "value": "Scan"},
                         ],
                         value=webInterface_inst.module_signal_processor.vfo_mode,
                         style={"display": "inline-block"},

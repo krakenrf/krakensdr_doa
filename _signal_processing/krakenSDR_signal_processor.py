@@ -473,7 +473,20 @@ class SignalProcessor(threading.Thread):
                                 # datetime object containing current date and time
                                 now = datetime.now()
                                 now_dt_str = now.strftime("%d-%b-%Y_%Hh%Mm%Ss")
-                                if (
+                                dbm_offset = 5
+                                if self.en_DOA_estimation and self.vfo_mode == "Scan":
+                                    detected_freqs = []
+                                    moving_avg_freq_window = 25_000
+                                    mov_avgs = []
+                                    freq_window = int(moving_avg_freq_window / (sampling_freq / N))
+                                    for _, (freq, spec) in enumerate(zip(self.spectrum[0, :], self.spectrum[2, :])):
+                                        mov_avgs.append(spec)
+                                        if len(mov_avgs) > freq_window:
+                                            mov_avgs.pop(0)
+                                        mov_avg = sum(mov_avgs) / len(mov_avgs)
+                                        if (spec - mov_avg) > dbm_offset:
+                                            detected_freqs.append(freq)
+                                elif (
                                     self.en_DOA_estimation
                                     and self.channel_number > 1
                                     and max_amplitude > self.vfo_squelch[i]
