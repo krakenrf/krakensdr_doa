@@ -1477,6 +1477,9 @@ def generate_config_page_layout(webInterface_inst):
                         className="field-body",
                     ),
                 ],
+                style={"display": "inline-block"}
+                if webInterface_inst.module_signal_processor.vfo_mode == "Standard"
+                else {"display": "none"},
                 className="field",
             ),
             html.Div(
