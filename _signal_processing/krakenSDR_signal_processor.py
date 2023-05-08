@@ -557,10 +557,10 @@ class SignalProcessor(threading.Thread):
                             que_data_packet.append(["DoA Max List", self.doa_max_list])
 
                             def adjust_theta(theta):
-                                if self.doa_measure == "Polar":
-                                    return theta
-                                elif self.doa_measure == "Compass":
+                                if self.doa_measure == "Compass":
                                     return (360 - theta + self.compass_offset) % 360
+                                else:
+                                    return theta
 
                             def average_thetas(thetas):
                                 avg_theta = sum(thetas) / len(thetas)
