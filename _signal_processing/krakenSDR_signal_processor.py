@@ -477,9 +477,8 @@ class SignalProcessor(threading.Thread):
                                     write_freq = int(self.vfo_freq[i])
                                     # Do channelization
                                     if self.vfo_demod_modes[i] == "FM":
-                                        decimation_factor = 50
-                                        decimate_sampling_freq = int(sampling_freq / decimation_factor)
-                                        assert decimate_sampling_freq == 48_000
+                                        decimate_sampling_freq = 48_000
+                                        decimation_factor = int(sampling_freq / decimate_sampling_freq)
 
                                     vfo_channel = channelize(
                                         self.processed_signal,
