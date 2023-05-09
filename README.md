@@ -159,6 +159,22 @@ After starting the script a web based server opens at port number `8080`, which 
 
 ![image](https://user-images.githubusercontent.com/78108016/175924475-2ce0a189-e119-4442-8893-0d32404847e2.png)
 
+## For Contributors
+
+If you plan to contribute code then it must follow certain formatting style. The easiest way to apply autoformatting and check for any [PEP8](https://peps.python.org/pep-0008/) violations is to install [`pre-commit`](https://pre-commit.com/) tool, e.g., with
+
+```bash
+pip3 install --user pre-commit
+```
+
+Then from within the `krakensdr_doa` folder execute:
+
+```bash
+pre-commit install
+```
+
+that would set up git pre-commit hooks. Those will autoformat and check changed files on every consecutive commits. Once you create PR for your changes, [GitHub Actions](https://github.com/features/actions) will be executed to perform the very same checks as the hooks to make sure your code follows the formatting style and does not violate PEP8 rules.
+
 ## Upcoming Features and Known Bugs
 
 1. [FEATURE] It would be better if the KrakenSDR controls, spectrum and/or DOA graphs could be accessible from the same page. Future work will look to integrate the controls in a sidebar.
