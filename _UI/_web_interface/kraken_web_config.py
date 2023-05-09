@@ -1398,6 +1398,38 @@ def generate_config_page_layout(webInterface_inst):
             ),
             html.Div(
                 [
+                    html.Div("VFO Default Demod:", id="label_vfo_default_demod", className="field-label"),
+                    dcc.Dropdown(
+                        id="vfo_default_demod",
+                        options=[
+                            {"label": "None", "value": "None"},
+                            {"label": "FM", "value": "FM"},
+                        ],
+                        value=webInterface_inst.module_signal_processor.vfo_default_demod,
+                        style={"display": "inline-block"},
+                        className="field-body",
+                    ),
+                ],
+                className="field",
+            ),
+            html.Div(
+                [
+                    html.Div("VFO Default IQ Channel:", id="label_vfo_default_iq", className="field-label"),
+                    dcc.Dropdown(
+                        id="vfo_default_iq",
+                        options=[
+                            {"label": "False", "value": "False"},
+                            {"label": "True", "value": "True"},
+                        ],
+                        value=webInterface_inst.module_signal_processor.vfo_default_iq,
+                        style={"display": "inline-block"},
+                        className="field-body",
+                    ),
+                ],
+                className="field",
+            ),
+            html.Div(
+                [
                     html.Div("Active VFOs:", id="label_active_vfos", className="field-label"),
                     dcc.Dropdown(
                         id="active_vfos",
@@ -1529,6 +1561,46 @@ def generate_config_page_layout(webInterface_inst):
                             type="number",
                             debounce=True,
                             className="field-body-textbox",
+                        ),
+                    ],
+                    className="field",
+                ),
+                html.Div(
+                    [
+                        html.Div("VFO-" + str(i) + " Demod:", className="field-label"),
+                        dcc.Dropdown(
+                            id=f"vfo_{i}_demod",
+                            options=[
+                                {
+                                    "label": f"Default ({webInterface_inst.module_signal_processor.vfo_default_demod})",
+                                    "value": "Default",
+                                },
+                                {"label": "None", "value": "None"},
+                                {"label": "FM", "value": "FM"},
+                            ],
+                            value=webInterface_inst.module_signal_processor.vfo_demod[i],
+                            style={"display": "inline-block"},
+                            className="field-body",
+                        ),
+                    ],
+                    className="field",
+                ),
+                html.Div(
+                    [
+                        html.Div("VFO-" + str(i) + " IQ Channel:", className="field-label"),
+                        dcc.Dropdown(
+                            id=f"vfo_{i}_iq",
+                            options=[
+                                {
+                                    "label": f"Default ({webInterface_inst.module_signal_processor.vfo_default_iq})",
+                                    "value": "Default",
+                                },
+                                {"label": "False", "value": "False"},
+                                {"label": "True", "value": "True"},
+                            ],
+                            value=webInterface_inst.module_signal_processor.vfo_iq[i],
+                            style={"display": "inline-block"},
+                            className="field-body",
                         ),
                     ],
                     className="field",

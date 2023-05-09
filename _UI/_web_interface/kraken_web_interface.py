@@ -111,6 +111,7 @@ class webInterface:
             data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=self.logging_level
         )
         self.module_signal_processor.DOA_ant_alignment = dsp_settings.get("ant_arrangement", "ULA")
+        self.module_signal_processor.doa_measure = self._doa_fig_type
         self.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
         if self.module_signal_processor.DOA_ant_alignment == "UCA":
@@ -174,6 +175,8 @@ class webInterface:
         # VFO Configuration
         self.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
         self.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
+        self.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
+        self.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
         self.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
         self.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
         self.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
@@ -185,6 +188,8 @@ class webInterface:
             self.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
             self.module_signal_processor.vfo_freq[i] = float(dsp_settings.get("vfo_freq_" + str(i), 0))
             self.module_signal_processor.vfo_squelch[i] = int(dsp_settings.get("vfo_squelch_" + str(i), 0))
+            self.module_signal_processor.vfo_demod[i] = dsp_settings.get("vfo_demod_" + str(i), "Default")
+            self.module_signal_processor.vfo_iq[i] = dsp_settings.get("vfo_iq_" + str(i), "Default")
 
         # DAQ Subsystem status parameters
         self.daq_conn_status = 0
@@ -221,6 +226,7 @@ class webInterface:
         self.max_doas_list = []
         self.doa_confidences = []
         self.compass_offset = dsp_settings.get("compass_offset", 0)
+        self.module_signal_processor.compass_offset = self.compass_offset
         self.daq_dsp_latency = 0  # [ms]
         self.max_amplitude = 0  # Used to help setting the threshold level of the squelch
         self.avg_powers = []
@@ -255,6 +261,8 @@ class webInterface:
         self.vfo_cfg_inputs = []
         self.vfo_cfg_inputs.append(Input(component_id="spectrum_fig_type", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_mode", component_property="value"))
+        self.vfo_cfg_inputs.append(Input(component_id="vfo_default_demod", component_property="value"))
+        self.vfo_cfg_inputs.append(Input(component_id="vfo_default_iq", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="dsp_decimation", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="active_vfos", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="output_vfo", component_property="value"))
@@ -264,6 +272,8 @@ class webInterface:
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_bw", component_property="value"))
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_freq", component_property="value"))
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_squelch", component_property="value"))
+            self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_demod", component_property="value"))
+            self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_iq", component_property="value"))
 
     def save_configuration(self):
         data = {}
@@ -314,6 +324,8 @@ class webInterface:
         # VFO Information
         data["spectrum_calculation"] = self.module_signal_processor.spectrum_fig_type
         data["vfo_mode"] = self.module_signal_processor.vfo_mode
+        data["vfo_default_demod"] = self.module_signal_processor.vfo_default_demod
+        data["vfo_default_iq"] = self.module_signal_processor.vfo_default_iq
         data["dsp_decimation"] = self.module_signal_processor.dsp_decimation
         data["active_vfos"] = self.module_signal_processor.active_vfos
         data["output_vfo"] = self.module_signal_processor.output_vfo
@@ -323,6 +335,8 @@ class webInterface:
             data["vfo_bw_" + str(i)] = self.module_signal_processor.vfo_bw[i]
             data["vfo_freq_" + str(i)] = self.module_signal_processor.vfo_freq[i]
             data["vfo_squelch_" + str(i)] = self.module_signal_processor.vfo_squelch[i]
+            data["vfo_demod_" + str(i)] = self.module_signal_processor.vfo_demod[i]
+            data["vfo_iq_" + str(i)] = self.module_signal_processor.vfo_iq[i]
 
         with open(settings_file_path, "w") as outfile:
             json.dump(data, outfile, indent=2)
@@ -647,10 +661,15 @@ def settings_change_watcher():
         # VFO Configuration
         webInterface_inst.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
         webInterface_inst.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
+        webInterface_inst.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
+        webInterface_inst.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
+        webInterface_inst.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
+        webInterface_inst.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
         webInterface_inst.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
         webInterface_inst.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
         webInterface_inst.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
         webInterface_inst.compass_offset = dsp_settings.get("compass_offset", 0)
+        webInterface_inst.module_signal_processor.compass_offset = webInterface_inst.compass_offset
         webInterface_inst.module_signal_processor.optimize_short_bursts = dsp_settings.get(
             "en_optimize_short_bursts", 0
         )
@@ -660,12 +679,15 @@ def settings_change_watcher():
             webInterface_inst.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
             webInterface_inst.module_signal_processor.vfo_freq[i] = float(dsp_settings.get("vfo_freq_" + str(i), 0))
             webInterface_inst.module_signal_processor.vfo_squelch[i] = int(dsp_settings.get("vfo_squelch_" + str(i), 0))
+            webInterface_inst.module_signal_processor.vfo_demod[i] = dsp_settings.get("vfo_demod_" + str(i), "Default")
+            webInterface_inst.module_signal_processor.vfo_iq[i] = dsp_settings.get("vfo_iq_" + str(i), "Default")
 
         webInterface_inst.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
         webInterface_inst.module_signal_processor.DOA_expected_num_of_sources = dsp_settings.get(
             "expected_num_of_sources", 1
         )
         webInterface_inst._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
+        webInterface_inst.module_signal_processor.doa_measure = webInterface_inst._doa_fig_type
         webInterface_inst.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
         webInterface_inst.module_signal_processor.array_offset = int(dsp_settings.get("array_offset", 0))
 
@@ -1083,6 +1105,8 @@ def update_vfo_params(*args):
 
     webInterface_inst.module_signal_processor.spectrum_fig_type = kwargs_dict["spectrum_fig_type"]
     webInterface_inst.module_signal_processor.vfo_mode = kwargs_dict["vfo_mode"]
+    webInterface_inst.module_signal_processor.vfo_default_demod = kwargs_dict["vfo_default_demod"]
+    webInterface_inst.module_signal_processor.vfo_default_iq = kwargs_dict["vfo_default_iq"]
 
     active_vfos = kwargs_dict["active_vfos"]
     # If VFO mode is in the VFO-0 Auto Max mode, we active VFOs to 1 only
@@ -1119,6 +1143,8 @@ def update_vfo_params(*args):
                 max(min(kwargs_dict["vfo_" + str(i) + "_freq"], vfo_max), vfo_min) * 10**6
             )
             webInterface_inst.module_signal_processor.vfo_squelch[i] = int(kwargs_dict["vfo_" + str(i) + "_squelch"])
+            webInterface_inst.module_signal_processor.vfo_demod[i] = kwargs_dict[f"vfo_{i}_demod"]
+            webInterface_inst.module_signal_processor.vfo_iq[i] = kwargs_dict[f"vfo_{i}_iq"]
 
 
 @app.callback(
@@ -1388,7 +1414,9 @@ def update_dsp_params(
 
     webInterface_inst.module_signal_processor.DOA_ant_alignment = ant_arrangement
     webInterface_inst._doa_fig_type = doa_fig_type
+    webInterface_inst.module_signal_processor.doa_measure = doa_fig_type
     webInterface_inst.compass_offset = compass_offset
+    webInterface_inst.module_signal_processor.compass_offset = compass_offset
     webInterface_inst.module_signal_processor.ula_direction = ula_direction
     webInterface_inst.module_signal_processor.array_offset = array_offset
 
