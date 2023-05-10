@@ -55,7 +55,7 @@ def init_spectrum_fig(webInterface_inst, fig_layout, trace_colors):
         )
 
     # Now add the angle display text
-    # webInterface_inst.module_signal_processor.active_vfos):
+    # webInterface_inst.active_vfos):
     for _ in range(webInterface_inst.module_signal_processor.max_vfos):
         spectrum_fig.add_annotation(
             x=415640000,
@@ -128,9 +128,21 @@ def plot_spectrum(app, webInterface_inst, spectrum_fig, waterfall_fig):
                 spectrum_fig.data[m]["visible"] = True
                 spectrum_fig.data[m]["line"]["color"] = trace_colors[m]
 
+        waterfall_fig.data[0]["x"] = x
+        waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], showgrid=False)
+
+        webInterface_inst.reset_spectrum_graph_flag = False
+        app.push_mods(
+            {
+                "spectrum-graph": {"figure": spectrum_fig},
+                "waterfall-graph": {"figure": waterfall_fig},
+            }
+        )
+
+    else:
         # Hide non active traces
         for i in range(webInterface_inst.module_signal_processor.max_vfos):
-            if i < webInterface_inst.module_signal_processor.active_vfos:
+            if i < webInterface_inst.active_vfos:
                 spectrum_fig.data[webInterface_inst.module_receiver.M + (i * 2)]["visible"] = True
                 spectrum_fig.data[webInterface_inst.module_receiver.M + (i * 2 + 1)]["visible"] = True
                 spectrum_fig.layout.annotations[i]["visible"] = True
@@ -145,22 +157,11 @@ def plot_spectrum(app, webInterface_inst, spectrum_fig, waterfall_fig):
                     "visible"
                 ] = False
 
-        waterfall_fig.data[0]["x"] = x
-        waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], showgrid=False)
-
-        webInterface_inst.reset_spectrum_graph_flag = False
-        app.push_mods(
-            {
-                "spectrum-graph": {"figure": spectrum_fig},
-                "waterfall-graph": {"figure": waterfall_fig},
-            }
-        )
-
-    else:
         # Update entire graph to update VFO-0 text. There is no way to just update annotations in Dash, but updating the entire spectrum is fast
         # enough to do on click
         x = webInterface_inst.spectrum[0, :] + webInterface_inst.daq_center_freq * 10**6
-        for i in range(webInterface_inst.module_signal_processor.active_vfos):
+
+        for i in range(webInterface_inst.active_vfos):
             # Find center of VFO display window
             maxIndex = webInterface_inst.spectrum[webInterface_inst.module_receiver.M + (i * 2 + 1), :].argmax()
 
