@@ -485,7 +485,7 @@ class SignalProcessor(threading.Thread):
                                                         ):
                                                             if cur_freq_max.spec > spec:
                                                                 if scan_channel.center_freq != cur_freq_max.center_freq:
-                                                                    print(
+                                                                    self.logger.debug(
                                                                         f"Update center_freq: {scan_channel.center_freq:3}MHz -> {cur_freq_max.center_freq:3}MHz"
                                                                     )
                                                                 self.scan_channel_list[
@@ -507,12 +507,12 @@ class SignalProcessor(threading.Thread):
 
                                                     if not found_freq:
                                                         self.scan_channel_list.append(cur_freq_max)
-                                                        print("Detected start:")
-                                                        print(f"    band-width: {band_width}")
-                                                        print(
+                                                        self.logger.debug("Detected start:")
+                                                        self.logger.debug(f"    band-width: {band_width}")
+                                                        self.logger.debug(
                                                             f"    dBm: {cur_freq_max.spec}dBm, spec = {spec}dBm, mov_avg = {mov_avg_noise}dBm"
                                                         )
-                                                        print(
+                                                        self.logger.debug(
                                                             f"    center freq: {cur_freq_max.center_freq:3}MHz, start freq: {cur_freq_max.start_freq:3}MHz, end freq: {cur_freq_max.end_freq:3}MHz"
                                                         )
                                                 cur_freq_max = None
@@ -522,10 +522,10 @@ class SignalProcessor(threading.Thread):
                                     new_scan_channel_list: List[ScanFreq] = []
                                     for scan_channel in self.scan_channel_list:
                                         if not scan_channel.detected:
-                                            print("Detected end:")
-                                            print(f"    band-width: {scan_channel.band_width}")
-                                            print(f"    dBm: {scan_channel.spec}dBm")
-                                            print(
+                                            self.logger.debug("Detected end:")
+                                            self.logger.debug(f"    band-width: {scan_channel.band_width}")
+                                            self.logger.debug(f"    dBm: {scan_channel.spec}dBm")
+                                            self.logger.debug(
                                                 f"    center freq: {scan_channel.center_freq / 10**6:3}MHz, start freq: {scan_channel.start_freq / 10**6:3}MHz, end freq: {scan_channel.end_freq / 10**6:3}MHz"
                                             )
                                             if not scan_channel.blocked:
