@@ -1657,7 +1657,7 @@ def generate_config_page_layout(webInterface_inst):
                         ],
                         className="field",
                     ),
-                    html.Div("Version 1.5"),
+                    html.Div("Version 1.6"),
                 ],
                 id="system_control_container",
             ),
