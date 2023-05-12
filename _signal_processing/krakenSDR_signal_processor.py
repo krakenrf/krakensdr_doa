@@ -143,6 +143,8 @@ class SignalProcessor(threading.Thread):
         self.vfo_demod_channel = [None] * self.max_vfos
         self.vfo_theta_channel = [[]] * self.max_vfos
         self.vfo_iq_channel = [None] * self.max_vfos
+        self.vfo_blocked = [False] * self.max_vfos
+        self.vfo_time = [0] * self.max_vfos
 
         self.en_fm_demod = False
         self.vfo_fm_demod = [False] * self.max_vfos
@@ -488,6 +490,14 @@ class SignalProcessor(threading.Thread):
                                     )
                                     iq_channel = vfo_channel[1]
 
+                                    self.vfo_time[i] += self.processed_signal[1].size / sampling_freq
+                                    if self.vfo_time[i] > 60:
+                                        self.vfo_blocked[i] = True
+                                        self.vfo_demod_channel[i] = None
+                                        self.vfo_theta_channel[i] = []
+                                        self.vfo_iq_channel[i] = None
+                                        continue
+
                                     if self.vfo_demod_modes[i] == "FM":
                                         fm_demod_channel = fm_demod(iq_channel, decimate_sampling_freq, self.vfo_bw[i])
                                         if self.vfo_demod_channel[i] is not None:
@@ -535,6 +545,8 @@ class SignalProcessor(threading.Thread):
                                     self.freq_list.append(write_freq)
                                     self.doa_result_log_list.append(doa_result_log)
                                 else:
+                                    self.vfo_time[i] = 0
+                                    self.vfo_blocked[i] = False
                                     fm_demod_channel = self.vfo_demod_channel[i]
                                     iq_channel = self.vfo_iq_channel[i]
                                     thetas = self.vfo_theta_channel[i]
