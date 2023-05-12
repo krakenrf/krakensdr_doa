@@ -491,7 +491,9 @@ class SignalProcessor(threading.Thread):
                                     iq_channel = vfo_channel[1]
 
                                     self.vfo_time[i] += self.processed_signal[1].size / sampling_freq
-                                    if self.vfo_time[i] > 60:
+                                    if self.vfo_time[i] > 60 and (
+                                        self.vfo_demod_modes[i] == "FM" or self.vfo_iq_enabled[i]
+                                    ):
                                         self.vfo_blocked[i] = True
                                         self.vfo_demod_channel[i] = None
                                         self.vfo_theta_channel[i] = []
