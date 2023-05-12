@@ -538,12 +538,9 @@ class SignalProcessor(threading.Thread):
                                     fm_demod_channel = self.vfo_demod_channel[i]
                                     iq_channel = self.vfo_iq_channel[i]
                                     thetas = self.vfo_theta_channel[i]
-                                    record_file_name = None
-                                    if fm_demod_channel is not None:
-                                        vfo_freq = int(self.vfo_freq[i])
-                                        record_file_name = f"{now_str},FM_{vfo_freq / 1e6:.3f}MHz"
+                                    vfo_freq = int(self.vfo_freq[i])
                                     self.fm_demod_channel_list.append(
-                                        (record_file_name, fm_demod_channel, iq_channel, thetas)
+                                        (now_str, vfo_freq, fm_demod_channel, iq_channel, thetas)
                                     )
                                     self.vfo_demod_channel[i] = None
                                     self.vfo_theta_channel[i] = []
@@ -570,7 +567,7 @@ class SignalProcessor(threading.Thread):
 
                                 return avg_theta, max(diff_thetas)
 
-                            for file_name, fm_demod_channel, iq_channel, thetas in self.fm_demod_channel_list:
+                            for now_str, vfo_freq, fm_demod_channel, iq_channel, thetas in self.fm_demod_channel_list:
                                 if fm_demod_channel is None and iq_channel is None:
                                     continue
                                 avg_theta, max_diff_theta = average_thetas(thetas)
@@ -583,15 +580,17 @@ class SignalProcessor(threading.Thread):
                                     doa_max_str = f"{adjust_theta(avg_theta):.1f}"
 
                                 if fm_demod_channel is not None:
+                                    record_file_name = f"{now_str},FM_{vfo_freq / 1e6:.3f}MHz"
                                     Path(f"{self.wav_record_path}/").mkdir(parents=True, exist_ok=True)
                                     write_wav(
-                                        f"{self.wav_record_path}/{file_name},DOA_{doa_max_str}.wav",
+                                        f"{self.wav_record_path}/{record_file_name},DOA_{doa_max_str}.wav",
                                         48_000,
                                         fm_demod_channel,
                                     )
                                 if iq_channel is not None:
+                                    record_file_name = f"{now_str},IQ_{vfo_freq / 1e6:.3f}MHz"
                                     Path(f"{self.iq_record_path}").mkdir(parents=True, exist_ok=True)
-                                    iq_channel.tofile(f"{self.iq_record_path}/{file_name},DOA_{doa_max_str}.iq")
+                                    iq_channel.tofile(f"{self.iq_record_path}/{record_file_name},DOA_{doa_max_str}.iq")
                     except Exception:
                         self.logger.error(traceback.format_exc())
                         self.data_ready = False
