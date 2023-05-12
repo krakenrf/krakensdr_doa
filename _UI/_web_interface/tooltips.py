@@ -130,6 +130,24 @@ dsp_config_tooltips = html.Div(
             placement="bottom",
             className="tooltip",
         ),
+        dbc.Tooltip(
+            [
+                html.P("VFO Default Demodulation that could be either None or FM"),
+                html.P("FM - frequency demodulation"),
+            ],
+            target="label_vfo_default_demod",
+            placement="bottom",
+            className="tooltip",
+        ),
+        dbc.Tooltip(
+            [
+                html.P("VFO Default IQ wtiting mode"),
+                html.P("False - disable writing IQ samples, True - enable writing IQ samples to file"),
+            ],
+            target="label_vfo_default_iq",
+            placement="bottom",
+            className="tooltip",
+        ),
         # Antenna Spacing
         #    dbc.Tooltip([
         #        html.P("When ULA is selected: Spacing between antenna elements"),
