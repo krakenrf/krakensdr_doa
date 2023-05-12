@@ -414,6 +414,7 @@ class SignalProcessor(threading.Thread):
                                 squelch: float
                                 spec: float
                                 detected: bool
+                                time: int
                                 blocked: bool
                                 deleted: bool
 
@@ -425,10 +426,13 @@ class SignalProcessor(threading.Thread):
                             if self.en_DOA_estimation and self.vfo_mode == "Scan":
                                 active_vfos = self.active_vfos = 0
                                 try:
+                                    MAX_FREQ_DIFF = 4000
+                                    MOVING_AVG_FREQ_WINDOW = 100_000
+                                    SCAN_BLOCKED_TIME = 60
+
                                     cur_freq_max = None
-                                    moving_avg_freq_window = 250_000
                                     mov_avg_noises = []
-                                    freq_window = int(moving_avg_freq_window / (sampling_freq / N))
+                                    freq_window = int(MOVING_AVG_FREQ_WINDOW / (sampling_freq / N))
 
                                     for i in range(len(self.scan_channel_list)):
                                         self.scan_channel_list[i].detected = False
@@ -442,7 +446,6 @@ class SignalProcessor(threading.Thread):
                                     else:
                                         spectrum_index = 2
 
-                                    MAX_FREQ_DIFF = 4000
                                     for _, (freq, spec) in enumerate(
                                         zip(self.spectrum[0, ::-1], self.spectrum[spectrum_index, :])
                                     ):
@@ -464,6 +467,7 @@ class SignalProcessor(threading.Thread):
                                                     mov_avg_noise + self.dbm_offset,
                                                     spec,
                                                     True,
+                                                    0,
                                                     False,
                                                     False,
                                                 )
@@ -507,7 +511,12 @@ class SignalProcessor(threading.Thread):
                                                                 self.scan_channel_list[
                                                                     i
                                                                 ].end_freq = cur_freq_max.end_freq
+                                                            proc_signal_size = self.processed_signal[1].size
+                                                            proc_signal_time = proc_signal_size / sampling_freq
                                                             found_freq = True
+                                                            self.scan_channel_list[i].time += proc_signal_time
+                                                            if self.scan_channel_list[i].time > SCAN_BLOCKED_TIME:
+                                                                self.scan_channel_list[i].blocked = True
                                                             self.scan_channel_list[i].detected = True
                                                             self.scan_id -= 1
                                                             break
