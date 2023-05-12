@@ -1430,6 +1430,19 @@ def generate_config_page_layout(webInterface_inst):
             ),
             html.Div(
                 [
+                    html.Div("VFO Noise Timeout [s]:", id="label_vfo_noise_timeout", className="field-label"),
+                    dcc.Input(
+                        id="vfo_noise_timeout",
+                        value=webInterface_inst.module_signal_processor.vfo_noise_timeout,
+                        type="number",
+                        debounce=True,
+                        className="field-body-textbox",
+                    ),
+                ],
+                className="field",
+            ),
+            html.Div(
+                [
                     html.Div("Active VFOs:", id="label_active_vfos", className="field-label"),
                     dcc.Dropdown(
                         id="active_vfos",

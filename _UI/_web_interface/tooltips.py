@@ -148,6 +148,15 @@ dsp_config_tooltips = html.Div(
             placement="bottom",
             className="tooltip",
         ),
+        dbc.Tooltip(
+            [
+                html.P("VFO Noise Timeout allows to disable writing signal on disk if it exceeded some timeout"),
+                html.P("-1 means no timeout is applied"),
+            ],
+            target="label_vfo_noise_timeout",
+            placement="bottom",
+            className="tooltip",
+        ),
         # Antenna Spacing
         #    dbc.Tooltip([
         #        html.P("When ULA is selected: Spacing between antenna elements"),
