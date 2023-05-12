@@ -568,6 +568,9 @@ class SignalProcessor(threading.Thread):
                                         _, found_vfo_scan_freq = find_vfo_scan(new_scan_channel_list, scan_channel)
                                         if not found_vfo_scan_freq:
                                             self.vfo_scan_freq[i] = None
+                                            self.vfo_demod_channel[i] = None
+                                            self.vfo_theta_channel[i] = []
+                                            self.vfo_iq_channel[i] = None
                                             vfo_scan_freq_ids.append(i)
                                         else:
                                             self.vfo_scan_freq[i] = found_vfo_scan_freq
