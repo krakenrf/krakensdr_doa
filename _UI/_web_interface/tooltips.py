@@ -141,8 +141,8 @@ dsp_config_tooltips = html.Div(
         ),
         dbc.Tooltip(
             [
-                html.P("VFO Default IQ wtiting mode"),
-                html.P("False - disable writing IQ samples, True - enable writing IQ samples to file"),
+                html.P("VFO Default IQ writing mode"),
+                html.P("False/True - disable/enable writing IQ samples to file"),
             ],
             target="label_vfo_default_iq",
             placement="bottom",

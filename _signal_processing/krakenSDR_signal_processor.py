@@ -467,7 +467,7 @@ class SignalProcessor(threading.Thread):
 
                                 # datetime object containing current date and time
                                 now = datetime.now()
-                                now_str = now.strftime("%d-%b-%Y_%Hh%Mm%Ss")
+                                now_dt_str = now.strftime("%d-%b-%Y_%Hh%Mm%Ss")
                                 if (
                                     self.en_DOA_estimation
                                     and self.channel_number > 1
@@ -540,7 +540,7 @@ class SignalProcessor(threading.Thread):
                                     thetas = self.vfo_theta_channel[i]
                                     vfo_freq = int(self.vfo_freq[i])
                                     self.fm_demod_channel_list.append(
-                                        (now_str, vfo_freq, fm_demod_channel, iq_channel, thetas)
+                                        (now_dt_str, vfo_freq, fm_demod_channel, iq_channel, thetas)
                                     )
                                     self.vfo_demod_channel[i] = None
                                     self.vfo_theta_channel[i] = []
@@ -567,7 +567,13 @@ class SignalProcessor(threading.Thread):
 
                                 return avg_theta, max(diff_thetas)
 
-                            for now_str, vfo_freq, fm_demod_channel, iq_channel, thetas in self.fm_demod_channel_list:
+                            for (
+                                now_dt_str,
+                                vfo_freq,
+                                fm_demod_channel,
+                                iq_channel,
+                                thetas,
+                            ) in self.fm_demod_channel_list:
                                 if fm_demod_channel is None and iq_channel is None:
                                     continue
                                 avg_theta, max_diff_theta = average_thetas(thetas)
@@ -580,7 +586,7 @@ class SignalProcessor(threading.Thread):
                                     doa_max_str = f"{adjust_theta(avg_theta):.1f}"
 
                                 if fm_demod_channel is not None:
-                                    record_file_name = f"{now_str},FM_{vfo_freq / 1e6:.3f}MHz"
+                                    record_file_name = f"{now_dt_str},FM_{vfo_freq / 1e6:.3f}MHz"
                                     Path(f"{self.wav_record_path}/").mkdir(parents=True, exist_ok=True)
                                     write_wav(
                                         f"{self.wav_record_path}/{record_file_name},DOA_{doa_max_str}.wav",
@@ -588,7 +594,7 @@ class SignalProcessor(threading.Thread):
                                         fm_demod_channel,
                                     )
                                 if iq_channel is not None:
-                                    record_file_name = f"{now_str},IQ_{vfo_freq / 1e6:.3f}MHz"
+                                    record_file_name = f"{now_dt_str},IQ_{vfo_freq / 1e6:.3f}MHz"
                                     Path(f"{self.iq_record_path}").mkdir(parents=True, exist_ok=True)
                                     iq_channel.tofile(f"{self.iq_record_path}/{record_file_name},DOA_{doa_max_str}.iq")
                     except Exception:
