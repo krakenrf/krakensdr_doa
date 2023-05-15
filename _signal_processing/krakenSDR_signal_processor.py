@@ -145,7 +145,7 @@ class SignalProcessor(threading.Thread):
         self.vfo_iq_channel = [None] * self.max_vfos
         self.vfo_blocked = [False] * self.max_vfos
         self.vfo_time = [0] * self.max_vfos
-        self.vfo_noise_timeout = 60
+        self.max_demod_timeout = 60
 
         self.en_fm_demod = False
         self.vfo_fm_demod = [False] * self.max_vfos
@@ -492,7 +492,7 @@ class SignalProcessor(threading.Thread):
                                     iq_channel = vfo_channel[1]
 
                                     self.vfo_time[i] += self.processed_signal[1].size / sampling_freq
-                                    if 0 < self.vfo_noise_timeout < self.vfo_time[i] and (
+                                    if 0 < self.max_demod_timeout < self.vfo_time[i] and (
                                         self.vfo_demod_modes[i] == "FM" or self.vfo_iq_enabled[i]
                                     ):
                                         self.vfo_blocked[i] = True

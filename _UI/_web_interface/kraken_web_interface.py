@@ -177,7 +177,7 @@ class webInterface:
         self.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
         self.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
         self.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
-        self.module_signal_processor.vfo_noise_timeout = int(dsp_settings.get("vfo_noise_timeout", 60))
+        self.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
         self.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
         self.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
         self.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
@@ -264,7 +264,7 @@ class webInterface:
         self.vfo_cfg_inputs.append(Input(component_id="vfo_mode", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_default_demod", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_default_iq", component_property="value"))
-        self.vfo_cfg_inputs.append(Input(component_id="vfo_noise_timeout", component_property="value"))
+        self.vfo_cfg_inputs.append(Input(component_id="max_demod_timeout", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="dsp_decimation", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="active_vfos", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="output_vfo", component_property="value"))
@@ -328,7 +328,7 @@ class webInterface:
         data["vfo_mode"] = self.module_signal_processor.vfo_mode
         data["vfo_default_demod"] = self.module_signal_processor.vfo_default_demod
         data["vfo_default_iq"] = self.module_signal_processor.vfo_default_iq
-        data["vfo_noise_timeout"] = self.module_signal_processor.vfo_noise_timeout
+        data["max_demod_timeout"] = self.module_signal_processor.max_demod_timeout
         data["dsp_decimation"] = self.module_signal_processor.dsp_decimation
         data["active_vfos"] = self.module_signal_processor.active_vfos
         data["output_vfo"] = self.module_signal_processor.output_vfo
@@ -666,7 +666,7 @@ def settings_change_watcher():
         webInterface_inst.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
         webInterface_inst.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
         webInterface_inst.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
-        webInterface_inst.module_signal_processor.vfo_noise_timeout = int(dsp_settings.get("vfo_noise_timeout", 60))
+        webInterface_inst.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
         webInterface_inst.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
         webInterface_inst.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
         webInterface_inst.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
@@ -1113,7 +1113,7 @@ def update_vfo_params(*args):
     webInterface_inst.module_signal_processor.vfo_mode = kwargs_dict["vfo_mode"]
     webInterface_inst.module_signal_processor.vfo_default_demod = kwargs_dict["vfo_default_demod"]
     webInterface_inst.module_signal_processor.vfo_default_iq = kwargs_dict["vfo_default_iq"]
-    webInterface_inst.module_signal_processor.vfo_noise_timeout = int(kwargs_dict["vfo_noise_timeout"])
+    webInterface_inst.module_signal_processor.max_demod_timeout = int(kwargs_dict["max_demod_timeout"])
 
     active_vfos = kwargs_dict["active_vfos"]
     # If VFO mode is in the VFO-0 Auto Max mode, we active VFOs to 1 only

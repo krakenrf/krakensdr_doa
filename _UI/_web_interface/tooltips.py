@@ -150,10 +150,10 @@ dsp_config_tooltips = html.Div(
         ),
         dbc.Tooltip(
             [
-                html.P("VFO Noise Timeout allows to disable writing signal on disk if it exceeded some timeout"),
-                html.P("-1 means no timeout is applied"),
+                html.P("Maximum Demod Time allows to disable writing signal on disk if it exceeded some timeout"),
+                html.P("* < 0 or 0 means no timeout is applied"),
             ],
-            target="label_vfo_noise_timeout",
+            target="label_max_demod_timeout",
             placement="bottom",
             className="tooltip",
         ),

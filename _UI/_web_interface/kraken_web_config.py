@@ -1430,10 +1430,10 @@ def generate_config_page_layout(webInterface_inst):
             ),
             html.Div(
                 [
-                    html.Div("VFO Noise Timeout [s]:", id="label_vfo_noise_timeout", className="field-label"),
+                    html.Div("Maximum Demod Time [s]:", id="label_max_demod_timeout", className="field-label"),
                     dcc.Input(
-                        id="vfo_noise_timeout",
-                        value=webInterface_inst.module_signal_processor.vfo_noise_timeout,
+                        id="max_demod_timeout",
+                        value=webInterface_inst.module_signal_processor.max_demod_timeout,
                         type="number",
                         debounce=True,
                         className="field-body-textbox",
