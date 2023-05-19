@@ -800,7 +800,7 @@ class SignalProcessor(threading.Thread):
             try:
                 packet = gpsd.get_current()
                 self.latitude, self.longitude = packet.position()
-                if (not self.fixed_heading) and (packet.speed() > self.gps_min_speed_for_valid_heading):
+                if (not self.fixed_heading) and (packet.speed() >= self.gps_min_speed_for_valid_heading):
                     if (time.time() - self.time_of_last_invalid_heading) >= self.gps_min_duration_for_valid_heading:
                         self.heading = round(packet.movement().get("track"), 1)
                 else:
