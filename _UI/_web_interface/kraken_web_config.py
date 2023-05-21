@@ -1437,6 +1437,7 @@ def generate_config_page_layout(webInterface_inst):
                         type="number",
                         debounce=True,
                         className="field-body-textbox",
+                        min=0,
                     ),
                 ],
                 className="field",
