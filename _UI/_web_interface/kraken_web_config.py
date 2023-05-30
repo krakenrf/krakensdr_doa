@@ -899,7 +899,7 @@ def generate_config_page_layout(webInterface_inst):
                                 id="ant_spacing_meter",
                                 value=ant_spacing_meter,
                                 type="number",
-                                step=0.01,
+                                step=0.001,
                                 debounce=True,
                                 className="field-body-textbox",
                             ),
