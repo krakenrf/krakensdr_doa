@@ -1017,7 +1017,7 @@ def calc_sync(iq_samples):
 
 # Reduce spectrum size for plotting purposes by taking the MAX val every few values
 # Significantly faster with numba once we added nb.prange
-@njit(fastmath=True, cache=True, parallel=True)
+@njit(fastmath=True, cache=True)
 def reduce_spectrum(spectrum, spectrum_size, channel_number):
     spectrum_elements = len(spectrum[:, 0])
 
@@ -1048,7 +1048,7 @@ def get_exponential(freq, sample_freq, sig_len):
     return np.ascontiguousarray(exponential)
 
 
-@njit(fastmath=True, cache=True, parallel=True)
+@njit(fastmath=True, cache=True)
 def numba_mult(a, b):
     return a * b
 
@@ -1066,7 +1066,6 @@ def shift_filter(decimation_factor, freq, sampling_freq, padd):
 
 # This function takes the full data, and efficiently returns only a filtered and decimated requested channel
 # Efficient method: Create BANDPASS Filter for frequency of interest, decimate with that bandpass filter, then do the final shift
-@jit(fastmath=True, cache=True, parallel=True)
 def channelize(processed_signal, freq, decimation_factor, sampling_freq):
     system = shift_filter(decimation_factor, freq, sampling_freq, 1.1)  # Decimate with a BANDPASS filter
     decimated = signal.decimate(processed_signal, decimation_factor, ftype=system)
