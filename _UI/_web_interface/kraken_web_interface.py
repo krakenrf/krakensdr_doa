@@ -212,6 +212,7 @@ class webInterface:
         self.en_advanced_daq_cfg = False
         self.en_basic_daq_cfg = False
         self.en_system_control = []
+        self.en_beta_features = []
         self.daq_ini_cfg_dict = read_config_file_dict()
         # "Default" # Holds the string identifier of the actively loaded DAQ ini configuration
         self.active_daq_ini_cfg = self.daq_ini_cfg_dict["config_name"]
@@ -1656,6 +1657,30 @@ def toggle_system_control(toggle_value):
         return {"display": "block"}
     else:
         return {"display": "none"}
+        
+        
+@app.callback(None,
+             [Input("en_beta_features", "value")]
+)
+def toggle_beta_features(toggle_value):
+    webInterface_inst.en_beta_features = toggle_value
+    
+    toggle_output = []
+    
+    # Toggle VFO default configuration settings
+    if toggle_value:
+        toggle_output.append(Output("beta_features_container", "style", {'display': 'block'}))
+    else:
+        toggle_output.append(Output("beta_features_container", "style", {'display': 'none'}))
+
+    # Toggle individual VFO card settings
+    for i in range(webInterface_inst.module_signal_processor.max_vfos):
+        if toggle_value:
+            toggle_output.append(Output("beta_features_container " + str(i), "style", {'display': 'block'}))
+        else:
+            toggle_output.append(Output("beta_features_container " + str(i), "style", {'display': 'none'}))
+            
+    return toggle_output
 
 
 @app.callback(
