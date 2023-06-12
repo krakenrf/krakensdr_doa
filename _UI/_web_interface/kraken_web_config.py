@@ -1687,14 +1687,16 @@ def generate_config_page_layout(webInterface_inst):
                     ),
                     html.Div(
                         [
-                            html.Div("Enable Beta Features", id="label_en_beta_features"     , className="field-label"),
-                            dcc.Checklist(options=option,
+                            html.Div("Enable Beta Features", id="label_en_beta_features", className="field-label"),
+                            dcc.Checklist(
+                                options=option,
                                 id="en_beta_features",
                                 className="field-body",
-                                value=webInterface_inst.en_beta_features
+                                value=webInterface_inst.en_beta_features,
                             ),
                         ],
-                        className="field"),
+                        className="field",
+                    ),
                     html.Div("Version 1.6"),
                 ],
                 id="system_control_container",

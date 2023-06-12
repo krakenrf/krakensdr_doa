@@ -1657,29 +1657,27 @@ def toggle_system_control(toggle_value):
         return {"display": "block"}
     else:
         return {"display": "none"}
-        
-        
-@app.callback(None,
-             [Input("en_beta_features", "value")]
-)
+
+
+@app.callback(None, [Input("en_beta_features", "value")])
 def toggle_beta_features(toggle_value):
     webInterface_inst.en_beta_features = toggle_value
-    
+
     toggle_output = []
-    
+
     # Toggle VFO default configuration settings
     if toggle_value:
-        toggle_output.append(Output("beta_features_container", "style", {'display': 'block'}))
+        toggle_output.append(Output("beta_features_container", "style", {"display": "block"}))
     else:
-        toggle_output.append(Output("beta_features_container", "style", {'display': 'none'}))
+        toggle_output.append(Output("beta_features_container", "style", {"display": "none"}))
 
     # Toggle individual VFO card settings
     for i in range(webInterface_inst.module_signal_processor.max_vfos):
         if toggle_value:
-            toggle_output.append(Output("beta_features_container " + str(i), "style", {'display': 'block'}))
+            toggle_output.append(Output("beta_features_container " + str(i), "style", {"display": "block"}))
         else:
-            toggle_output.append(Output("beta_features_container " + str(i), "style", {'display': 'none'}))
-            
+            toggle_output.append(Output("beta_features_container " + str(i), "style", {"display": "none"}))
+
     return toggle_output
 
 

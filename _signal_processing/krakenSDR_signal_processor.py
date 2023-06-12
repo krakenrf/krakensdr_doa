@@ -45,7 +45,7 @@ import requests
 
 # Signal processing support
 import scipy
-from numba import jit, njit
+from numba import njit
 from pyargus import directionEstimation as de
 from scipy import fft, signal
 from signal_utils import fm_demod, write_wav
