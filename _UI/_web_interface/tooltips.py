@@ -148,6 +148,15 @@ dsp_config_tooltips = html.Div(
             placement="bottom",
             className="tooltip",
         ),
+        dbc.Tooltip(
+            [
+                html.P("Maximum Demod Time allows to disable writing signal on disk if it exceeded some timeout"),
+                html.P("0 means no timeout is applied"),
+            ],
+            target="label_max_demod_timeout",
+            placement="bottom",
+            className="tooltip",
+        ),
         # Antenna Spacing
         #    dbc.Tooltip([
         #        html.P("When ULA is selected: Spacing between antenna elements"),

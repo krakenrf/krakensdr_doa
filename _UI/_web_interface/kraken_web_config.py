@@ -1398,35 +1398,55 @@ def generate_config_page_layout(webInterface_inst):
             ),
             html.Div(
                 [
-                    html.Div("VFO Default Demod:", id="label_vfo_default_demod", className="field-label"),
-                    dcc.Dropdown(
-                        id="vfo_default_demod",
-                        options=[
-                            {"label": "None", "value": "None"},
-                            {"label": "FM", "value": "FM"},
+                    html.Div(
+                        [
+                            html.Div("VFO Default Demod:", id="label_vfo_default_demod", className="field-label"),
+                            dcc.Dropdown(
+                                id="vfo_default_demod",
+                                options=[
+                                    {"label": "None", "value": "None"},
+                                    {"label": "FM", "value": "FM"},
+                                ],
+                                value=webInterface_inst.module_signal_processor.vfo_default_demod,
+                                style={"display": "inline-block"},
+                                className="field-body",
+                            ),
                         ],
-                        value=webInterface_inst.module_signal_processor.vfo_default_demod,
-                        style={"display": "inline-block"},
-                        className="field-body",
+                        className="field",
+                    ),
+                    html.Div(
+                        [
+                            html.Div("VFO Default IQ Channel:", id="label_vfo_default_iq", className="field-label"),
+                            dcc.Dropdown(
+                                id="vfo_default_iq",
+                                options=[
+                                    {"label": "False", "value": "False"},
+                                    {"label": "True", "value": "True"},
+                                ],
+                                value=webInterface_inst.module_signal_processor.vfo_default_iq,
+                                style={"display": "inline-block"},
+                                className="field-body",
+                            ),
+                        ],
+                        className="field",
+                    ),
+                    html.Div(
+                        [
+                            html.Div("Maximum Demod Time [s]:", id="label_max_demod_timeout", className="field-label"),
+                            dcc.Input(
+                                id="max_demod_timeout",
+                                value=webInterface_inst.module_signal_processor.max_demod_timeout,
+                                type="number",
+                                debounce=True,
+                                className="field-body-textbox",
+                                min=0,
+                            ),
+                        ],
+                        className="field",
                     ),
                 ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("VFO Default IQ Channel:", id="label_vfo_default_iq", className="field-label"),
-                    dcc.Dropdown(
-                        id="vfo_default_iq",
-                        options=[
-                            {"label": "False", "value": "False"},
-                            {"label": "True", "value": "True"},
-                        ],
-                        value=webInterface_inst.module_signal_processor.vfo_default_iq,
-                        style={"display": "inline-block"},
-                        className="field-body",
-                    ),
-                ],
-                className="field",
+                id="beta_features_container",
+                style={"display": "none"},
             ),
             html.Div(
                 [
@@ -1567,43 +1587,49 @@ def generate_config_page_layout(webInterface_inst):
                 ),
                 html.Div(
                     [
-                        html.Div("VFO-" + str(i) + " Demod:", className="field-label"),
-                        dcc.Dropdown(
-                            id=f"vfo_{i}_demod",
-                            options=[
-                                {
-                                    "label": f"Default ({webInterface_inst.module_signal_processor.vfo_default_demod})",
-                                    "value": "Default",
-                                },
-                                {"label": "None", "value": "None"},
-                                {"label": "FM", "value": "FM"},
+                        html.Div(
+                            [
+                                html.Div("VFO-" + str(i) + " Demod:", className="field-label"),
+                                dcc.Dropdown(
+                                    id=f"vfo_{i}_demod",
+                                    options=[
+                                        {
+                                            "label": f"Default ({webInterface_inst.module_signal_processor.vfo_default_demod})",
+                                            "value": "Default",
+                                        },
+                                        {"label": "None", "value": "None"},
+                                        {"label": "FM", "value": "FM"},
+                                    ],
+                                    value=webInterface_inst.module_signal_processor.vfo_demod[i],
+                                    style={"display": "inline-block"},
+                                    className="field-body",
+                                ),
                             ],
-                            value=webInterface_inst.module_signal_processor.vfo_demod[i],
-                            style={"display": "inline-block"},
-                            className="field-body",
+                            className="field",
+                        ),
+                        html.Div(
+                            [
+                                html.Div("VFO-" + str(i) + " IQ Channel:", className="field-label"),
+                                dcc.Dropdown(
+                                    id=f"vfo_{i}_iq",
+                                    options=[
+                                        {
+                                            "label": f"Default ({webInterface_inst.module_signal_processor.vfo_default_iq})",
+                                            "value": "Default",
+                                        },
+                                        {"label": "False", "value": "False"},
+                                        {"label": "True", "value": "True"},
+                                    ],
+                                    value=webInterface_inst.module_signal_processor.vfo_iq[i],
+                                    style={"display": "inline-block"},
+                                    className="field-body",
+                                ),
+                            ],
+                            className="field",
                         ),
                     ],
-                    className="field",
-                ),
-                html.Div(
-                    [
-                        html.Div("VFO-" + str(i) + " IQ Channel:", className="field-label"),
-                        dcc.Dropdown(
-                            id=f"vfo_{i}_iq",
-                            options=[
-                                {
-                                    "label": f"Default ({webInterface_inst.module_signal_processor.vfo_default_iq})",
-                                    "value": "Default",
-                                },
-                                {"label": "False", "value": "False"},
-                                {"label": "True", "value": "True"},
-                            ],
-                            value=webInterface_inst.module_signal_processor.vfo_iq[i],
-                            style={"display": "inline-block"},
-                            className="field-body",
-                        ),
-                    ],
-                    className="field",
+                    id="beta_features_container " + str(i),
+                    style={"display": "none"},
                 ),
             ],
             id="vfo" + str(i),
@@ -1657,6 +1683,16 @@ def generate_config_page_layout(webInterface_inst):
                         ],
                         className="field",
                     ),
+                    html.Div(
+                        [
+                            html.Div("Enable Beta Features", id="label_en_beta_features"     , className="field-label"),
+                            dcc.Checklist(options=option, 
+                                id="en_beta_features",  
+                                className="field-body", 
+                                value=webInterface_inst.en_beta_features
+                            ),
+                        ], 
+                        className="field"),
                     html.Div("Version 1.6"),
                 ],
                 id="system_control_container",
