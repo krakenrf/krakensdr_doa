@@ -1581,6 +1581,21 @@ def generate_config_page_layout(webInterface_inst):
                 ),
                 html.Div(
                     [
+                        html.Div("VFO-" + str(i) + " FIR Order Factor:", className="field-label"),
+                        dcc.Input(
+                            id="vfo_" + str(i) + "_fir_order_factor",
+                            value=webInterface_inst.module_signal_processor.vfo_fir_order_factor[i],
+                            type="number",
+                            min=2,
+                            step=1,
+                            debounce=True,
+                            className="field-body-textbox",
+                        ),
+                    ],
+                    className="field",
+                ),
+                html.Div(
+                    [
                         html.Div("VFO-" + str(i) + " Squelch [dB] :", className="field-label"),
                         dcc.Input(
                             id="vfo_" + str(i) + "_squelch",
