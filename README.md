@@ -18,6 +18,12 @@ In this image the code will automatically run on boot. Note that it may take 2-3
 
 To run this code flash the image file to an SD Card using Etcher. The SD Card needs to be at least 8GB and we recommend using a class 10 card or faster. For advanced users the login/password details for SSH and terminal are "krakenrf"/"krakensdr"
 
+## Orange Pi 5B
+
+We also now have an Orange Pi 5B image available. The following instructions will reference the Pi 4, but they are identical for operation with the Orange Pi 5B. (Note this image is for the Orange Pi 5B. This is the Orange Pi 5 model with the included WiFi module.)
+
+**Orange Pi 5B Image**:  https://drive.google.com/file/d/1ilco930ar0l3vYc2c7-vx_CWz3Ks0sf2/view?usp=sharing
+
 ### Choose and Set up Connectivity Option 
 In this image there are three ways to connect to the web GUI interface.
 
