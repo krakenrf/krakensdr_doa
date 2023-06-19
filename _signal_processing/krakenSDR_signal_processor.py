@@ -252,10 +252,7 @@ class SignalProcessor(threading.Thread):
                 self.is_running = True
                 que_data_packet = []
 
-                utc_timestamp_ms = datetime.utcfromtimestamp(
-                    self.module_receiver.iq_header.time_stamp / 1000.0
-                ).timestamp()
-                self.timestamp = int(round(1000.0 * utc_timestamp_ms))
+                self.timestamp = self.module_receiver.iq_header.time_stamp
 
                 if self.hasgps and self.usegps:
                     self.update_location_and_timestamp()
