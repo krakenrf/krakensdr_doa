@@ -66,7 +66,7 @@ except ModuleNotFoundError:
 
 MIN_SPEED_FOR_VALID_HEADING = 2.0  # m / s
 MIN_DURATION_FOR_VALID_HEADING = 3.0  # s
-DEFAULT_VFO_FIR_ORDER_FACTOR = int(3)
+DEFAULT_VFO_FIR_ORDER_FACTOR = int(2)
 
 
 class SignalProcessor(threading.Thread):
