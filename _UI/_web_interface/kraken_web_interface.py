@@ -54,7 +54,7 @@ from kraken_web_spectrum import init_spectrum_fig, plot_spectrum
 from krakenSDR_receiver import ReceiverRTLSDR
 
 # Import built-in modules
-from krakenSDR_signal_processor import SignalProcessor, xi
+from krakenSDR_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR, SignalProcessor, xi
 from utils import read_config_file_dict, set_clicked
 from waterfall import init_waterfall
 
@@ -187,6 +187,9 @@ class webInterface:
 
         for i in range(self.module_signal_processor.max_vfos):
             self.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
+            self.module_signal_processor.vfo_fir_order_factor[i] = int(
+                dsp_settings.get("vfo_fir_order_factor_" + str(i), DEFAULT_VFO_FIR_ORDER_FACTOR)
+            )
             self.module_signal_processor.vfo_freq[i] = float(dsp_settings.get("vfo_freq_" + str(i), 0))
             self.module_signal_processor.vfo_squelch[i] = int(dsp_settings.get("vfo_squelch_" + str(i), 0))
             self.module_signal_processor.vfo_demod[i] = dsp_settings.get("vfo_demod_" + str(i), "Default")
@@ -273,6 +276,9 @@ class webInterface:
 
         for i in range(self.module_signal_processor.max_vfos):
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_bw", component_property="value"))
+            self.vfo_cfg_inputs.append(
+                Input(component_id="vfo_" + str(i) + "_fir_order_factor", component_property="value")
+            )
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_freq", component_property="value"))
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_squelch", component_property="value"))
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_demod", component_property="value"))
@@ -337,6 +343,7 @@ class webInterface:
 
         for i in range(webInterface_inst.module_signal_processor.max_vfos):
             data["vfo_bw_" + str(i)] = self.module_signal_processor.vfo_bw[i]
+            data["vfo_fir_order_factor_" + str(i)] = self.module_signal_processor.vfo_fir_order_factor[i]
             data["vfo_freq_" + str(i)] = self.module_signal_processor.vfo_freq[i]
             data["vfo_squelch_" + str(i)] = self.module_signal_processor.vfo_squelch[i]
             data["vfo_demod_" + str(i)] = self.module_signal_processor.vfo_demod[i]
@@ -680,6 +687,9 @@ def settings_change_watcher():
 
         for i in range(webInterface_inst.module_signal_processor.max_vfos):
             webInterface_inst.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
+            webInterface_inst.module_signal_processor.vfo_fir_order_factor[i] = int(
+                dsp_settings.get("vfo_fir_order_factor_" + str(i), DEFAULT_VFO_FIR_ORDER_FACTOR)
+            )
             webInterface_inst.module_signal_processor.vfo_freq[i] = float(dsp_settings.get("vfo_freq_" + str(i), 0))
             webInterface_inst.module_signal_processor.vfo_squelch[i] = int(dsp_settings.get("vfo_squelch_" + str(i), 0))
             webInterface_inst.module_signal_processor.vfo_demod[i] = dsp_settings.get("vfo_demod_" + str(i), "Default")
@@ -1146,6 +1156,9 @@ def update_vfo_params(*args):
         for i in range(webInterface_inst.module_signal_processor.max_vfos):
             webInterface_inst.module_signal_processor.vfo_bw[i] = int(
                 min(kwargs_dict["vfo_" + str(i) + "_bw"], bw * 10**6)
+            )
+            webInterface_inst.module_signal_processor.vfo_fir_order_factor[i] = int(
+                kwargs_dict["vfo_" + str(i) + "_fir_order_factor"]
             )
             webInterface_inst.module_signal_processor.vfo_freq[i] = int(
                 max(min(kwargs_dict["vfo_" + str(i) + "_freq"], vfo_max), vfo_min) * 10**6

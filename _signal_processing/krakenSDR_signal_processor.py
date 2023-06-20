@@ -66,6 +66,7 @@ except ModuleNotFoundError:
 
 MIN_SPEED_FOR_VALID_HEADING = 2.0  # m / s
 MIN_DURATION_FOR_VALID_HEADING = 3.0  # s
+DEFAULT_VFO_FIR_ORDER_FACTOR = int(3)
 
 
 class SignalProcessor(threading.Thread):
@@ -134,6 +135,7 @@ class SignalProcessor(threading.Thread):
         # VFO settings
         self.max_vfos = 16
         self.vfo_bw = [12500] * self.max_vfos
+        self.vfo_fir_order_factor = [DEFAULT_VFO_FIR_ORDER_FACTOR] * self.max_vfos
         self.vfo_freq = [self.module_receiver.daq_center_freq] * self.max_vfos
         self.vfo_squelch = [-120] * self.max_vfos
         self.vfo_default_demod = "None"
@@ -480,10 +482,12 @@ class SignalProcessor(threading.Thread):
                                         decimate_sampling_freq = 48_000
                                         decimation_factor = int(sampling_freq / decimate_sampling_freq)
 
+                                    fir_order_factor = max(self.vfo_fir_order_factor[i], DEFAULT_VFO_FIR_ORDER_FACTOR)
                                     vfo_channel = channelize(
                                         self.processed_signal,
                                         freq,
                                         decimation_factor,
+                                        fir_order_factor,
                                         sampling_freq,
                                     )
                                     iq_channel = vfo_channel[1]
@@ -1165,7 +1169,7 @@ def reduce_spectrum(spectrum, spectrum_size, channel_number):
 # Get the FIR filter
 @lru_cache(maxsize=32)
 def get_fir(n, q, padd):
-    return signal.dlti(signal.firwin(n + 1, 1.0 / (q * padd), window="hann"), 1.0)
+    return signal.dlti(signal.firwin(n, 1.0 / (q * padd), window="hann"), 1.0)
 
 
 # Get the frequency rotation exponential
@@ -1188,8 +1192,10 @@ def numba_mult(a, b):
 
 # Memoize the total shift filter
 @lru_cache(maxsize=32)
-def shift_filter(decimation_factor, freq, sampling_freq, padd):
-    system = get_fir(decimation_factor * 2, decimation_factor, padd)
+def shift_filter(decimation_factor, fir_order_factor, freq, sampling_freq, padd):
+    fir_order = decimation_factor * fir_order_factor
+    fir_order = fir_order + (fir_order - 1) % 2
+    system = get_fir(fir_order, decimation_factor, padd)
     b = system.num
     a = system.den
     exponential = get_exponential(-freq, sampling_freq, len(b))
@@ -1199,8 +1205,10 @@ def shift_filter(decimation_factor, freq, sampling_freq, padd):
 
 # This function takes the full data, and efficiently returns only a filtered and decimated requested channel
 # Efficient method: Create BANDPASS Filter for frequency of interest, decimate with that bandpass filter, then do the final shift
-def channelize(processed_signal, freq, decimation_factor, sampling_freq):
-    system = shift_filter(decimation_factor, freq, sampling_freq, 1.1)  # Decimate with a BANDPASS filter
+def channelize(processed_signal, freq, decimation_factor, fir_order_factor, sampling_freq):
+    system = shift_filter(
+        decimation_factor, fir_order_factor, freq, sampling_freq, 1.1
+    )  # Decimate with a BANDPASS filter
     decimated = signal.decimate(processed_signal, decimation_factor, ftype=system)
     exponential = get_exponential(
         freq, sampling_freq / decimation_factor, len(decimated[0, :])
