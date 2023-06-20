@@ -22,7 +22,9 @@ To run this code flash the image file to an SD Card using Etcher. The SD Card ne
 
 We also now have an Orange Pi 5B image available. The following instructions will reference the Pi 4, but they are identical for operation with the Orange Pi 5B. (Note this image is for the Orange Pi 5B. This is the Orange Pi 5 model with the included WiFi module.)
 
-**Orange Pi 5B Image**: https://mega.nz/file/gWdiwLLD#5_BnQN_rD6EQuQlUbWroLZfVL5HrHhAVmRkrJHzEnTY
+**Orange Pi 5B Image**: https://mega.nz/folder/8T1jiIzR#_1Ujs4Eoy0wdRib9eHCVSg
+
+Download the latest image by date.
 
 ### Choose and Set up Connectivity Option 
 In this image there are three ways to connect to the web GUI interface.
