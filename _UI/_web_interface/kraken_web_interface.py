@@ -37,6 +37,9 @@ from variables import (
     doa_fig,
     root_path,
     fig_layout,
+    settings_file_path,
+    settings_found,
+    dsp_settings,
     daq_config_filename,
     current_path,
     daq_subsystem_path,
@@ -56,15 +59,6 @@ from krakenSDR_receiver import ReceiverRTLSDR
 from krakenSDR_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR, SignalProcessor, xi
 from utils import read_config_file_dict, set_clicked, fetch_dsp_data, fetch_gps_data, settings_change_watcher
 from waterfall import init_waterfall
-
-# Load settings file
-settings_file_path = os.path.join(root_path, "settings.json")
-settings_found = False
-if os.path.exists(settings_file_path):
-    settings_found = True
-    with open(settings_file_path, "r") as myfile:
-        dsp_settings = json.loads(myfile.read())
-
 
 class webInterface:
     def __init__(self):

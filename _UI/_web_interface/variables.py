@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 
@@ -10,6 +11,15 @@ trace_colors[3] = "rgb(255,255,51)"
 
 current_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.dirname(os.path.dirname(current_path))
+# Load settings file
+settings_file_path = os.path.join(root_path, "settings.json")
+settings_found = False
+if os.path.exists(settings_file_path):
+    settings_found = True
+    with open(settings_file_path, "r") as myfile:
+        dsp_settings = json.loads(myfile.read())
+
+
 
 daq_subsystem_path = os.path.join(os.path.join(os.path.dirname(root_path), "heimdall_daq_fw"), "Firmware")
 
