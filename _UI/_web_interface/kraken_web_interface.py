@@ -50,12 +50,17 @@ from variables import (
 from dash_devices.dependencies import Input, Output, State
 from kraken_web_config import generate_config_page_layout, write_config_file_dict
 from kraken_web_doa import generate_doa_page_layout, plot_doa
+<<<<<<< Updated upstream
 from kraken_web_spectrum import init_spectrum_fig, plot_spectrum
+=======
+from kraken_web_spectrum import init_spectrum_fig
+from krakenSDR_antennas_switcher import AntennasSwitcher
+>>>>>>> Stashed changes
 from krakenSDR_receiver import ReceiverRTLSDR
 
 # Import built-in modules
 from krakenSDR_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR, SignalProcessor, xi
-from utils import read_config_file_dict, set_clicked
+from utils import read_config_file_dict, set_clicked, fetch_dsp_data
 from waterfall import init_waterfall
 
 # Load settings file
@@ -478,7 +483,7 @@ spectrum_page_layout = html.Div(
 @app.callback_connect
 def func(client, connect):
     if connect and len(app.clients) == 1:
-        fetch_dsp_data()
+        fetch_dsp_data(app, webInterface_inst, spectrum_fig, waterfall_fig)
         fetch_gps_data()
         settings_change_watcher()
     elif not connect and len(app.clients) == 0:
@@ -487,136 +492,7 @@ def func(client, connect):
         webInterface_inst.settings_change_timer.cancel()
 
 
-def fetch_dsp_data():
-    daq_status_update_flag = 0
-    spectrum_update_flag = 0
-    doa_update_flag = 0
-    # freq_update            = 0 #no_update
-    #############################################
-    #      Fetch new data from back-end ques    #
-    #############################################
-    try:
-        # Fetch new data from the receiver module
-        que_data_packet = webInterface_inst.rx_data_que.get(False)
-        for data_entry in que_data_packet:
-            if data_entry[0] == "conn-ok":
-                webInterface_inst.daq_conn_status = 1
-                daq_status_update_flag = 1
-            elif data_entry[0] == "disconn-ok":
-                webInterface_inst.daq_conn_status = 0
-                daq_status_update_flag = 1
-            elif data_entry[0] == "config-ok":
-                webInterface_inst.daq_cfg_iface_status = 0
-                daq_status_update_flag = 1
-    except queue.Empty:
-        # Handle empty queue here
-        webInterface_inst.logger.debug("Receiver module que is empty")
-    else:
-        pass
-        # Handle task here and call q.task_done()
-    if webInterface_inst.daq_restart:  # Set by the restarting script
-        daq_status_update_flag = 1
-    try:
-        # Fetch new data from the signal processing module
-        que_data_packet = webInterface_inst.sp_data_que.get(False)
-        for data_entry in que_data_packet:
-            if data_entry[0] == "iq_header":
-                webInterface_inst.logger.debug("Iq header data fetched from signal processing que")
-                iq_header = data_entry[1]
-                # Unpack header
-                webInterface_inst.daq_frame_index = iq_header.cpi_index
-                if iq_header.frame_type == iq_header.FRAME_TYPE_DATA:
-                    webInterface_inst.daq_frame_type = "Data"
-                elif iq_header.frame_type == iq_header.FRAME_TYPE_DUMMY:
-                    webInterface_inst.daq_frame_type = "Dummy"
-                elif iq_header.frame_type == iq_header.FRAME_TYPE_CAL:
-                    webInterface_inst.daq_frame_type = "Calibration"
-                elif iq_header.frame_type == iq_header.FRAME_TYPE_TRIGW:
-                    webInterface_inst.daq_frame_type = "Trigger wait"
-                else:
-                    webInterface_inst.daq_frame_type = "Unknown"
 
-                webInterface_inst.daq_frame_sync = iq_header.check_sync_word()
-                webInterface_inst.daq_power_level = iq_header.adc_overdrive_flags
-                webInterface_inst.daq_sample_delay_sync = iq_header.delay_sync_flag
-                webInterface_inst.daq_iq_sync = iq_header.iq_sync_flag
-                webInterface_inst.daq_noise_source_state = iq_header.noise_source_state
-
-                # if webInterface_inst.daq_center_freq != iq_header.rf_center_freq/10**6:
-                #    freq_update = 1
-
-                webInterface_inst.daq_center_freq = iq_header.rf_center_freq / 10**6
-                webInterface_inst.daq_adc_fs = iq_header.adc_sampling_freq / 10**6
-                webInterface_inst.daq_fs = iq_header.sampling_freq / 10**6
-                webInterface_inst.daq_cpi = int(iq_header.cpi_length * 10**3 / iq_header.sampling_freq)
-                gain_list_str = ""
-
-                for m in range(iq_header.active_ant_chs):
-                    gain_list_str += str(iq_header.if_gains[m] / 10)
-                    gain_list_str += ", "
-
-                webInterface_inst.daq_if_gains = gain_list_str[:-2]
-                daq_status_update_flag = 1
-            elif data_entry[0] == "update_rate":
-                webInterface_inst.daq_update_rate = data_entry[1]
-            elif data_entry[0] == "latency":
-                webInterface_inst.daq_dsp_latency = data_entry[1] + webInterface_inst.daq_cpi
-            elif data_entry[0] == "max_amplitude":
-                webInterface_inst.max_amplitude = data_entry[1]
-            elif data_entry[0] == "avg_powers":
-                avg_powers_str = ""
-                for avg_power in data_entry[1]:
-                    avg_powers_str += "{:.1f}".format(avg_power)
-                    avg_powers_str += ", "
-                webInterface_inst.avg_powers = avg_powers_str[:-2]
-            elif data_entry[0] == "spectrum":
-                webInterface_inst.logger.debug("Spectrum data fetched from signal processing que")
-                spectrum_update_flag = 1
-                webInterface_inst.spectrum = data_entry[1]
-            elif data_entry[0] == "doa_thetas":
-                webInterface_inst.doa_thetas = data_entry[1]
-                doa_update_flag = 1
-                webInterface_inst.doa_results = []
-                webInterface_inst.doa_labels = []
-                webInterface_inst.doas = []
-                webInterface_inst.max_doas_list = []
-                webInterface_inst.doa_confidences = []
-                webInterface_inst.logger.debug("DoA estimation data fetched from signal processing que")
-            elif data_entry[0] == "DoA Result":
-                webInterface_inst.doa_results.append(data_entry[1])
-                webInterface_inst.doa_labels.append(data_entry[0])
-            elif data_entry[0] == "DoA Max":
-                webInterface_inst.doas.append(data_entry[1])
-            elif data_entry[0] == "DoA Confidence":
-                webInterface_inst.doa_confidences.append(data_entry[1])
-            elif data_entry[0] == "DoA Max List":
-                webInterface_inst.max_doas_list = data_entry[1].copy()
-            elif data_entry[0] == "DoA Squelch":
-                webInterface_inst.squelch_update = data_entry[1].copy()
-            else:
-                webInterface_inst.logger.warning("Unknown data entry: {:s}".format(data_entry[0]))
-    except queue.Empty:
-        # Handle empty queue here
-        webInterface_inst.logger.debug("Signal processing que is empty")
-    else:
-        pass
-        # Handle task here and call q.task_done()
-
-    if (
-        webInterface_inst.pathname == "/config"
-        or webInterface_inst.pathname == "/"
-        or webInterface_inst.pathname == "/init"
-    ) and daq_status_update_flag:
-        update_daq_status()
-    elif webInterface_inst.pathname == "/spectrum" and spectrum_update_flag:
-        plot_spectrum(app, webInterface_inst, spectrum_fig, waterfall_fig)
-    # or (webInterface_inst.pathname == "/doa" and
-    # webInterface_inst.reset_doa_graph_flag):
-    elif webInterface_inst.pathname == "/doa" and doa_update_flag:
-        plot_doa(app, webInterface_inst, doa_fig)
-
-    webInterface_inst.dsp_timer = Timer(0.01, fetch_dsp_data)
-    webInterface_inst.dsp_timer.start()
 
 
 def settings_change_watcher():
@@ -730,143 +606,6 @@ def fetch_gps_data():
 
     webInterface_inst.gps_timer = Timer(1, fetch_gps_data)
     webInterface_inst.gps_timer.start()
-
-
-def update_daq_status():
-    #############################################
-    #      Prepare UI component properties      #
-    #############################################
-
-    if webInterface_inst.daq_conn_status == 1:
-        if not webInterface_inst.daq_cfg_iface_status:
-            daq_conn_status_str = "Connected"
-            conn_status_style = {"color": "#7ccc63"}
-        else:  # Config interface is busy
-            daq_conn_status_str = "Reconfiguration.."
-            conn_status_style = {"color": "#f39c12"}
-    else:
-        daq_conn_status_str = "Disconnected"
-        conn_status_style = {"color": "#e74c3c"}
-
-    if webInterface_inst.daq_restart:
-        daq_conn_status_str = "Restarting.."
-        conn_status_style = {"color": "#f39c12"}
-
-    if webInterface_inst.daq_update_rate < 1:
-        daq_update_rate_str = "{:d} ms".format(round(webInterface_inst.daq_update_rate * 1000))
-    else:
-        daq_update_rate_str = "{:.2f} s".format(webInterface_inst.daq_update_rate)
-
-    daq_dsp_latency = "{:d} ms".format(webInterface_inst.daq_dsp_latency)
-    daq_frame_index_str = str(webInterface_inst.daq_frame_index)
-
-    daq_frame_type_str = webInterface_inst.daq_frame_type
-    if webInterface_inst.daq_frame_type == "Data":
-        frame_type_style = frame_type_style = {"color": "#7ccc63"}
-    elif webInterface_inst.daq_frame_type == "Dummy":
-        frame_type_style = frame_type_style = {"color": "white"}
-    elif webInterface_inst.daq_frame_type == "Calibration":
-        frame_type_style = frame_type_style = {"color": "#f39c12"}
-    elif webInterface_inst.daq_frame_type == "Trigger wait":
-        frame_type_style = frame_type_style = {"color": "#f39c12"}
-    else:
-        frame_type_style = frame_type_style = {"color": "#e74c3c"}
-
-    if webInterface_inst.daq_frame_sync:
-        daq_frame_sync_str = "LOSS"
-        frame_sync_style = {"color": "#e74c3c"}
-    else:
-        daq_frame_sync_str = "Ok"
-        frame_sync_style = {"color": "#7ccc63"}
-    if webInterface_inst.daq_sample_delay_sync:
-        daq_delay_sync_str = "Ok"
-        delay_sync_style = {"color": "#7ccc63"}
-    else:
-        daq_delay_sync_str = "LOSS"
-        delay_sync_style = {"color": "#e74c3c"}
-
-    if webInterface_inst.daq_iq_sync:
-        daq_iq_sync_str = "Ok"
-        iq_sync_style = {"color": "#7ccc63"}
-    else:
-        daq_iq_sync_str = "LOSS"
-        iq_sync_style = {"color": "#e74c3c"}
-
-    if webInterface_inst.daq_noise_source_state:
-        daq_noise_source_str = "Enabled"
-        noise_source_style = {"color": "#e74c3c"}
-    else:
-        daq_noise_source_str = "Disabled"
-        noise_source_style = {"color": "#7ccc63"}
-
-    if webInterface_inst.daq_power_level:
-        daq_power_level_str = "Overdrive"
-        daq_power_level_style = {"color": "#e74c3c"}
-    else:
-        daq_power_level_str = "OK"
-        daq_power_level_style = {"color": "#7ccc63"}
-
-    # webInterface_inst.module_signal_processor.usegps:
-    if webInterface_inst.module_signal_processor.gps_status == "Connected":
-        gps_en_str = "Connected"
-        gps_en_str_style = {"color": "#7ccc63"}
-    else:
-        gps_en_str = webInterface_inst.module_signal_processor.gps_status
-        gps_en_str_style = {"color": "#e74c3c"}
-
-    daq_rf_center_freq_str = str(webInterface_inst.daq_center_freq)
-    daq_sampling_freq_str = str(webInterface_inst.daq_fs)
-    bw = webInterface_inst.daq_fs / webInterface_inst.module_signal_processor.dsp_decimation
-    dsp_decimated_bw_str = "{0:.3f}".format(bw)
-    vfo_range_str = (
-        "{0:.3f}".format(webInterface_inst.daq_center_freq - bw / 2)
-        + " - "
-        + "{0:.3f}".format(webInterface_inst.daq_center_freq + bw / 2)
-    )
-    daq_cpi_str = str(webInterface_inst.daq_cpi)
-    daq_max_amp_str = "{:.1f}".format(webInterface_inst.max_amplitude)
-    daq_avg_powers_str = webInterface_inst.avg_powers
-
-    app.push_mods(
-        {
-            "body_daq_update_rate": {"children": daq_update_rate_str},
-            "body_daq_dsp_latency": {"children": daq_dsp_latency},
-            "body_daq_frame_index": {"children": daq_frame_index_str},
-            "body_daq_frame_sync": {"children": daq_frame_sync_str},
-            "body_daq_frame_type": {"children": daq_frame_type_str},
-            "body_daq_power_level": {"children": daq_power_level_str},
-            "body_daq_conn_status": {"children": daq_conn_status_str},
-            "body_daq_delay_sync": {"children": daq_delay_sync_str},
-            "body_daq_iq_sync": {"children": daq_iq_sync_str},
-            "body_daq_noise_source": {"children": daq_noise_source_str},
-            "body_daq_rf_center_freq": {"children": daq_rf_center_freq_str},
-            "body_daq_sampling_freq": {"children": daq_sampling_freq_str},
-            "body_dsp_decimated_bw": {"children": dsp_decimated_bw_str},
-            "body_vfo_range": {"children": vfo_range_str},
-            "body_daq_cpi": {"children": daq_cpi_str},
-            "body_daq_if_gain": {"children": webInterface_inst.daq_if_gains},
-            "body_max_amp": {"children": daq_max_amp_str},
-            "body_avg_powers": {"children": daq_avg_powers_str},
-            "gps_status": {"children": gps_en_str},
-        }
-    )
-
-    app.push_mods(
-        {
-            "body_daq_frame_sync": {"style": frame_sync_style},
-            "body_daq_frame_type": {"style": frame_type_style},
-            "body_daq_power_level": {"style": daq_power_level_style},
-            "body_daq_conn_status": {"style": conn_status_style},
-            "body_daq_delay_sync": {"style": delay_sync_style},
-            "body_daq_iq_sync": {"style": iq_sync_style},
-            "body_daq_noise_source": {"style": noise_source_style},
-            "gps_status": {"style": gps_en_str_style},
-        }
-    )
-
-    # Update local recording file size
-    recording_file_size = webInterface_inst.module_signal_processor.get_recording_filesize()
-    app.push_mods({"body_file_size": {"children": recording_file_size}})
 
 
 @app.callback_shared(
