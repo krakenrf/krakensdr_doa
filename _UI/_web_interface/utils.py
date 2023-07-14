@@ -2,21 +2,12 @@ import queue
 from threading import Timer
 from configparser import ConfigParser
 
-from variables import daq_config_filename
 from kraken_web_spectrum import plot_spectrum
 from kraken_web_doa import plot_doa
 
 from variables import (
-    DECORRELATION_OPTIONS,
-    trace_colors,
     doa_fig,
-    root_path,
-    fig_layout,
-    daq_config_filename,
-    current_path,
-    daq_subsystem_path,
-    daq_stop_filename,
-    daq_start_filename,
+    daq_config_filename
 )
 
 def read_config_file_dict(config_fname=daq_config_filename):
