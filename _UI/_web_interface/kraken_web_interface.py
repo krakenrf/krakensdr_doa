@@ -35,6 +35,7 @@ import numpy as np
 from variables import (
     DECORRELATION_OPTIONS,
     trace_colors,
+    doa_fig,
     root_path,
     fig_layout,
     daq_config_filename,
@@ -1051,7 +1052,6 @@ def display_page(pathname):
     #    self.needs_refresh = False
 
     global spectrum_fig
-    global doa_fig
     webInterface_inst.pathname = pathname
 
     if pathname == "/" or pathname == "/init":

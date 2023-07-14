@@ -197,7 +197,7 @@ def fetch_dsp_data(app, webInterface_inst, spectrum_fig, waterfall_fig):
     elif webInterface_inst.pathname == "/doa" and doa_update_flag:
         plot_doa(app, webInterface_inst, doa_fig)
 
-    webInterface_inst.dsp_timer = Timer(0.01, fetch_dsp_data)
+    webInterface_inst.dsp_timer = Timer(0.01, fetch_dsp_data, args=(app, webInterface_inst, spectrum_fig, waterfall_fig))
     webInterface_inst.dsp_timer.start()
 
 def update_daq_status(app, webInterface_inst):
