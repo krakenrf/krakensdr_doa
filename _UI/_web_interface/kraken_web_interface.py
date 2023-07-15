@@ -34,6 +34,7 @@ import numpy as np
 # isort: off
 from variables import (
     DECORRELATION_OPTIONS,
+    HZ_TO_MHZ,
     trace_colors,
     doa_fig,
     root_path,
@@ -593,6 +594,12 @@ def fetch_dsp_data():
                 webInterface_inst.max_doas_list = data_entry[1].copy()
             elif data_entry[0] == "DoA Squelch":
                 webInterface_inst.squelch_update = data_entry[1].copy()
+            elif data_entry[0] == "VFO-0 Frequency":
+                app.push_mods(
+                    {
+                        "vfo_0_freq": {"value": data_entry[1] * HZ_TO_MHZ},
+                    }
+                )
             else:
                 webInterface_inst.logger.warning("Unknown data entry: {:s}".format(data_entry[0]))
     except queue.Empty:

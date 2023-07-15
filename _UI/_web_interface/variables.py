@@ -78,3 +78,5 @@ DECORRELATION_OPTIONS = [
     {"label": "Spatial Smoothing", "value": "FBSS"},
     {"label": "F-B Toeplitz", "value": "FBTOEP"},
 ]
+
+HZ_TO_MHZ = 1.0e-6
