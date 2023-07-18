@@ -87,3 +87,5 @@ DOA_METHODS = [
     {"label": "MUSIC", "value": "MUSIC"},
     {"label": "ROOT-MUSIC", "value": "ROOT-MUSIC"},
 ]
+
+HZ_TO_MHZ = 1.0e-6

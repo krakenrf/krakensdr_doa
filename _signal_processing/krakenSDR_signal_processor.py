@@ -410,6 +410,7 @@ class SignalProcessor(threading.Thread):
                                 if self.vfo_mode == "Auto":  # Mode 1 is Auto Max Mode
                                     max_index = self.spectrum[1, :].argmax()
                                     freq = self.spectrum[0, max_index]
+                                    self.vfo_freq[i] = freq + self.module_receiver.daq_center_freq
 
                                 decimation_factor = max(
                                     (sampling_freq // self.vfo_bw[i]), 1
@@ -567,6 +568,8 @@ class SignalProcessor(threading.Thread):
                             que_data_packet.append(["DoA Confidence", conf_val])
                             que_data_packet.append(["DoA Squelch", update_list])
                             que_data_packet.append(["DoA Max List", self.doa_max_list])
+                            if self.vfo_mode == "Auto":
+                                que_data_packet.append(["VFO-0 Frequency", self.vfo_freq[0]])
 
                             def adjust_theta(theta):
                                 if self.doa_measure == "Compass":
