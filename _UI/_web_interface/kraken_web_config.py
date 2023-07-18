@@ -7,6 +7,7 @@ import ini_checker
 import tooltips
 from variables import (
     DECORRELATION_OPTIONS,
+    DOA_METHODS,
     calibration_tack_modes,
     daq_config_filename,
     daq_preconfigs_path,
@@ -936,13 +937,7 @@ def generate_config_page_layout(webInterface_inst):
                     html.Div("DoA Algorithm:", id="label_doa_method", className="field-label"),
                     dcc.Dropdown(
                         id="doa_method",
-                        options=[
-                            {"label": "Bartlett", "value": "Bartlett"},
-                            {"label": "Capon", "value": "Capon"},
-                            {"label": "MEM", "value": "MEM"},
-                            {"label": "TNA", "value": "TNA"},
-                            {"label": "MUSIC", "value": "MUSIC"},
-                        ],
+                        options=DOA_METHODS,
                         value=webInterface_inst.module_signal_processor.DOA_algorithm,
                         style={"display": "inline-block"},
                         className="field-body",
@@ -950,6 +945,7 @@ def generate_config_page_layout(webInterface_inst):
                 ],
                 className="field",
             ),
+            html.Div([html.Div("", id="uca_root_music_warning", className="field", style={"color": "#f39c12"})]),
             html.Div(
                 [
                     html.Div("Decorrelation:", id="label_decorrelation", className="field-label"),

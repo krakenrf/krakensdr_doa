@@ -45,7 +45,7 @@ import requests
 
 # Signal processing support
 import scipy
-from numba import njit
+from numba import float32, njit, vectorize
 from pyargus import directionEstimation as de
 from scipy import fft, signal
 from signal_utils import fm_demod, write_wav
@@ -66,9 +66,9 @@ except ModuleNotFoundError:
 
 MIN_SPEED_FOR_VALID_HEADING = 2.0  # m / s
 MIN_DURATION_FOR_VALID_HEADING = 3.0  # s
-DEFAULT_VFO_FIR_ORDER_FACTOR = int(3)
 SHARED_FOLDER_PATH = "_shared"
-
+DEFAULT_VFO_FIR_ORDER_FACTOR = int(2)
+DEFAULT_ROOT_MUSIC_STD_DEGREES = 1
 
 class SignalProcessor(threading.Thread):
     def __init__(self, data_que, module_receiver, logging_level=10):
@@ -117,7 +117,7 @@ class SignalProcessor(threading.Thread):
         self.DOA_theta = np.linspace(0, 359, 360)
         self.custom_array_x = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
         self.custom_array_y = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
-        self.array_offset = 0
+        self.array_offset = 0.0
         self.DOA_expected_num_of_sources = 1
         self.DOA_decorrelation_method = "Off"
 
@@ -410,6 +410,7 @@ class SignalProcessor(threading.Thread):
                                 if self.vfo_mode == "Auto":  # Mode 1 is Auto Max Mode
                                     max_index = self.spectrum[1, :].argmax()
                                     freq = self.spectrum[0, max_index]
+                                    self.vfo_freq[i] = freq + self.module_receiver.daq_center_freq
 
                                 decimation_factor = max(
                                     (sampling_freq // self.vfo_bw[i]), 1
@@ -525,11 +526,9 @@ class SignalProcessor(threading.Thread):
                                     # print("IQ DIFFS: " + str(iq_diffs))
                                     # print("IQ DIFFS ANGLE: " + str(np.rad2deg(np.angle(iq_diffs))))
                                     #
-                                    self.estimate_DOA(vfo_channel, self.vfo_freq[i])
+                                    theta_0 = self.estimate_DOA(vfo_channel, self.vfo_freq[i])
 
                                     doa_result_log = DOA_plot_util(self.DOA)
-
-                                    theta_0 = self.DOA_theta[np.argmax(doa_result_log)]
                                     conf_val = calculate_doa_papr(self.DOA)
 
                                     self.doa_max_list[i] = theta_0
@@ -569,6 +568,8 @@ class SignalProcessor(threading.Thread):
                             que_data_packet.append(["DoA Confidence", conf_val])
                             que_data_packet.append(["DoA Squelch", update_list])
                             que_data_packet.append(["DoA Max List", self.doa_max_list])
+                            if self.vfo_mode == "Auto":
+                                que_data_packet.append(["VFO-0 Frequency", self.vfo_freq[0]])
 
                             def adjust_theta(theta):
                                 if self.doa_measure == "Compass":
@@ -684,7 +685,7 @@ class SignalProcessor(threading.Thread):
                                 self.DOA_res_fd.truncate()
 
                         # Now create output for apps that only take one VFO
-                        DOA_str = f"{int(self.theta_0_list[0])}"
+                        DOA_str = f"{self.theta_0_list[0]}"
                         confidence_str = f"{np.max(self.confidence_list[0]):.2f}"
                         max_power_level_str = f"{np.maximum(-100, self.max_power_level_list[0]):.1f}"
                         doa_result_log = self.doa_result_log_list[0]
@@ -834,7 +835,9 @@ class SignalProcessor(threading.Thread):
         """
 
         antennas_alignment = self.DOA_ant_alignment
-        if self.DOA_decorrelation_method != "Off" and antennas_alignment == "UCA":
+        if antennas_alignment == "UCA" and (
+            self.DOA_algorithm == "ROOT-MUSIC" or self.DOA_decorrelation_method != "Off"
+        ):
             antennas_alignment = "VULA"
 
         if antennas_alignment == "VULA":
@@ -866,7 +869,8 @@ class SignalProcessor(threading.Thread):
         # then we are likely dealing with correlated sources and (or) low SNR signals
         number_of_correlated_sources = M - np.linalg.matrix_rank(R)
         self.number_of_correlated_sources.append(number_of_correlated_sources)
-        self.snrs.append(SNR(R))
+        snr = SNR(R)
+        self.snrs.append(snr)
 
         frq_ratio = vfo_freq / self.module_receiver.daq_center_freq
         inter_element_spacing = self.DOA_inter_elem_space * frq_ratio
@@ -906,6 +910,16 @@ class SignalProcessor(threading.Thread):
                 R, scanning_vectors, signal_dimension=self.DOA_expected_num_of_sources
             )  # de.DOA_MUSIC(R, scanning_vectors, signal_dimension = 1)
             self.DOA = DOA_MUSIC_res
+        if self.DOA_algorithm == "ROOT-MUSIC":
+            is_vula = True if antennas_alignment == "VULA" else False
+            doas = doa_root_music(
+                R, self.DOA_expected_num_of_sources, is_vula, inter_element_spacing, self.array_offset
+            )
+            self.DOA = normalized_gaussian(self.DOA_theta, doas, DEFAULT_ROOT_MUSIC_STD_DEGREES)
+            # since roots are sorted based on how close they are to the unit circle,
+            # which in turn is proportional to SNR,
+            # then the last element should correspond to the strongest signal
+            theta_0 = doas[-1]
 
         # ULA Array, choose bewteen the full omnidirecitonal 360 data, or forward/backward data only
         if self.DOA_ant_alignment == "ULA":
@@ -919,6 +933,11 @@ class SignalProcessor(threading.Thread):
                 min_val = min(self.DOA)
                 self.DOA[thetas[0:90].astype(int)] = min_val
                 self.DOA[thetas[270:360].astype(int)] = min_val
+
+        if self.DOA_algorithm != "ROOT-MUSIC":
+            theta_0 = self.DOA_theta[np.argmax(self.DOA)]
+
+        return theta_0
 
     # Enable GPS
     def enable_gps(self):
@@ -1296,7 +1315,7 @@ def DOA_MUSIC(R, scanning_vectors, signal_dimension, angle_resolution=1):
     # Generate noise subspace matrix
     noise_dimension = M - signal_dimension
 
-    E = np.zeros((M, noise_dimension), dtype=np.complex64)
+    E = np.empty((M, noise_dimension), dtype=np.complex64)
     for i in range(noise_dimension):
         E[:, i] = vi[:, i]
 
@@ -1311,6 +1330,73 @@ def DOA_MUSIC(R, scanning_vectors, signal_dimension, angle_resolution=1):
     return ADORT
 
 
+# transform angle defined in [-pi, pi) range to [0, 2pi) interval
+@vectorize([float32(float32)])
+def to_zero_to_2pi(angle):
+    if angle < np.float32(0.0):
+        angle *= np.float32(-1.0)
+    elif angle > np.float32(0.0):
+        angle = np.float32(2.0 * np.pi) - angle
+    else:
+        pass
+    return angle
+
+
+# transform angle defined in [-pi/2, pi/2) range to [0, pi) interval
+@vectorize([float32(float32)])
+def to_zero_to_pi(angle):
+    if angle < np.float32(0.0):
+        angle *= np.float32(-1.0)
+    elif angle > np.float32(0.0):
+        angle = np.float32(np.pi) - angle
+    else:
+        pass
+    return angle
+
+
+# Root-MUSIC DoA estimator for ULA and UCA
+# A. Barabell,
+# "Improving the resolution performance of eigenstructure-based direction-finding algorithms."
+# ICASSP'83. IEEE International Conference on Acoustics, Speech, and Signal Processing. Vol. 8. IEEE, 1983.
+# doi: 10.1109/ICASSP.1983.1172124
+@njit(fastmath=True, cache=True)
+def doa_root_music(r, signal_dimension, is_vula, inter_element_spacing, array_angle_offset):
+    M = r.shape[0]
+
+    # correlation matrix is Hermitian, so why not to use faster `eigh` solver
+    _, v_i = lin.eigh(r)
+
+    # Generate noise subspace matrix
+    # eigh provides eigenvalues sorted in ascending order out-of-the-box
+    v_i = v_i.astype(np.complex64)
+    e_noise = v_i[:, :-signal_dimension]
+
+    e_ct = e_noise @ e_noise.conj().T
+
+    p_coeff = np.empty(2 * M - 1, dtype=np.complex64)
+    for i in range(-M + 1, M):
+        p_coeff[i + (M - 1)] = np.trace(e_ct, i)
+
+    all_roots = np.roots(p_coeff)
+
+    candidate_roots_abs = np.abs(all_roots)
+    sorted_idx = candidate_roots_abs.argsort()[(M - 1 - signal_dimension) : (M - 1)]
+
+    valid_roots = all_roots[sorted_idx]
+    args = np.angle(valid_roots)
+
+    if is_vula:
+        doas = to_zero_to_2pi(args)
+        doas_deg = np.rad2deg(doas) + array_angle_offset
+        return doas_deg
+
+    doas = np.arcsin(args / (np.float32(inter_element_spacing * 2.0 * np.pi)))
+    doas = to_zero_to_pi(doas)
+    doas_deg = np.rad2deg(doas) + array_angle_offset
+
+    return doas_deg
+
+
 # Rather naive way to estimate SNR (in dBs) based on the assumption that largest and smallest eigenvalues
 # of the correlation matrix corresponds to the powers of the signal plus noise  and noise respectively.
 # Even though it won't estimate SNR beyond dominant signal, if it is already quite small,
@@ -1320,8 +1406,28 @@ def SNR(R: np.ndarray) -> float:
     ev.sort()
     noise_power = ev[0]
     signal_plus_noise_power = ev[-1]
-    snr = 10.0 * np.log10((signal_plus_noise_power - noise_power) / noise_power)
+    power_ratio = (signal_plus_noise_power - noise_power) / noise_power
+    snr = 10.0 * np.log10(power_ratio)
     return snr
+
+
+# Multimodal 360 degrees prediodic Gaussian function
+@njit(fastmath=True, cache=True)
+def normalized_gaussian(x, x0, sigma):
+    doa_spectrum = np.zeros_like(x)
+    for n in range(x0.size):
+        x0_n = x0[n]
+        x0_mirror = 180.0 + x0_n if x0_n < 180.0 else x0_n - 180.0
+        for i in range(x.size):
+            x_i = x[i]
+            x_wrapped = x_i
+            if x0_mirror > 180.0:
+                x_wrapped = x_i if x_i < x0_mirror else x0_mirror - x_i % x0_mirror
+            else:
+                x_wrapped = x_i if x_i >= x0_mirror else 2.0 * x0_mirror - x_i % x0_mirror
+            doa_spectrum[i] += np.exp(-0.5 * ((x_wrapped - x0_n) / sigma) ** 2)
+    doa_spectrum /= doa_spectrum.max()
+    return doa_spectrum
 
 
 def xi(uca_radius_m: float, frequency_Hz: float) -> Tuple[float, int]:
