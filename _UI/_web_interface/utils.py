@@ -8,7 +8,7 @@ import numpy as np
 from kraken_web_doa import plot_doa
 from kraken_web_spectrum import plot_spectrum
 from krakenSDR_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR
-from variables import daq_config_filename, doa_fig
+from variables import HZ_TO_MHZ, daq_config_filename, doa_fig
 
 
 def read_config_file_dict(config_fname=daq_config_filename):
@@ -177,6 +177,12 @@ def fetch_dsp_data(app, webInterface_inst, spectrum_fig, waterfall_fig):
                 webInterface_inst.max_doas_list = data_entry[1].copy()
             elif data_entry[0] == "DoA Squelch":
                 webInterface_inst.squelch_update = data_entry[1].copy()
+            elif data_entry[0] == "VFO-0 Frequency":
+                app.push_mods(
+                    {
+                        "vfo_0_freq": {"value": data_entry[1] * HZ_TO_MHZ},
+                    }
+                )
             else:
                 webInterface_inst.logger.warning("Unknown data entry: {:s}".format(data_entry[0]))
     except queue.Empty:
