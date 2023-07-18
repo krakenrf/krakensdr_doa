@@ -19,6 +19,7 @@ daq_config_filename = os.path.join(daq_subsystem_path, "daq_chain_config.ini")
 receiver_path = os.path.join(root_path, "_receiver")
 signal_processor_path = os.path.join(root_path, "_signal_processing")
 ui_path = os.path.join(root_path, "_UI")
+shared_path = os.path.join(root_path, "_share")
 
 sys.path.insert(0, receiver_path)
 sys.path.insert(0, signal_processor_path)

@@ -89,8 +89,9 @@ Manual install is only required if you are not using the premade images, and are
 1. Install the prerequisites
 
 ``` bash
-sudo apt update
-sudo apt install php-cli nodejs
+sudo apt -y update
+sudo apt -y install nodejs jq rustc cargo
+cargo install miniserve
 ```
 
 2. Install Heimdall DAQ
@@ -166,6 +167,18 @@ With remote operation you can run the DAQ on one machine on your network, and th
 After starting the script a web based server opens at port number `8080`, which then can be accessed by typing `KRAKEN_IP:8080/` in the address bar of any web browser. You can find the IP address of the KrakenSDR Pi4 wither via your routers WiFi management page, or by typing `ip addr` into the terminal. You can also use the hostname of the Pi4 in place of the IP address, but this only works on local networks, and not the internet, or mobile hotspot networks.
 
 ![image](https://user-images.githubusercontent.com/78108016/175924475-2ce0a189-e119-4442-8893-0d32404847e2.png)
+
+
+### Remote control
+
+The `settings.json` file that contains most of the DoA DSP settings is served via HTTP and can be accessed via `http://KRAKEN_IP:8081/settings.json`. Not only the client can download it on the remote machine, but also upload `settings.json` to the host that runs DSP software via, e.g.,
+
+```bash
+curl -F "path=@settings.json" http://KRAKEN_IP:8081/upload\?path\=/
+```
+
+The DSP software would then notice the settings changes and apply them automatically.
+
 
 ## For Contributors
 

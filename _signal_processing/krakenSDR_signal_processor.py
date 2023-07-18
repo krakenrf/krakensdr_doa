@@ -49,10 +49,10 @@ from numba import float32, njit, vectorize
 from pyargus import directionEstimation as de
 from scipy import fft, signal
 from signal_utils import fm_demod, write_wav
+from variables import root_path, shared_path
 
 # os.environ['OPENBLAS_NUM_THREADS'] = '4'
 # os.environ['NUMBA_CPU_NAME'] = 'cortex-a72'
-
 
 # Make gpsd an optional component
 try:
@@ -66,6 +66,7 @@ except ModuleNotFoundError:
 
 MIN_SPEED_FOR_VALID_HEADING = 2.0  # m / s
 MIN_DURATION_FOR_VALID_HEADING = 3.0  # s
+SHARED_FOLDER_PATH = "_shared"
 DEFAULT_VFO_FIR_ORDER_FACTOR = int(2)
 DEFAULT_ROOT_MUSIC_STD_DEGREES = 1
 
@@ -82,8 +83,8 @@ class SignalProcessor(threading.Thread):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging_level)
 
-        self.root_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-        doa_res_file_path = os.path.join(os.path.join(self.root_path, "_android_web", "DOA_value.html"))
+        self.root_path = root_path
+        doa_res_file_path = os.path.join(shared_path, "DOA_value.html")
         self.DOA_res_fd = open(doa_res_file_path, "w+")
 
         self.module_receiver = module_receiver

@@ -1,3 +1,9 @@
 ui.log
+server.log
 .idea/
 __pycache__/
+_android_web/
+_share/
+settings.json*
+*.patch
+*.bak
