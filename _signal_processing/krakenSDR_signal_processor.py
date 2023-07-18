@@ -70,6 +70,7 @@ SHARED_FOLDER_PATH = "_shared"
 DEFAULT_VFO_FIR_ORDER_FACTOR = int(2)
 DEFAULT_ROOT_MUSIC_STD_DEGREES = 1
 
+
 class SignalProcessor(threading.Thread):
     def __init__(self, data_que, module_receiver, logging_level=10):
         """
