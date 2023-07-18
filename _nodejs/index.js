@@ -11,7 +11,7 @@ const doaInterval = 250    // Interval the clients should get new doa data in ms
 
 //const remoteServer = 'testmap.krakenrf.com:2096'
 const remoteServer = 'map.krakenrf.com:2096'
-const settingsJsonPath = 'settings.json'
+const settingsJsonPath = '_share/settings.json'
 
 let lastDoaUpdate = Date.now()
 let settingsJson = {};
