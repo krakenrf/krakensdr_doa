@@ -57,8 +57,15 @@ from krakenSDR_receiver import ReceiverRTLSDR
 
 # Import built-in modules
 from krakenSDR_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR, SignalProcessor, xi
-from utils import read_config_file_dict, set_clicked, fetch_dsp_data, fetch_gps_data, settings_change_watcher
+from utils import (
+    fetch_dsp_data,
+    fetch_gps_data,
+    read_config_file_dict,
+    set_clicked,
+    settings_change_watcher,
+)
 from waterfall import init_waterfall
+
 
 class webInterface:
     def __init__(self):
@@ -478,6 +485,7 @@ def func(client, connect):
         webInterface_inst.dsp_timer.cancel()
         webInterface_inst.gps_timer.cancel()
         webInterface_inst.settings_change_timer.cancel()
+
 
 @app.callback_shared(
     # Output(component_id="placeholder_update_freq", component_property="children"),

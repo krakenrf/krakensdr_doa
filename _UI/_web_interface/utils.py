@@ -1,19 +1,15 @@
-import queue
-import os
 import json
-import numpy as np
-
-from threading import Timer
+import os
+import queue
 from configparser import ConfigParser
+from threading import Timer
 
-from krakenSDR_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR
-from kraken_web_spectrum import plot_spectrum
+import numpy as np
 from kraken_web_doa import plot_doa
+from kraken_web_spectrum import plot_spectrum
+from krakenSDR_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR
+from variables import daq_config_filename, doa_fig
 
-from variables import (
-    doa_fig,
-    daq_config_filename
-)
 
 def read_config_file_dict(config_fname=daq_config_filename):
     parser = ConfigParser()
@@ -73,6 +69,7 @@ def set_clicked(webInterface_inst, clickData):
         else:
             idx = webInterface_inst.selected_vfo
         webInterface_inst.module_signal_processor.vfo_freq[idx] = int(clickData["points"][0]["x"])
+
 
 def fetch_dsp_data(app, webInterface_inst, spectrum_fig, waterfall_fig):
     daq_status_update_flag = 0
@@ -202,8 +199,11 @@ def fetch_dsp_data(app, webInterface_inst, spectrum_fig, waterfall_fig):
     elif webInterface_inst.pathname == "/doa" and doa_update_flag:
         plot_doa(app, webInterface_inst, doa_fig)
 
-    webInterface_inst.dsp_timer = Timer(0.01, fetch_dsp_data, args=(app, webInterface_inst, spectrum_fig, waterfall_fig))
+    webInterface_inst.dsp_timer = Timer(
+        0.01, fetch_dsp_data, args=(app, webInterface_inst, spectrum_fig, waterfall_fig)
+    )
     webInterface_inst.dsp_timer.start()
+
 
 def fetch_gps_data(app, webInterface_inst):
     app.push_mods(
@@ -216,6 +216,7 @@ def fetch_gps_data(app, webInterface_inst):
 
     webInterface_inst.gps_timer = Timer(1, fetch_gps_data, args=(app, webInterface_inst))
     webInterface_inst.gps_timer.start()
+
 
 def settings_change_watcher(webInterface_inst, settings_file_path):
     last_changed_time = os.stat(settings_file_path).st_mtime
@@ -313,8 +314,11 @@ def settings_change_watcher(webInterface_inst, settings_file_path):
 
     webInterface_inst.last_changed_time_previous = last_changed_time
 
-    webInterface_inst.settings_change_timer = Timer(1, settings_change_watcher, args=(webInterface_inst, settings_file_path))
+    webInterface_inst.settings_change_timer = Timer(
+        1, settings_change_watcher, args=(webInterface_inst, settings_file_path)
+    )
     webInterface_inst.settings_change_timer.start()
+
 
 def update_daq_status(app, webInterface_inst):
     #############################################
