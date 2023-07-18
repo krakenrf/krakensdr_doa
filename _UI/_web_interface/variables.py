@@ -79,4 +79,13 @@ DECORRELATION_OPTIONS = [
     {"label": "F-B Toeplitz", "value": "FBTOEP"},
 ]
 
+DOA_METHODS = [
+    {"label": "Bartlett", "value": "Bartlett"},
+    {"label": "Capon", "value": "Capon"},
+    {"label": "MEM", "value": "MEM"},
+    {"label": "TNA", "value": "TNA"},
+    {"label": "MUSIC", "value": "MUSIC"},
+    {"label": "ROOT-MUSIC", "value": "ROOT-MUSIC"},
+]
+
 HZ_TO_MHZ = 1.0e-6

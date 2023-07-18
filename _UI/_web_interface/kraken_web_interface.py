@@ -35,6 +35,7 @@ import numpy as np
 from variables import (
     DECORRELATION_OPTIONS,
     HZ_TO_MHZ,
+    DOA_METHODS,
     trace_colors,
     doa_fig,
     root_path,
@@ -1301,6 +1302,37 @@ def toggle_custom_array_fields(toggle_value):
         return [{"display": "block"}, {"display": "block"}, {"display": "none"}]
 
 
+# Fallback to MUSIC if "Custom" arrangement is selected for ROOT-MUSIC
+@app.callback(
+    [Output("doa_method", "value")],
+    [Input("radio_ant_arrangement", "value")],
+)
+def fallback_custom_array_to_music(toggle_value):
+    if toggle_value == "Custom" and webInterface_inst.module_signal_processor.DOA_algorithm == "ROOT-MUSIC":
+        return ["MUSIC"]
+    else:
+        return [webInterface_inst.module_signal_processor.DOA_algorithm]
+
+
+# Disable ROOT-MUSIC if "Custom" arrangement is selected
+@app.callback(
+    [Output("doa_method", "options")],
+    [Input("radio_ant_arrangement", "value")],
+)
+def disable_root_music_for_custom_array(toggle_value):
+    if toggle_value == "Custom":
+        return [
+            [
+                dict(doa_method, disabled=True)
+                if doa_method["value"] == "ROOT-MUSIC"
+                else dict(doa_method, disabled=False)
+                for doa_method in DOA_METHODS
+            ]
+        ]
+    else:
+        return [[dict(doa_method, disabled=False) for doa_method in DOA_METHODS]]
+
+
 @app.callback(
     [
         Output(component_id="body_ant_spacing_wavelength", component_property="children"),
@@ -1309,6 +1341,7 @@ def toggle_custom_array_fields(toggle_value):
         Output(component_id="doa_decorrelation_method", component_property="options"),
         Output(component_id="doa_decorrelation_method", component_property="disabled"),
         Output(component_id="uca_decorrelation_warning", component_property="children"),
+        Output(component_id="uca_root_music_warning", component_property="children"),
         Output(component_id="expected_num_of_sources", component_property="options"),
         Output(component_id="expected_num_of_sources", component_property="disabled"),
     ],
@@ -1413,8 +1446,8 @@ def update_dsp_params(
     webInterface_inst.module_signal_processor.DOA_algorithm = doa_method
 
     is_odd_number_of_channels = webInterface_inst.module_signal_processor.channel_number % 2 != 0
-    is_decorrelation_applicable = ant_arrangement != "Custom" and is_odd_number_of_channels
     # UCA->VULA transformation works best if we have odd number of channels
+    is_decorrelation_applicable = ant_arrangement != "Custom" and is_odd_number_of_channels
     webInterface_inst.module_signal_processor.DOA_decorrelation_method = (
         doa_decorrelation_method if is_decorrelation_applicable else DECORRELATION_OPTIONS[0]["value"]
     )
@@ -1440,6 +1473,13 @@ def update_dsp_params(
     else:
         uca_decorrelation_warning = ""
 
+    if ant_arrangement == "UCA" and doa_method == "ROOT-MUSIC":
+        uca_root_music_warning = "WARNING: Using ROOT-MUSIC method with UCA array is still experimental as it might produce inconsistent results."
+    elif ant_arrangement == "Custom" and doa_method == "ROOT-MUSIC":
+        uca_root_music_warning = "WARNING: ROOT-MUSIC cannot be used with 'Custom' antenna arrangement."
+    else:
+        uca_root_music_warning = ""
+
     webInterface_inst.module_signal_processor.DOA_ant_alignment = ant_arrangement
     webInterface_inst._doa_fig_type = doa_fig_type
     webInterface_inst.module_signal_processor.doa_measure = doa_fig_type
@@ -1462,7 +1502,7 @@ def update_dsp_params(
             }
             for c in range(1, webInterface_inst.module_signal_processor.channel_number)
         ]
-        if doa_method == "MUSIC"
+        if "MUSIC" in doa_method
         else [
             {
                 "label": "N/A",
@@ -1472,7 +1512,7 @@ def update_dsp_params(
         ]
     )
 
-    num_of_sources_state = False if doa_method == "MUSIC" else True
+    num_of_sources_state = False if "MUSIC" in doa_method else True
 
     return [
         str(ant_spacing_wavelength),
@@ -1481,6 +1521,7 @@ def update_dsp_params(
         doa_decorrelation_method_options,
         doa_decorrelation_method_state,
         uca_decorrelation_warning,
+        uca_root_music_warning,
         num_of_sources,
         num_of_sources_state,
     ]
