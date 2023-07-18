@@ -3,6 +3,7 @@ require('log-timestamp');
 const express = require('express')
 const ws = require('ws');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express()
 const port = 8042
@@ -11,10 +12,11 @@ const doaInterval = 250    // Interval the clients should get new doa data in ms
 
 //const remoteServer = 'testmap.krakenrf.com:2096'
 const remoteServer = 'map.krakenrf.com:2096'
-const settingsJsonPath = 'settings.json'
+const settingsJsonPath = '_share/settings.json'
 
 let lastDoaUpdate = Date.now()
 let settingsJson = {};
+let settingsChanged = false;
 let inRemoteMode = false;
 let wsClient;
 let wsServer;
@@ -22,8 +24,24 @@ let wsPingInterval;
 
 //load doa settings file
 function loadSettingsJson (){
-  let rawdata = fs.readFileSync(settingsJsonPath);
-  settingsJson = JSON.parse(rawdata);
+  // check if Settings changed via Hash
+  if (settingsJson.center_freq) {
+    const oldHash = crypto.createHash('md5').update(JSON.stringify(settingsJson)).digest("hex")
+    // load ne Data and ten check if there are changes
+    let rawdata = fs.readFileSync(settingsJsonPath);
+    let newSettings = JSON.parse(rawdata);
+    const newHash = crypto.createHash('md5').update(JSON.stringify(newSettings)).digest("hex")
+    if (newHash != oldHash) {
+      console.log("hashes not the same")
+      settingsChanged = true;
+    }
+    settingsJson = newSettings;
+  } else {
+    console.log("Settings are empty, so initial load")
+    settingsChanged = true;
+    let rawdata = fs.readFileSync(settingsJsonPath);
+    settingsJson = JSON.parse(rawdata)
+  }
   /*
   console.log("Loaded Settings from json")
   console.log("Freq: "+settingsJson.center_freq);
@@ -36,18 +54,24 @@ function loadSettingsJson (){
 }
 loadSettingsJson();
 
+// send Keep allive ping and if needed send Settings
 function websocketPing (){
-  //console.log("Sending keepalive ping");
   loadSettingsJson()
-  wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}", "type": "ping"}`) 
+  //check if Settings Changed
+  if (settingsChanged) {
+    console.log("send Settings")
+    wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}", "type": "settings", "data": ${JSON.stringify(settingsJson)}}`)
+    settingsChanged = false
+  } else {
+    console.log("send Ping")
+    wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}", "type": "ping"}`)
+  }
 }
 
 function websocketConnect (){
   wsClient = new ws("wss://"+remoteServer);
 
   wsClient.onopen = () => {
-    wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}"}`)
-
     // start ping interval
     wsPingInterval = setInterval(websocketPing, 10000);
   }
@@ -68,8 +92,10 @@ function websocketConnect (){
       console.log("Got new Settings: "+jsn);
       // read settings fresh from file and set new Settings
       loadSettingsJson();
-      settingsJson.center_freq = Number.parseFloat(jsn.freq);      
-      fs.writeFileSync(settingsJsonPath, JSON.stringify(settingsJson, null, 2));
+      //settingsJson.center_freq = Number.parseFloat(jsn.freq);      
+      //fs.writeFileSync(settingsJsonPath, JSON.stringify(settingsJson, null, 2));
+      var newSettings = JSON.parse(jsn.settings);
+      fs.writeFileSync(settingsJsonPath, JSON.stringify(newSettings, null, 2));
     } else {
       console.log(jsn);
     }

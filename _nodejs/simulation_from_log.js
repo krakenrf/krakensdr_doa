@@ -50,8 +50,11 @@ try {
 
 setInterval(() => {
 if (logIndex <= logArray.length) {
-    console.log("Sending Data as kraken: "+logArray[logIndex])
-    axios.post('http://localhost:8042/doapost', logArray[logIndex])
+    var logEntry = logArray[logIndex];
+    logEntry.tStamp = Date.now();
+
+    console.log("Sending Data as kraken: "+logEntry)
+    axios.post('http://localhost:8042/doapost', logEntry)
         .then(function (response) {
             //console.log(response);
         })
