@@ -321,7 +321,7 @@ def settings_change_watcher(webInterface_inst, settings_file_path):
     webInterface_inst.last_changed_time_previous = last_changed_time
 
     webInterface_inst.settings_change_timer = Timer(
-        1, settings_change_watcher, args=(webInterface_inst, settings_file_path)
+        0.1, settings_change_watcher, args=(webInterface_inst, settings_file_path)
     )
     webInterface_inst.settings_change_timer.start()
 
