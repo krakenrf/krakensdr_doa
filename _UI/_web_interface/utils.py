@@ -8,7 +8,12 @@ import numpy as np
 from kraken_web_doa import plot_doa
 from kraken_web_spectrum import plot_spectrum
 from krakenSDR_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR
-from variables import HZ_TO_MHZ, daq_config_filename, doa_fig
+from variables import (
+    DEFAULT_MAPPING_SERVER_ENDPOINT,
+    HZ_TO_MHZ,
+    daq_config_filename,
+    doa_fig,
+)
 
 
 def read_config_file_dict(config_fname=daq_config_filename):
@@ -270,6 +275,7 @@ def settings_change_watcher(webInterface_inst, settings_file_path):
         webInterface_inst.module_signal_processor.longitude = dsp_settings.get("longitude", 0.0)
         webInterface_inst.module_signal_processor.heading = dsp_settings.get("heading", 0.0)
         webInterface_inst.module_signal_processor.krakenpro_key = dsp_settings.get("krakenpro_key", 0.0)
+        webInterface_inst.mapping_server_url = dsp_settings.get("mapping_server_url", DEFAULT_MAPPING_SERVER_ENDPOINT)
         webInterface_inst.module_signal_processor.RDF_mapper_server = dsp_settings.get(
             "rdf_mapper_server", "http://RDF_MAPPER_SERVER.com/save.php"
         )

@@ -11,9 +11,10 @@ const wsport = 8021
 const doaInterval = 250    // Interval the clients should get new doa data in ms
 
 //const remoteServer = 'testmap.krakenrf.com:2096'
-const remoteServer = 'map.krakenrf.com:2096'
+const remoteServerDefault = 'wss://map.krakenrf.com:2096'
 const settingsJsonPath = '_share/settings.json'
 
+let remoteServer = ''
 let lastDoaUpdate = Date.now()
 let settingsJson = {};
 let settingsChanged = false;
@@ -41,6 +42,7 @@ function loadSettingsJson (){
     settingsChanged = true;
     let rawdata = fs.readFileSync(settingsJsonPath);
     settingsJson = JSON.parse(rawdata)
+    remoteServer = settingsJson.mapping_server_url || remoteServerDefault
   }
   /*
   console.log("Loaded Settings from json")
@@ -69,7 +71,7 @@ function websocketPing (){
 }
 
 function websocketConnect (){
-  wsClient = new ws("wss://"+remoteServer);
+  wsClient = new ws(remoteServer);
 
   wsClient.onopen = () => {
     // start ping interval
