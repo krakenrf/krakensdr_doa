@@ -1446,7 +1446,7 @@ def generate_config_page_layout(webInterface_inst):
                     ),
                 ],
                 id="beta_features_container",
-                style={"display": "none"},
+                style={"display": "block"} if webInterface_inst.en_beta_features else {"display": "none"},
             ),
             html.Div(
                 [
@@ -1647,7 +1647,7 @@ def generate_config_page_layout(webInterface_inst):
                         ),
                     ],
                     id="beta_features_container " + str(i),
-                    style={"display": "none"},
+                    style={"display": "block"} if webInterface_inst.en_beta_features else {"display": "none"},
                 ),
             ],
             id="vfo" + str(i),
