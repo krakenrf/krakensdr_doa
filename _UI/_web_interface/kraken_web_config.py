@@ -858,7 +858,7 @@ def generate_config_page_layout(webInterface_inst):
                         ],
                         value=webInterface_inst.module_signal_processor.DOA_ant_alignment,
                         className="field-body",
-                        labelStyle={"display": "inline-block", "vertical-align": "middle"},
+                        labelStyle={"display": "inline-block", "verticalAlign": "middle"},
                         id="radio_ant_arrangement",
                     ),
                 ],
