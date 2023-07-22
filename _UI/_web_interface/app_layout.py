@@ -11,8 +11,7 @@ from maindash import app, spectrum_fig, waterfall_fig, webInterface_inst
 
 # isort: on
 from dash_devices.dependencies import Input, Output, State
-from kraken_web_config import generate_config_page_layout, write_config_file_dict
-from kraken_web_doa import generate_doa_page_layout, plot_doa
+from kraken_web_config import write_config_file_dict
 from kraken_web_spectrum import init_spectrum_fig
 from krakenSDR_receiver import ReceiverRTLSDR
 from krakenSDR_signal_processor import SignalProcessor, xi
@@ -31,32 +30,11 @@ from variables import (
     daq_start_filename,
     daq_stop_filename,
     daq_subsystem_path,
-    doa_fig,
     dsp_settings,
     fig_layout,
     root_path,
     settings_file_path,
     trace_colors,
-)
-
-spectrum_page_layout = html.Div(
-    [
-        html.Div(
-            [
-                dcc.Graph(
-                    id="spectrum-graph",
-                    style={"width": "100%", "height": "45%"},
-                    figure=spectrum_fig,  # fig_dummy #spectrum_fig #fig_dummy
-                ),
-                dcc.Graph(
-                    id="waterfall-graph",
-                    style={"width": "100%", "height": "65%"},
-                    figure=waterfall_fig,  # waterfall fig remains unchanged always due to slow speed to update entire graph #fig_dummy #spectrum_fig #fig_dummy
-                ),
-            ],
-            style={"width": "100%", "height": "80vh"},
-        ),
-    ]
 )
 
 
@@ -114,54 +92,6 @@ def func(client, connect):
 
 
 @app.callback_shared(
-    # Output(component_id="placeholder_update_freq", component_property="children"),
-    # None,
-    #    Output(component_id="body_ant_spacing_wavelength",  component_property='children'),
-    None,
-    [Input(component_id="btn-update_rx_param", component_property="n_clicks")],
-    [
-        State(component_id="daq_center_freq", component_property="value"),
-        State(component_id="daq_rx_gain", component_property="value"),
-    ],
-)
-def update_daq_params(input_value, f0, gain):
-    if webInterface_inst.module_signal_processor.run_processing:
-        webInterface_inst.daq_center_freq = f0
-        webInterface_inst.config_daq_rf(f0, gain)
-
-        for i in range(webInterface_inst.module_signal_processor.max_vfos):
-            half_band_width = (webInterface_inst.module_signal_processor.vfo_bw[i] / 10**6) / 2
-            min_freq = webInterface_inst.daq_center_freq - webInterface_inst.daq_fs / 2 + half_band_width
-            max_freq = webInterface_inst.daq_center_freq + webInterface_inst.daq_fs / 2 - half_band_width
-            if not (min_freq < (webInterface_inst.module_signal_processor.vfo_freq[i] / 10**6) < max_freq):
-                webInterface_inst.module_signal_processor.vfo_freq[i] = f0
-                app.push_mods({f"vfo_{i}_freq": {"value": f0}})
-
-        wavelength = 300 / webInterface_inst.daq_center_freq
-        # webInterface_inst.module_signal_processor.DOA_inter_elem_space = webInterface_inst.ant_spacing_meters / wavelength
-
-        if webInterface_inst.module_signal_processor.DOA_ant_alignment == "UCA":
-            # Convert RADIUS to INTERELEMENT SPACING
-            inter_elem_spacing = (
-                np.sqrt(2)
-                * webInterface_inst.ant_spacing_meters
-                * np.sqrt(1 - np.cos(np.deg2rad(360 / webInterface_inst.module_signal_processor.channel_number)))
-            )
-            webInterface_inst.module_signal_processor.DOA_inter_elem_space = inter_elem_spacing / wavelength
-        else:
-            webInterface_inst.module_signal_processor.DOA_inter_elem_space = (
-                webInterface_inst.ant_spacing_meters / wavelength
-            )
-
-        ant_spacing_wavelength = round(webInterface_inst.module_signal_processor.DOA_inter_elem_space, 3)
-        app.push_mods(
-            {
-                "body_ant_spacing_wavelength": {"children": str(ant_spacing_wavelength)},
-            }
-        )
-
-
-@app.callback_shared(
     None,
     [
         Input(component_id="filename_input", component_property="value"),
@@ -195,8 +125,6 @@ def send_recorded_file(n_clicks):
 
 
 # Set DOA Output Format
-
-
 @app.callback_shared(None, [Input(component_id="doa_format_type", component_property="value")])
 def set_doa_format(doa_format):
     webInterface_inst.module_signal_processor.DOA_data_format = doa_format
@@ -410,41 +338,6 @@ def update_vfo_params(*args):
             webInterface_inst.module_signal_processor.vfo_squelch[i] = int(kwargs_dict["vfo_" + str(i) + "_squelch"])
             webInterface_inst.module_signal_processor.vfo_demod[i] = kwargs_dict[f"vfo_{i}_demod"]
             webInterface_inst.module_signal_processor.vfo_iq[i] = kwargs_dict[f"vfo_{i}_iq"]
-
-
-@app.callback(
-    [
-        Output("page-content", "children"),
-        Output("header_config", "className"),
-        Output("header_spectrum", "className"),
-        Output("header_doa", "className"),
-    ],
-    [Input("url", "pathname")],
-)
-def display_page(pathname):
-    # CHECK CONTEXT, was this called by url or timer?
-    print("display_page", pathname)
-    # if self.needs_refresh:
-    #    self.needs_refresh = False
-    global spectrum_fig
-    webInterface_inst.pathname = pathname
-
-    if pathname == "/" or pathname == "/init":
-        webInterface_inst.module_signal_processor.en_spectrum = False
-        return [generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"]
-    elif pathname == "/config":
-        webInterface_inst.module_signal_processor.en_spectrum = False
-        return [generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"]
-    elif pathname == "/spectrum":
-        webInterface_inst.module_signal_processor.en_spectrum = True
-        webInterface_inst.reset_spectrum_graph_flag = True
-        return [spectrum_page_layout, "header_inactive", "header_active", "header_inactive"]
-    elif pathname == "/doa":
-        webInterface_inst.module_signal_processor.en_spectrum = False
-        webInterface_inst.reset_doa_graph_flag = True
-        plot_doa(app, webInterface_inst, doa_fig)
-        return [generate_doa_page_layout(webInterface_inst), "header_inactive", "header_inactive", "header_active"]
-    return Output("dummy_output", "children", "")
 
 
 @app.callback_shared(

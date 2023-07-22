@@ -21,8 +21,12 @@
 from app_layout import make_layout
 from maindash import app
 
+app.layout = make_layout()
+
+# It is workaround for splitting callbacks in separate files (run callbacks after layout)
+from callbacks import display_page, update_daq_params  # noqa: F401
+
 if __name__ == "__main__":
-    app.layout = make_layout()
     # Debug mode does not work when the data interface is set to shared-memory
     # "shmem"!
     app.run_server(debug=False, host="0.0.0.0", port=8080)
