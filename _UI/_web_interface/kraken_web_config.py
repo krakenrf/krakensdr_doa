@@ -15,7 +15,7 @@ from variables import (
     valid_fir_windows,
     valid_sample_rates,
 )
-from views import tooltips
+from views import daq_status_card, start_stop_card, system_control_card, tooltips
 
 
 def get_preconfigs(config_files_path):
@@ -118,30 +118,6 @@ def generate_config_page_layout(webInterface_inst):
     if daq_cfg_dict["cal_track_mode"] == 0:  # If set to no tracking
         cfg_recal_interval = 1
 
-    # -----------------------------
-    #   Start/Stop Configuration Card
-    # -----------------------------
-    start_stop_card = html.Div(
-        [
-            html.Div(
-                [
-                    html.Div(
-                        [html.Button("Start Processing", id="btn-start_proc", className="btn_start", n_clicks=0)],
-                        className="ctr_toolbar_item",
-                    ),
-                    html.Div(
-                        [html.Button("Stop Processing", id="btn-stop_proc", className="btn_stop", n_clicks=0)],
-                        className="ctr_toolbar_item",
-                    ),
-                    html.Div(
-                        [html.Button("Save Configuration", id="btn-save_cfg", className="btn_save_cfg", n_clicks=0)],
-                        className="ctr_toolbar_item",
-                    ),
-                ],
-                className="ctr_toolbar",
-            ),
-        ]
-    )
     # -----------------------------
     #   DAQ Configuration Card
     # -----------------------------
@@ -707,138 +683,6 @@ def generate_config_page_layout(webInterface_inst):
     ]
 
     daq_config_card = html.Div(daq_config_card_list, className="card")
-    # -----------------------------
-    #       DAQ Status Card
-    # -----------------------------
-    daq_status_card = html.Div(
-        [
-            html.H2("DAQ Subsystem Status", id="init_title_s"),
-            html.Div(
-                [
-                    html.Div("Update Rate:", id="label_daq_update_rate", className="field-label"),
-                    html.Div("- ms", id="body_daq_update_rate", className="field-body"),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("Latency:", id="label_daq_dsp_latency", className="field-label"),
-                    html.Div("- ms", id="body_daq_dsp_latency", className="field-body"),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("Frame Index:", id="label_daq_frame_index", className="field-label"),
-                    html.Div("-", id="body_daq_frame_index", className="field-body"),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("Frame Type:", id="label_daq_frame_type", className="field-label"),
-                    html.Div("-", id="body_daq_frame_type", className="field-body"),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("Frame Sync:", id="label_daq_frame_sync", className="field-label"),
-                    html.Div("LOSS", id="body_daq_frame_sync", className="field-body", style={"color": "#e74c3c"}),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("Power Level:", id="label_daq_power_level", className="field-label"),
-                    html.Div("-", id="body_daq_power_level", className="field-body"),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("Connection Status:", id="label_daq_conn_status", className="field-label"),
-                    html.Div(
-                        "Disconnected", id="body_daq_conn_status", className="field-body", style={"color": "#e74c3c"}
-                    ),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("Sample Delay Sync:", id="label_daq_delay_sync", className="field-label"),
-                    html.Div("LOSS", id="body_daq_delay_sync", className="field-body", style={"color": "#e74c3c"}),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("IQ Sync:", id="label_daq_iq_sync", className="field-label"),
-                    html.Div("LOSS", id="body_daq_iq_sync", className="field-body", style={"color": "#e74c3c"}),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("Noise Source State:", id="label_daq_noise_source", className="field-label"),
-                    html.Div(
-                        "Disabled", id="body_daq_noise_source", className="field-body", style={"color": "#7ccc63"}
-                    ),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("Center Frequecy [MHz]:", id="label_daq_rf_center_freq", className="field-label"),
-                    html.Div("- MHz", id="body_daq_rf_center_freq", className="field-body"),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("Sampling Frequency [MHz]:", id="label_daq_sampling_freq", className="field-label"),
-                    html.Div("- MHz", id="body_daq_sampling_freq", className="field-body"),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("DSP Decimated BW [MHz]:", id="label_dsp_decimated_bw", className="field-label"),
-                    html.Div("- MHz", id="body_dsp_decimated_bw", className="field-body"),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("VFO Range [MHz]:", id="label_vfo_range", className="field-label"),
-                    html.Div("- MHz", id="body_vfo_range", className="field-body"),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("Data Block Length [ms]:", id="label_daq_cpi", className="field-label"),
-                    html.Div("- ms", id="body_daq_cpi", className="field-body"),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("RF Gains [dB]:", id="label_daq_if_gain", className="field-label"),
-                    html.Div("[,] dB", id="body_daq_if_gain", className="field-body"),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div("VFO-0 Power [dB]:", id="label_max_amp", className="field-label"),
-                    html.Div("-", id="body_max_amp", className="field-body"),
-                ],
-                className="field",
-            ),
-        ],
-        className="card",
-    )
 
     # -----------------------------
     #    DSP Confugartion Card
@@ -1657,80 +1501,16 @@ def generate_config_page_layout(webInterface_inst):
             else {"display": "none"},
         )
 
-    system_control_card = html.Div(
-        [
-            html.Div(
-                [
-                    html.Div("Open System Control", id="label_en_system_control", className="field-label"),
-                    dcc.Checklist(
-                        options=option,
-                        id="en_system_control",
-                        className="field-body",
-                        value=webInterface_inst.en_system_control,
-                    ),
-                ],
-                className="field",
-            ),
-            html.Div(
-                [
-                    html.Div(
-                        [html.Button("Restart Software", id="btn-restart_sw", className="btn-restart_sw", n_clicks=0)],
-                        className="field",
-                    ),
-                    html.Div(
-                        [
-                            html.Button(
-                                "Restart System", id="btn-restart_system", className="btn-restart_system", n_clicks=0
-                            )
-                        ],
-                        className="field",
-                    ),
-                    html.Div(
-                        [
-                            html.Button(
-                                "Shutdown System", id="btn-shtudown_system", className="btn-shtudown_system", n_clicks=0
-                            )
-                        ],
-                        className="field",
-                    ),
-                    html.Div(
-                        [
-                            html.Button(
-                                "Clear Cache and Restart", id="btn-clear_cache", className="btn-clear_cache", n_clicks=0
-                            )
-                        ],
-                        className="field",
-                    ),
-                    html.Div(
-                        [
-                            html.Div("Enable Beta Features", id="label_en_beta_features", className="field-label"),
-                            dcc.Checklist(
-                                options=option,
-                                id="en_beta_features",
-                                className="field-body",
-                                value=webInterface_inst.en_beta_features,
-                            ),
-                        ],
-                        className="field",
-                    ),
-                    html.Div("Version 1.6.1"),
-                ],
-                id="system_control_container",
-            ),
-        ],
-        className="card",
-    )
-
     config_page_component_list = [
-        start_stop_card,
-        daq_status_card,
+        start_stop_card.layout,
+        daq_status_card.layout,
         daq_config_card,
         vfo_config_card,
         dsp_config_card,
         display_options_card,
         station_config_card,
         recording_config_card,
-        system_control_card,
+        system_control_card.layout,
     ]
 
     for i in range(webInterface_inst.module_signal_processor.max_vfos):
