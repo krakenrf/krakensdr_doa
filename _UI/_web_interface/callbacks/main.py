@@ -3,13 +3,13 @@ import subprocess
 
 import dash_core_components as dcc
 import dash_devices as dash
-import dash_html_components as html
 import numpy as np
 
 # isort: off
 from maindash import app, spectrum_fig, waterfall_fig, webInterface_inst
 
 # isort: on
+
 from dash_devices.dependencies import Input, Output, State
 from kraken_web_config import write_config_file_dict
 from kraken_web_spectrum import init_spectrum_fig
@@ -36,44 +36,6 @@ from variables import (
     settings_file_path,
     trace_colors,
 )
-
-
-def make_layout():
-    return html.Div(
-        [
-            dcc.Location(id="url", children="/config", refresh=True),
-            html.Div(
-                [
-                    html.Img(
-                        src="assets/kraken_interface_bw.png",
-                        style={"display": "block", "marginLeft": "auto", "marginRight": "auto", "height": "60px"},
-                    )
-                ]
-            ),
-            html.Div(
-                [
-                    html.A("Configuration", className="header_active", id="header_config", href="/config"),
-                    html.A("Spectrum", className="header_inactive", id="header_spectrum", href="/spectrum"),
-                    html.A("DoA Estimation", className="header_inactive", id="header_doa", href="/doa"),
-                ],
-                className="header",
-            ),
-            dcc.Interval(id="settings-refresh-timer", interval=5000, n_intervals=0),
-            html.Div(id="placeholder_start", style={"display": "none"}),
-            html.Div(id="placeholder_stop", style={"display": "none"}),
-            html.Div(id="placeholder_save", style={"display": "none"}),
-            html.Div(id="placeholder_update_rx", style={"display": "none"}),
-            html.Div(id="placeholder_recofnig_daq", style={"display": "none"}),
-            html.Div(id="placeholder_update_daq_ini_params", style={"display": "none"}),
-            html.Div(id="placeholder_update_freq", style={"display": "none"}),
-            html.Div(id="placeholder_update_dsp", style={"display": "none"}),
-            html.Div(id="placeholder_config_page_upd", style={"display": "none"}),
-            html.Div(id="placeholder_spectrum_page_upd", style={"display": "none"}),
-            html.Div(id="placeholder_doa_page_upd", style={"display": "none"}),
-            html.Div(id="dummy_output", style={"display": "none"}),
-            html.Div(id="page-content"),
-        ]
-    )
 
 
 # ============================================

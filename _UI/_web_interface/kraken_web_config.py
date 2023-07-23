@@ -4,7 +4,6 @@ from configparser import ConfigParser
 import dash_core_components as dcc
 import dash_html_components as html
 import ini_checker
-import tooltips
 from variables import (
     DECORRELATION_OPTIONS,
     DOA_METHODS,
@@ -16,6 +15,7 @@ from variables import (
     valid_fir_windows,
     valid_sample_rates,
 )
+from views import tooltips
 
 
 def get_preconfigs(config_files_path):
