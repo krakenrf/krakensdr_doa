@@ -102,3 +102,5 @@ DOA_METHODS = [
 ]
 
 HZ_TO_MHZ = 1.0e-6
+
+DEFAULT_MAPPING_SERVER_ENDPOINT = "wss://map.krakenrf.com:2096"
