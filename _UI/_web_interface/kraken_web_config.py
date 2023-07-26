@@ -16,6 +16,7 @@ from variables import (
     valid_sample_rates,
 )
 from views import daq_status_card, start_stop_card, system_control_card, tooltips
+from views.vfo_card import get_vfo_card_layout
 
 
 def get_preconfigs(config_files_path):
@@ -1383,123 +1384,7 @@ def generate_config_page_layout(webInterface_inst):
         className="card",
     )
 
-    # -----------------------------
-    #  Individual VFO Configurations
-    # -----------------------------
-    vfo_card = [" "] * webInterface_inst.module_signal_processor.max_vfos
-
-    for i in range(webInterface_inst.module_signal_processor.max_vfos):
-        vfo_card[i] = html.Div(
-            [
-                html.Div(
-                    [
-                        html.Div("VFO-" + str(i) + " Frequency [MHz]:", className="field-label"),
-                        dcc.Input(
-                            id="vfo_" + str(i) + "_freq",
-                            value=webInterface_inst.module_signal_processor.vfo_freq[i] / 10**6,
-                            type="number",
-                            min=24,
-                            debounce=True,
-                            className="field-body-textbox",
-                        ),
-                    ],
-                    className="field",
-                ),
-                html.Div(
-                    [
-                        html.Div("VFO-" + str(i) + " Bandwidth [Hz]:", className="field-label"),
-                        dcc.Input(
-                            id="vfo_" + str(i) + "_bw",
-                            value=webInterface_inst.module_signal_processor.vfo_bw[i],
-                            type="number",
-                            min=100,
-                            debounce=True,
-                            className="field-body-textbox",
-                        ),
-                    ],
-                    className="field",
-                ),
-                html.Div(
-                    [
-                        html.Div("VFO-" + str(i) + " FIR Order Factor:", className="field-label"),
-                        dcc.Input(
-                            id="vfo_" + str(i) + "_fir_order_factor",
-                            value=webInterface_inst.module_signal_processor.vfo_fir_order_factor[i],
-                            type="number",
-                            min=2,
-                            step=1,
-                            debounce=True,
-                            className="field-body-textbox",
-                        ),
-                    ],
-                    className="field",
-                ),
-                html.Div(
-                    [
-                        html.Div("VFO-" + str(i) + " Squelch [dB] :", className="field-label"),
-                        dcc.Input(
-                            id="vfo_" + str(i) + "_squelch",
-                            value=webInterface_inst.module_signal_processor.vfo_squelch[i],
-                            type="number",
-                            debounce=True,
-                            className="field-body-textbox",
-                        ),
-                    ],
-                    className="field",
-                ),
-                html.Div(
-                    [
-                        html.Div(
-                            [
-                                html.Div("VFO-" + str(i) + " Demod:", className="field-label"),
-                                dcc.Dropdown(
-                                    id=f"vfo_{i}_demod",
-                                    options=[
-                                        {
-                                            "label": f"Default ({webInterface_inst.module_signal_processor.vfo_default_demod})",
-                                            "value": "Default",
-                                        },
-                                        {"label": "None", "value": "None"},
-                                        {"label": "FM", "value": "FM"},
-                                    ],
-                                    value=webInterface_inst.module_signal_processor.vfo_demod[i],
-                                    style={"display": "inline-block"},
-                                    className="field-body",
-                                ),
-                            ],
-                            className="field",
-                        ),
-                        html.Div(
-                            [
-                                html.Div("VFO-" + str(i) + " IQ Channel:", className="field-label"),
-                                dcc.Dropdown(
-                                    id=f"vfo_{i}_iq",
-                                    options=[
-                                        {
-                                            "label": f"Default ({webInterface_inst.module_signal_processor.vfo_default_iq})",
-                                            "value": "Default",
-                                        },
-                                        {"label": "False", "value": "False"},
-                                        {"label": "True", "value": "True"},
-                                    ],
-                                    value=webInterface_inst.module_signal_processor.vfo_iq[i],
-                                    style={"display": "inline-block"},
-                                    className="field-body",
-                                ),
-                            ],
-                            className="field",
-                        ),
-                    ],
-                    id="beta_features_container " + str(i),
-                    style={"display": "block"} if webInterface_inst.en_beta_features else {"display": "none"},
-                ),
-            ],
-            id="vfo" + str(i),
-            className="card",
-            style={"display": "block"}
-            if i < webInterface_inst.module_signal_processor.active_vfos
-            else {"display": "none"},
-        )
+    vfo_card = get_vfo_card_layout()
 
     config_page_component_list = [
         start_stop_card.layout,
