@@ -152,6 +152,14 @@ def fetch_dsp_data(app, webInterface_inst, spectrum_fig, waterfall_fig):
                 webInterface_inst.daq_dsp_latency = data_entry[1] + webInterface_inst.daq_cpi
             elif data_entry[0] == "max_amplitude":
                 webInterface_inst.max_amplitude = data_entry[1]
+            elif data_entry[0] == "active_vfos":
+                webInterface_inst.active_vfos = data_entry[1]
+            elif data_entry[0] == "vfo_freq":
+                webInterface_inst.vfo_freq = data_entry[1]
+            elif data_entry[0] == "vfo_bw":
+                webInterface_inst.vfo_bw = data_entry[1]
+            elif data_entry[0] == "vfo_squelch":
+                webInterface_inst.vfo_squelch = data_entry[1]
             elif data_entry[0] == "avg_powers":
                 avg_powers_str = ""
                 for avg_power in data_entry[1]:
