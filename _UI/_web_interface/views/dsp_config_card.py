@@ -2,7 +2,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 
 # isort: off
-from maindash import webInterface_inst
+from maindash import web_interface
 
 # isort: on
 
@@ -11,8 +11,8 @@ from variables import DECORRELATION_OPTIONS, DOA_METHODS, option
 
 def get_dsp_config_card_layout():
     # Calulcate spacings
-    ant_spacing_meter = webInterface_inst.ant_spacing_meters
-    en_doa_values = [1] if webInterface_inst.module_signal_processor.en_DOA_estimation else []
+    ant_spacing_meter = web_interface.ant_spacing_meters
+    en_doa_values = [1] if web_interface.module_signal_processor.en_DOA_estimation else []
     # -----------------------------
     #    DSP Confugartion Card
     # -----------------------------
@@ -29,7 +29,7 @@ def get_dsp_config_card_layout():
                             {"label": "UCA", "value": "UCA"},
                             {"label": "Custom", "value": "Custom"},
                         ],
-                        value=webInterface_inst.module_signal_processor.DOA_ant_alignment,
+                        value=web_interface.module_signal_processor.DOA_ant_alignment,
                         className="field-body",
                         labelStyle={"display": "inline-block", "verticalAlign": "middle"},
                         id="radio_ant_arrangement",
@@ -42,7 +42,7 @@ def get_dsp_config_card_layout():
                     html.Div("Custom X [m]:", className="field-label"),
                     dcc.Input(
                         id="custom_array_x_meters",
-                        value=",".join(["%.2f" % num for num in webInterface_inst.custom_array_x_meters]),
+                        value=",".join(["%.2f" % num for num in web_interface.custom_array_x_meters]),
                         type="text",
                         debounce=True,
                         className="field-body-textbox",
@@ -56,7 +56,7 @@ def get_dsp_config_card_layout():
                     html.Div("Custom Y [m]:", className="field-label"),
                     dcc.Input(
                         id="custom_array_y_meters",
-                        value=",".join(["%.2f" % num for num in webInterface_inst.custom_array_y_meters]),
+                        value=",".join(["%.2f" % num for num in web_interface.custom_array_y_meters]),
                         type="text",
                         debounce=True,
                         className="field-body-textbox",
@@ -111,7 +111,7 @@ def get_dsp_config_card_layout():
                     dcc.Dropdown(
                         id="doa_method",
                         options=DOA_METHODS,
-                        value=webInterface_inst.module_signal_processor.DOA_algorithm,
+                        value=web_interface.module_signal_processor.DOA_algorithm,
                         style={"display": "inline-block"},
                         className="field-body",
                     ),
@@ -125,7 +125,7 @@ def get_dsp_config_card_layout():
                     dcc.Dropdown(
                         id="doa_decorrelation_method",
                         options=DECORRELATION_OPTIONS,
-                        value=webInterface_inst.module_signal_processor.DOA_decorrelation_method,
+                        value=web_interface.module_signal_processor.DOA_decorrelation_method,
                         style={"display": "inline-block"},
                         className="field-body",
                     ),
@@ -143,7 +143,7 @@ def get_dsp_config_card_layout():
                             {"label": "Forward", "value": "Forward"},
                             {"label": "Backward", "value": "Backward"},
                         ],
-                        value=webInterface_inst.module_signal_processor.ula_direction,
+                        value=web_interface.module_signal_processor.ula_direction,
                         style={"display": "inline-block"},
                         className="field-body",
                     ),
@@ -155,8 +155,8 @@ def get_dsp_config_card_layout():
                     html.Div("Array Offset:", id="label_array_offset", className="field-label"),
                     dcc.Input(
                         id="array_offset",
-                        value=webInterface_inst.module_signal_processor.array_offset,
-                        # webInterface_inst.module_signal_processor.station_id,
+                        value=web_interface.module_signal_processor.array_offset,
+                        # web_interface.module_signal_processor.station_id,
                         type="number",
                         className="field-body-textbox",
                         debounce=True,
@@ -177,7 +177,7 @@ def get_dsp_config_card_layout():
                             {"label": "3", "value": 3},
                             {"label": "4", "value": 4},
                         ],
-                        value=webInterface_inst.module_signal_processor.DOA_expected_num_of_sources,
+                        value=web_interface.module_signal_processor.DOA_expected_num_of_sources,
                         style={"display": "inline-block"},
                         className="field-body",
                     ),

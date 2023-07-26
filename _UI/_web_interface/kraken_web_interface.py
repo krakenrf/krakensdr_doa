@@ -22,7 +22,7 @@ from krakenSDR_signal_processor import SignalProcessor
 from utils import read_config_file_dict
 
 
-class webInterface:
+class WebInterface:
     def __init__(self):
         self.user_interface = None
 

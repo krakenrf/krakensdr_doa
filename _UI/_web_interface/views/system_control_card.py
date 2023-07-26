@@ -2,7 +2,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 
 # isort: off
-from maindash import webInterface_inst
+from maindash import web_interface
 
 # isort: on
 from variables import option
@@ -16,7 +16,7 @@ layout = html.Div(
                     options=option,
                     id="en_system_control",
                     className="field-body",
-                    value=webInterface_inst.en_system_control,
+                    value=web_interface.en_system_control,
                 ),
             ],
             className="field",
@@ -58,7 +58,7 @@ layout = html.Div(
                             options=option,
                             id="en_beta_features",
                             className="field-body",
-                            value=webInterface_inst.en_beta_features,
+                            value=web_interface.en_beta_features,
                         ),
                     ],
                     className="field",

@@ -2,14 +2,14 @@ import dash_core_components as dcc
 import dash_html_components as html
 
 # isort: off
-from maindash import webInterface_inst
+from maindash import web_interface
 
 # isort: on
 from variables import option
 
 
 def get_recording_config_card_layout():
-    en_data_record = [1] if webInterface_inst.module_signal_processor.en_data_record else []
+    en_data_record = [1] if web_interface.module_signal_processor.en_data_record else []
     return html.Div(
         [
             html.H2("Local Data Recording", id="data_recording_title"),
@@ -18,8 +18,8 @@ def get_recording_config_card_layout():
                     html.Div("Filename:", id="filename_label", className="field-label"),
                     dcc.Input(
                         id="filename_input",
-                        value=webInterface_inst.module_signal_processor.data_recording_file_name,
-                        # webInterface_inst.module_signal_processor.station_id,
+                        value=web_interface.module_signal_processor.data_recording_file_name,
+                        # web_interface.module_signal_processor.station_id,
                         type="text",
                         className="field-body-textbox",
                         debounce=True,
@@ -35,7 +35,7 @@ def get_recording_config_card_layout():
                         options=[
                             {"label": "Kraken App", "value": "Kraken App"},
                         ],
-                        value="Kraken App",  # webInterface_inst.module_signal_processor.DOA_data_format,
+                        value="Kraken App",  # web_interface.module_signal_processor.DOA_data_format,
                         style={"display": "inline-block"},
                         className="field-body",
                     ),
@@ -47,8 +47,8 @@ def get_recording_config_card_layout():
                     html.Div("Write Interval (s):", id="write_interval_label", className="field-label"),
                     dcc.Input(
                         id="write_interval_input",
-                        value=webInterface_inst.module_signal_processor.write_interval,
-                        # webInterface_inst.module_signal_processor.station_id,
+                        value=web_interface.module_signal_processor.write_interval,
+                        # web_interface.module_signal_processor.station_id,
                         type="text",
                         className="field-body-textbox",
                         debounce=True,

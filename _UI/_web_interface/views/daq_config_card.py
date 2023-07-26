@@ -5,7 +5,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 
 # isort: off
-from maindash import webInterface_inst
+from maindash import web_interface
 
 # isort: on
 
@@ -35,7 +35,7 @@ def get_preconfigs(config_files_path):
 
 def get_daq_config_card_layout():
     # Read DAQ config file
-    daq_cfg_dict = webInterface_inst.daq_ini_cfg_dict
+    daq_cfg_dict = web_interface.daq_ini_cfg_dict
 
     if daq_cfg_dict is not None:
         en_noise_src_values = [1] if daq_cfg_dict["en_noise_source_ctr"] else []
@@ -46,8 +46,8 @@ def get_daq_config_card_layout():
         # Read available preconfig files
         preconfigs = get_preconfigs(daq_preconfigs_path)
 
-    en_advanced_daq_cfg = [1] if webInterface_inst.en_advanced_daq_cfg else []
-    en_basic_daq_cfg = [1] if webInterface_inst.en_basic_daq_cfg else []
+    en_advanced_daq_cfg = [1] if web_interface.en_advanced_daq_cfg else []
+    en_basic_daq_cfg = [1] if web_interface.en_basic_daq_cfg else []
 
     decimated_bw = ((daq_cfg_dict["sample_rate"]) / daq_cfg_dict["decimation_ratio"]) / 10**3
     cfg_data_block_len = daq_cfg_dict["cpi_size"] / (decimated_bw)
@@ -67,7 +67,7 @@ def get_daq_config_card_layout():
                 html.Div("Center Frequency [MHz]:", className="field-label"),
                 dcc.Input(
                     id="daq_center_freq",
-                    value=webInterface_inst.module_receiver.daq_center_freq / 10**6,
+                    value=web_interface.module_receiver.daq_center_freq / 10**6,
                     type="number",
                     min=24,
                     debounce=True,
@@ -112,7 +112,7 @@ def get_daq_config_card_layout():
                         {"label": "48.0 dB", "value": 48.0},
                         {"label": "49.6 dB", "value": 49.6},
                     ],
-                    value=webInterface_inst.module_receiver.daq_rx_gain,
+                    value=web_interface.module_receiver.daq_rx_gain,
                     clearable=False,
                     style={"display": "inline-block"},
                     className="field-body",
@@ -153,7 +153,7 @@ def get_daq_config_card_layout():
                 html.Div(
                     [
                         html.Div(
-                            "Active Configuration: " + webInterface_inst.active_daq_ini_cfg,
+                            "Active Configuration: " + web_interface.active_daq_ini_cfg,
                             id="active_daq_ini_cfg",
                             className="field-label",
                         ),
@@ -163,7 +163,7 @@ def get_daq_config_card_layout():
                 html.Div(
                     [
                         html.Div(
-                            webInterface_inst.daq_cfg_ini_error,
+                            web_interface.daq_cfg_ini_error,
                             id="daq_ini_check",
                             className="field-label",
                             style={"color": "#e74c3c"},
