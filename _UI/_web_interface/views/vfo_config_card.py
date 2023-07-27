@@ -59,6 +59,7 @@ def get_vfo_config_card_layout():
                         options=[
                             {"label": "None", "value": "None"},
                             {"label": "Auto", "value": "Auto"},
+                            {"label": "Auto Channel", "value": "Auto Channel"},
                         ],
                         value=webInterface_inst.module_signal_processor.vfo_default_squelch_mode,
                         style={"display": "inline-block"},

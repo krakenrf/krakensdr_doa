@@ -13,9 +13,9 @@ def get_vfo_card_layout():
     layout = [" "] * web_interface.module_signal_processor.max_vfos
 
     for i in range(web_interface.module_signal_processor.max_vfos):
-        is_auto_squelch = webInterface_inst.module_signal_processor.vfo_squelch_mode[i] == "Auto" or (
-            webInterface_inst.module_signal_processor.vfo_default_squelch_mode == "Auto"
-            and webInterface_inst.module_signal_processor.vfo_squelch_mode[i] == "Default"
+        is_auto_squelch = web_interface.module_signal_processor.vfo_squelch_mode[i] in ["Auto", "Auto Channel"] or (
+            web_interface.module_signal_processor.vfo_default_squelch_mode in ["Auto", "Auto Channel"]
+            and web_interface.module_signal_processor.vfo_squelch_mode[i] == "Default"
         )
         layout[i] = html.Div(
             [
@@ -74,6 +74,7 @@ def get_vfo_card_layout():
                                 },
                                 {"label": "None", "value": "None"},
                                 {"label": "Auto", "value": "Auto"},
+                                {"label": "Auto Channel", "value": "Auto Channel"},
                             ],
                             value=webInterface_inst.module_signal_processor.vfo_squelch_mode[i],
                             style={"display": "inline-block"},
