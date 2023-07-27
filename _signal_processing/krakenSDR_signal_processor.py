@@ -415,14 +415,15 @@ class SignalProcessor(threading.Thread):
                             else:
                                 spectrum_index = 2
                             sensor1_spec = self.spectrum[spectrum_index, :]
-                            default_db_offset = 5
+                            default_auto_db_offset = 5
+                            default_auto_channel_db_offset = 3
 
                             auto_squelch = any(
                                 is_enabled_auto_squelch(vfo_squelch_mode) for vfo_squelch_mode in self.vfo_squelch_mode
                             )
                             if auto_squelch:
                                 sensor1_spec_mean = np.mean(sensor1_spec)
-                                self.vfo_auto_squelch = sensor1_spec_mean + default_db_offset
+                                self.vfo_auto_squelch = sensor1_spec_mean + default_auto_db_offset
 
                             moving_avg_freq_window = 100_000  # 100kHz
                             freq_window = int(moving_avg_freq_window / (sampling_freq / N))
@@ -443,7 +444,7 @@ class SignalProcessor(threading.Thread):
                                     sensor1_spec_mean = np.mean(
                                         sensor1_spec[vfo_start_measure_spec:vfo_end_measure_spec]
                                     )
-                                    self.vfo_squelch[i] = sensor1_spec_mean + default_db_offset
+                                    self.vfo_squelch[i] = sensor1_spec_mean + default_auto_channel_db_offset
 
                             for i in range(active_vfos):
                                 # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
