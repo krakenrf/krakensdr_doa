@@ -34,7 +34,7 @@ from datetime import datetime
 from functools import lru_cache
 from multiprocessing.dummy import Pool
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Iterator, List, Optional, Tuple
 
 # Import optimization modules
 import numba as nb
@@ -185,11 +185,13 @@ class SignalProcessor(threading.Thread):
         self.max_demod_timeout = 60
         self.vfo_scan_freq: List[Optional[ScanFreq]] = [None] * self.max_vfos
         self.scan_id = 0
-        self.dbm_offset = 3
         self.default_auto_db_offset = 5  # 5dB for Auto Squelch
         self.default_auto_channel_db_offset = 3  # 3dB for Auto Channel Squelch and Scan modes
         # Ratio of Auto Channel, mean that how big should be measurement of spectrum outside of vfo_bw
         self.ratio_auto_channel = 3
+        self.max_freq_diff = 4000  # 4kHz
+        self.moving_avg_freq_window = 100_000  # 100kHz
+        self.scan_blocked_time = 60  # 60s
 
         self.en_fm_demod = False
         self.vfo_fm_demod = [False] * self.max_vfos
@@ -367,13 +369,9 @@ class SignalProcessor(threading.Thread):
     def scan_channels(self, sampling_freq, N):
         active_vfos = self.active_vfos = 0
         try:
-            MAX_FREQ_DIFF = 4000
-            MOVING_AVG_FREQ_WINDOW = 100_000
-            SCAN_BLOCKED_TIME = 60
-
             cur_freq_max = None
             mov_avg_noises = []
-            freq_window = int(MOVING_AVG_FREQ_WINDOW / (sampling_freq / N))
+            freq_window = int(self.moving_avg_freq_window / (sampling_freq / N))
 
             for i in range(len(self.scan_channel_list)):
                 self.scan_channel_list[i].detected = False
@@ -391,7 +389,7 @@ class SignalProcessor(threading.Thread):
                     mov_avg_noises.append(spec)
                     continue
                 mov_avg_noise = sum(mov_avg_noises) / len(mov_avg_noises)
-                if (spec - mov_avg_noise) > self.dbm_offset:
+                if (spec - mov_avg_noise) > self.default_auto_channel_db_offset:
                     if cur_freq_max is None:
                         center_freq = type_freq
                         start_freq = type_freq
@@ -401,7 +399,7 @@ class SignalProcessor(threading.Thread):
                             center_freq,
                             start_freq,
                             end_freq,
-                            mov_avg_noise + self.dbm_offset,
+                            mov_avg_noise + self.default_auto_channel_db_offset,
                             spec,
                             True,
                             0,
@@ -421,12 +419,12 @@ class SignalProcessor(threading.Thread):
                                 cur_freq_max.start_freq,
                             )
                         band_width = cur_freq_max.end_freq - cur_freq_max.start_freq
-                        if band_width > MAX_FREQ_DIFF:
+                        if band_width > self.max_freq_diff:
                             found_freq = False
                             for i, scan_channel in enumerate(self.scan_channel_list):
                                 if (
                                     scan_channel.start_freq <= cur_freq_max.center_freq <= scan_channel.end_freq
-                                    or abs(scan_channel.center_freq - cur_freq_max.center_freq) < MAX_FREQ_DIFF
+                                    or abs(scan_channel.center_freq - cur_freq_max.center_freq) < self.max_freq_diff
                                 ):
                                     if cur_freq_max.spec > spec:
                                         if scan_channel.center_freq != cur_freq_max.center_freq:
@@ -443,7 +441,7 @@ class SignalProcessor(threading.Thread):
                                     proc_signal_time = proc_signal_size / sampling_freq
                                     found_freq = True
                                     self.scan_channel_list[i].time += proc_signal_time
-                                    if self.scan_channel_list[i].time > SCAN_BLOCKED_TIME:
+                                    if self.scan_channel_list[i].time > self.scan_blocked_time:
                                         self.scan_channel_list[i].blocked = True
                                     self.scan_channel_list[i].detected = True
                                     self.scan_id -= 1
@@ -475,13 +473,13 @@ class SignalProcessor(threading.Thread):
                     scan_channel.deleted = True
                 new_scan_channel_list.append(scan_channel)
             self.scan_channel_list = new_scan_channel_list
-            new_scan_channel_list = filter(lambda s: not s.blocked, new_scan_channel_list)
-            new_scan_channel_list = sorted(new_scan_channel_list, key=lambda s: s.squelch, reverse=True)[
-                : self.max_vfos
-            ]
+            new_scan_channel_list: Iterator[ScanFreq] = filter(lambda s: not s.blocked, new_scan_channel_list)
+            new_scan_channel_list: List[ScanFreq] = sorted(
+                new_scan_channel_list, key=lambda s: s.squelch, reverse=True
+            )[: self.max_vfos]
             new_scan_channel_list = sorted(new_scan_channel_list, key=lambda s: s.center_freq)
 
-            def find_vfo_scan(scan_channel_list, scan_channel):
+            def find_vfo_scan(scan_channel_list: List[ScanFreq], scan_channel: ScanFreq):
                 i = 0
                 found_vfo_scan_freq = None
                 for scan_freq in scan_channel_list:
@@ -521,6 +519,8 @@ class SignalProcessor(threading.Thread):
             self.active_vfos = active_vfos
         except Exception:
             print(traceback.format_exc())
+
+        return active_vfos
 
     def run(self):
         """
@@ -695,7 +695,7 @@ class SignalProcessor(threading.Thread):
 
                             # max_length_of_audio_secs = 60
                             if self.en_DOA_estimation and self.vfo_mode == "Scan":
-                                self.scan_channels(sampling_freq, N)
+                                active_vfos = self.scan_channels(sampling_freq, N)
 
                             for i in range(active_vfos):
                                 # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
