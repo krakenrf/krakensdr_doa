@@ -800,6 +800,7 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
 
 @app.callback(Output("system_control_container", "style"), [Input("en_system_control", "value")])
 def toggle_system_control(toggle_value):
+    print(f"toggle_value = {toggle_value}")
     web_interface.en_system_control = toggle_value
     if toggle_value:
         return {"display": "block"}
