@@ -30,8 +30,7 @@ echo "Starting KrakenSDR Direction Finder"
 #sudo python3 _UI/_web_interface/kraken_web_interface.py 2> ui.log &
 
 echo "Web Interface Running at $IPADDR:8080"
-python3 _UI/_web_interface/kraken_web_interface.py 2>ui.log &
-
+python3 _UI/_web_interface/app.py 2>ui.log &
 # Create folder, if it does not exists, that will contain data shared with clients
 mkdir -p "${SHARED_FOLDER}"
 

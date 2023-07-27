@@ -1,8 +1,6 @@
-import dash_core_components as dcc
-import dash_html_components as html
 import numpy as np
 import plotly.graph_objects as go
-from variables import doa_fig, figure_font_size, x, y
+from variables import figure_font_size, x, y
 
 
 def plot_doa(app, webInterface_inst, doa_fig):
@@ -112,25 +110,3 @@ def plot_doa(app, webInterface_inst, doa_fig):
                     "body_doa_max": {"children": doa_max_str},
                 }
             )
-
-
-def generate_doa_page_layout(webInterface_inst):
-    doa_page_layout = html.Div(
-        [
-            html.Div(
-                [
-                    html.Div("MAX DOA Angle:", id="label_doa_max", className="field-label"),
-                    html.Div("deg", id="body_doa_max", className="field-body"),
-                ],
-                className="field",
-            ),
-            # html.Div([
-            dcc.Graph(
-                style={"height": "inherit"},
-                id="doa-graph",
-                figure=doa_fig,  # fig_dummy #doa_fig #fig_dummy
-            ),
-        ],
-        style={"width": "100%", "height": "80vh"},
-    )
-    return doa_page_layout
