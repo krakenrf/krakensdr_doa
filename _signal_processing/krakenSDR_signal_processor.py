@@ -142,7 +142,6 @@ class SignalProcessor(threading.Thread):
         self.vfo_default_squelch_mode = "Auto"
         self.vfo_squelch_mode = ["Auto"] * self.max_vfos
         self.vfo_squelch = [-120] * self.max_vfos
-        self.vfo_auto_squelch = None
         self.vfo_default_demod = "None"
         self.vfo_demod = ["Default"] * self.max_vfos
         self.vfo_default_iq = "False"
@@ -423,7 +422,8 @@ class SignalProcessor(threading.Thread):
                             )
                             if auto_squelch:
                                 sensor1_spec_mean = np.mean(sensor1_spec)
-                                self.vfo_auto_squelch = sensor1_spec_mean + default_auto_db_offset
+                                vfo_auto_squelch = sensor1_spec_mean + default_auto_db_offset
+                                self.vfo_squelch = [vfo_auto_squelch] * self.max_vfos
 
                             moving_avg_freq_window = 100_000  # 100kHz
                             freq_window = int(moving_avg_freq_window / (sampling_freq / N))
@@ -496,12 +496,6 @@ class SignalProcessor(threading.Thread):
                                         ]
                                     )
 
-                                vfo_squelch = (
-                                    self.vfo_auto_squelch
-                                    if is_enabled_auto_squelch(self.vfo_squelch_mode[i])
-                                    else self.vfo_squelch[i]
-                                )
-
                                 # *** HERE WE NEED TO PERFORM THE SPECTRUM UPDATE TOO ***
                                 if self.en_spectrum:
                                     # Selected Channel Window
@@ -516,7 +510,7 @@ class SignalProcessor(threading.Thread):
                                     # Squelch Window
                                     signal_window[
                                         max(vfo_lower_bound, 4) : min(vfo_upper_bound, spectrum_window_size - 4)
-                                    ] = vfo_squelch
+                                    ] = self.vfo_squelch[i]
                                     self.spectrum[
                                         self.channel_number + (2 * i + 2), :
                                     ] = signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
@@ -529,7 +523,7 @@ class SignalProcessor(threading.Thread):
                                 if (
                                     self.en_DOA_estimation
                                     and self.channel_number > 1
-                                    and max_amplitude > vfo_squelch
+                                    and max_amplitude > self.vfo_squelch[i]
                                     and (i == self.output_vfo or self.output_vfo < 0)
                                 ):
                                     write_freq = int(self.vfo_freq[i])
