@@ -16,6 +16,20 @@ def get_vfo_config_card_layout():
 
     en_optimize_short_bursts = [1] if web_interface.module_signal_processor.optimize_short_bursts else []
 
+    if web_interface.module_signal_processor.vfo_mode == "Scan":
+        default_squelch_modes = [
+            {"label": "Auto", "value": "Auto"},
+            {"label": "Auto Channel", "value": "Auto Channel"},
+        ]
+        if web_interface.module_signal_processor.vfo_default_squelch_mode == "None":
+            web_interface.module_signal_processor.vfo_default_squelch_mode = "Auto"
+    else:
+        default_squelch_modes = [
+            {"label": "Manual", "value": "Manual"},
+            {"label": "Auto", "value": "Auto"},
+            {"label": "Auto Channel", "value": "Auto Channel"},
+        ]
+
     return html.Div(
         [
             html.H2("VFO Configuration", id="init_title_sq"),
@@ -57,11 +71,7 @@ def get_vfo_config_card_layout():
                     html.Div("VFO Default Squelch Mode:", id="label_vfo_default_squelch_mode", className="field-label"),
                     dcc.Dropdown(
                         id="vfo_default_squelch_mode",
-                        options=[
-                            {"label": "Manual", "value": "Manual"},
-                            {"label": "Auto", "value": "Auto"},
-                            {"label": "Auto Channel", "value": "Auto Channel"},
-                        ],
+                        options=default_squelch_modes,
                         value=web_interface.module_signal_processor.vfo_default_squelch_mode,
                         style={"display": "inline-block"},
                         className="field-body",

@@ -383,16 +383,25 @@ class SignalProcessor(threading.Thread):
             else:
                 spectrum_index = 2
 
-            for _, (freq, spec) in enumerate(zip(self.spectrum[0, ::-1], self.spectrum[spectrum_index, :])):
-                type_freq = self.module_receiver.daq_center_freq - freq
-                if len(mov_avg_noises) < freq_window:
-                    mov_avg_noises.append(spec)
-                    continue
-                mov_avg_noise = sum(mov_avg_noises) / len(mov_avg_noises)
-                if (spec - mov_avg_noise) > self.default_auto_channel_db_offset:
+            freq_arr = self.spectrum[0, ::-1]
+            sensor1_spec = self.spectrum[spectrum_index, :]
+            self.mean_spectrum(sensor1_spec)
+
+            for _, (freq, spec) in enumerate(zip(freq_arr, sensor1_spec)):
+                real_freq = self.module_receiver.daq_center_freq - freq
+
+                if self.vfo_default_squelch_mode == "Auto Channel":
+                    if len(mov_avg_noises) < freq_window:
+                        mov_avg_noises.append(spec)
+                        continue
+                    mov_avg_noise = sum(mov_avg_noises) / len(mov_avg_noises) + self.default_auto_channel_db_offset
+                else:
+                    mov_avg_noise = self.vfo_squelch[0]
+
+                if spec > mov_avg_noise:
                     if cur_freq_max is None:
-                        center_freq = type_freq
-                        start_freq = type_freq
+                        center_freq = real_freq
+                        start_freq = real_freq
                         end_freq = None
                         cur_freq_max = ScanFreq(
                             self.scan_id,
@@ -408,11 +417,11 @@ class SignalProcessor(threading.Thread):
                         )
                         self.scan_id += 1
                     if spec > cur_freq_max.spec:
-                        cur_freq_max.center_freq = type_freq
+                        cur_freq_max.center_freq = real_freq
                         cur_freq_max.spec = spec
                 else:
                     if cur_freq_max is not None:
-                        cur_freq_max.end_freq = type_freq
+                        cur_freq_max.end_freq = real_freq
                         if (cur_freq_max.end_freq - cur_freq_max.start_freq) < 0:
                             cur_freq_max.start_freq, cur_freq_max.end_freq = (
                                 cur_freq_max.end_freq,
@@ -458,8 +467,9 @@ class SignalProcessor(threading.Thread):
                                     f"    center freq: {cur_freq_max.center_freq:3}MHz, start freq: {cur_freq_max.start_freq:3}MHz, end freq: {cur_freq_max.end_freq:3}MHz"
                                 )
                         cur_freq_max = None
-                    mov_avg_noises.pop(0)
-                    mov_avg_noises.append(spec)
+                    if len(mov_avg_noises) > 0:
+                        mov_avg_noises.pop(0)
+                        mov_avg_noises.append(spec)
 
             new_scan_channel_list: List[ScanFreq] = []
             for scan_channel in self.scan_channel_list:
