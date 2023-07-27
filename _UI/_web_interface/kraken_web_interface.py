@@ -140,6 +140,7 @@ class WebInterface:
         # VFO Configuration
         self.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
         self.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
+        self.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get("vfo_default_squelch_mode", "Auto")
         self.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
         self.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
         self.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
@@ -238,8 +239,8 @@ class WebInterface:
         # Populate vfo_cfg_inputs array for VFO setting callback
         self.vfo_cfg_inputs = []
         self.vfo_cfg_inputs.append(Input(component_id="spectrum_fig_type", component_property="value"))
-        self.vfo_cfg_inputs.append(Input(component_id="vfo_default_squelch_mode", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_mode", component_property="value"))
+        self.vfo_cfg_inputs.append(Input(component_id="vfo_default_squelch_mode", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_default_demod", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_default_iq", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="max_demod_timeout", component_property="value"))
@@ -315,6 +316,7 @@ class WebInterface:
         # VFO Information
         data["spectrum_calculation"] = self.module_signal_processor.spectrum_fig_type
         data["vfo_mode"] = self.module_signal_processor.vfo_mode
+        data["vfo_default_squelch_mode"] = self.module_signal_processor.vfo_default_squelch_mode
         data["vfo_default_demod"] = self.module_signal_processor.vfo_default_demod
         data["vfo_default_iq"] = self.module_signal_processor.vfo_default_iq
         data["max_demod_timeout"] = self.module_signal_processor.max_demod_timeout
@@ -322,7 +324,6 @@ class WebInterface:
         data["active_vfos"] = self.module_signal_processor.active_vfos
         data["output_vfo"] = self.module_signal_processor.output_vfo
         data["en_optimize_short_bursts"] = self.module_signal_processor.optimize_short_bursts
-        data["vfo_default_squelch_mode"] = self.module_signal_processor.vfo_default_squelch_mode
 
         for i in range(self.module_signal_processor.max_vfos):
             data["vfo_bw_" + str(i)] = self.module_signal_processor.vfo_bw[i]
