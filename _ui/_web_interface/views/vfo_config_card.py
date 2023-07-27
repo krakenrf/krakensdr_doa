@@ -43,6 +43,7 @@ def get_vfo_config_card_layout():
                         options=[
                             {"label": "Standard", "value": "Standard"},
                             {"label": "VFO-0 Auto Max", "value": "Auto"},
+                            {"label": "VFOs Scan", "value": "Scan"},
                         ],
                         value=web_interface.module_signal_processor.vfo_mode,
                         style={"display": "inline-block"},
@@ -148,6 +149,9 @@ def get_vfo_config_card_layout():
                         className="field-body",
                     ),
                 ],
+                style={"display": "inline-block"}
+                if web_interface.module_signal_processor.vfo_mode == "Standard"
+                else {"display": "none"},
                 className="field",
             ),
             html.Div(

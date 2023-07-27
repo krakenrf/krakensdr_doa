@@ -137,6 +137,7 @@ dsp_config_tooltips = html.Div(
                 html.P(
                     "VFO-0 Auto Max - VFO-0 will auto tune to the strongest signal in the spectrum. Only supports a single VFO."
                 ),
+                html.P("VFOs Scan - VFO-* will auto scan for available channels"),
             ],
             target="label_vfo_mode",
             placement="bottom",

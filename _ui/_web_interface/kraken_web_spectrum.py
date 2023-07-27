@@ -128,19 +128,6 @@ def plot_spectrum(app, web_interface, spectrum_fig, waterfall_fig):
                 spectrum_fig.data[m]["visible"] = True
                 spectrum_fig.data[m]["line"]["color"] = trace_colors[m]
 
-        # Hide non active traces
-        for i in range(web_interface.module_signal_processor.max_vfos):
-            if i < web_interface.module_signal_processor.active_vfos:
-                spectrum_fig.data[web_interface.module_receiver.M + (i * 2)]["visible"] = True
-                spectrum_fig.data[web_interface.module_receiver.M + (i * 2 + 1)]["visible"] = True
-                spectrum_fig.layout.annotations[i]["visible"] = True
-                spectrum_fig.layout.annotations[web_interface.module_signal_processor.max_vfos + i]["visible"] = True
-            else:
-                spectrum_fig.data[web_interface.module_receiver.M + (i * 2)]["visible"] = False
-                spectrum_fig.data[web_interface.module_receiver.M + (i * 2 + 1)]["visible"] = False
-                spectrum_fig.layout.annotations[i]["visible"] = False
-                spectrum_fig.layout.annotations[web_interface.module_signal_processor.max_vfos + i]["visible"] = False
-
         waterfall_fig.data[0]["x"] = x
         waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], showgrid=False)
 
@@ -153,10 +140,23 @@ def plot_spectrum(app, web_interface, spectrum_fig, waterfall_fig):
         )
 
     else:
+        # Hide non active traces
+        for i in range(web_interface.active_vfos):
+            if i < web_interface.module_signal_processor.active_vfos:
+                spectrum_fig.data[web_interface.module_receiver.M + (i * 2)]["visible"] = True
+                spectrum_fig.data[web_interface.module_receiver.M + (i * 2 + 1)]["visible"] = True
+                spectrum_fig.layout.annotations[i]["visible"] = True
+                spectrum_fig.layout.annotations[web_interface.module_signal_processor.max_vfos + i]["visible"] = True
+            else:
+                spectrum_fig.data[web_interface.module_receiver.M + (i * 2)]["visible"] = False
+                spectrum_fig.data[web_interface.module_receiver.M + (i * 2 + 1)]["visible"] = False
+                spectrum_fig.layout.annotations[i]["visible"] = False
+                spectrum_fig.layout.annotations[web_interface.module_signal_processor.max_vfos + i]["visible"] = False
+
         # Update entire graph to update VFO-0 text. There is no way to just update annotations in Dash, but updating the entire spectrum is fast
         # enough to do on click
         x = web_interface.spectrum[0, :] + web_interface.daq_center_freq * 10**6
-        for i in range(web_interface.module_signal_processor.active_vfos):
+        for i in range(web_interface.active_vfos):
             # Find center of VFO display window
             maxIndex = web_interface.spectrum[web_interface.module_receiver.M + (i * 2 + 1), :].argmax()
 

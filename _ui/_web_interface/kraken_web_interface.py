@@ -216,6 +216,10 @@ class WebInterface:
         self.module_signal_processor.compass_offset = self.compass_offset
         self.daq_dsp_latency = 0  # [ms]
         self.max_amplitude = 0  # Used to help setting the threshold level of the squelch
+        self.active_vfos = []
+        self.vfo_freq = []
+        self.vfo_bw = []
+        self.vfo_squelch = []
         self.avg_powers = []
         self.squelch_update = []
         self.logger.info("Web interface object initialized")
@@ -332,6 +336,11 @@ class WebInterface:
         data["spectrum_calculation"] = self.module_signal_processor.spectrum_fig_type
         data["vfo_mode"] = self.module_signal_processor.vfo_mode
         data["vfo_default_squelch_mode"] = self.module_signal_processor.vfo_default_squelch_mode
+        if (
+            self.module_signal_processor.vfo_mode in ["Standard", "Auto"]
+            and self.module_signal_processor.active_vfos == 0
+        ):
+            self.module_signal_processor.active_vfos = 1
         data["vfo_default_demod"] = self.module_signal_processor.vfo_default_demod
         data["vfo_default_iq"] = self.module_signal_processor.vfo_default_iq
         data["max_demod_timeout"] = self.module_signal_processor.max_demod_timeout
