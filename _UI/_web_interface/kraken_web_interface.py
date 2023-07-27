@@ -149,6 +149,7 @@ class WebInterface:
         self.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", False)
         self.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", False)
         self.selected_vfo = 0
+        self.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get("vfo_default_squelch_mode", "Auto")
 
         for i in range(self.module_signal_processor.max_vfos):
             self.module_signal_processor.vfo_bw[i] = int(
@@ -160,6 +161,7 @@ class WebInterface:
             self.module_signal_processor.vfo_freq[i] = float(
                 dsp_settings.get("vfo_freq_" + str(i), self.module_receiver.daq_center_freq)
             )
+            self.module_signal_processor.vfo_squelch_mode[i] = dsp_settings.get("vfo_squelch_mode_" + str(i), "Default")
             self.module_signal_processor.vfo_squelch[i] = int(
                 dsp_settings.get("vfo_squelch_" + str(i), self.module_signal_processor.vfo_squelch[i])
             )
@@ -236,6 +238,7 @@ class WebInterface:
         # Populate vfo_cfg_inputs array for VFO setting callback
         self.vfo_cfg_inputs = []
         self.vfo_cfg_inputs.append(Input(component_id="spectrum_fig_type", component_property="value"))
+        self.vfo_cfg_inputs.append(Input(component_id="vfo_default_squelch_mode", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_mode", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_default_demod", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_default_iq", component_property="value"))
@@ -251,6 +254,7 @@ class WebInterface:
                 Input(component_id="vfo_" + str(i) + "_fir_order_factor", component_property="value")
             )
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_freq", component_property="value"))
+            self.vfo_cfg_inputs.append(Input(component_id=f"vfo_squelch_mode_{i}", component_property="value"))
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_squelch", component_property="value"))
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_demod", component_property="value"))
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_iq", component_property="value"))
@@ -318,11 +322,13 @@ class WebInterface:
         data["active_vfos"] = self.module_signal_processor.active_vfos
         data["output_vfo"] = self.module_signal_processor.output_vfo
         data["en_optimize_short_bursts"] = self.module_signal_processor.optimize_short_bursts
+        data["vfo_default_squelch_mode"] = self.module_signal_processor.vfo_default_squelch_mode
 
         for i in range(self.module_signal_processor.max_vfos):
             data["vfo_bw_" + str(i)] = self.module_signal_processor.vfo_bw[i]
             data["vfo_fir_order_factor_" + str(i)] = self.module_signal_processor.vfo_fir_order_factor[i]
             data["vfo_freq_" + str(i)] = self.module_signal_processor.vfo_freq[i]
+            data["vfo_squelch_mode_" + str(i)] = self.module_signal_processor.vfo_squelch_mode[i]
             data["vfo_squelch_" + str(i)] = self.module_signal_processor.vfo_squelch[i]
             data["vfo_demod_" + str(i)] = self.module_signal_processor.vfo_demod[i]
             data["vfo_iq_" + str(i)] = self.module_signal_processor.vfo_iq[i]

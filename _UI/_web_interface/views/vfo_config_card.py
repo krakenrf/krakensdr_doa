@@ -53,6 +53,22 @@ def get_vfo_config_card_layout():
             ),
             html.Div(
                 [
+                    html.Div("VFO Default Squelch Mode:", id="label_vfo_default_squelch_mode", className="field-label"),
+                    dcc.Dropdown(
+                        id="vfo_default_squelch_mode",
+                        options=[
+                            {"label": "None", "value": "None"},
+                            {"label": "Auto", "value": "Auto"},
+                        ],
+                        value=webInterface_inst.module_signal_processor.vfo_default_squelch_mode,
+                        style={"display": "inline-block"},
+                        className="field-body",
+                    ),
+                ],
+                className="field",
+            ),
+            html.Div(
+                [
                     html.Div(
                         [
                             html.Div("VFO Default Demod:", id="label_vfo_default_demod", className="field-label"),

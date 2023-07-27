@@ -285,8 +285,13 @@ def settings_change_watcher(web_interface, settings_file_path):
         web_interface.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
         web_interface.compass_offset = dsp_settings.get("compass_offset", 0)
         web_interface.module_signal_processor.compass_offset = web_interface.compass_offset
-        web_interface.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", 0)
+        web_interface.module_signal_processor.optimize_short_bursts = dsp_settings.get(
+            "en_optimize_short_bursts", 0
+        )
         web_interface.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", 0)
+        web_interface.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get(
+            "vfo_default_squelch_mode", "Auto"
+        )
 
         for i in range(web_interface.module_signal_processor.max_vfos):
             web_interface.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
@@ -294,6 +299,9 @@ def settings_change_watcher(web_interface, settings_file_path):
                 dsp_settings.get("vfo_fir_order_factor_" + str(i), DEFAULT_VFO_FIR_ORDER_FACTOR)
             )
             web_interface.module_signal_processor.vfo_freq[i] = float(dsp_settings.get("vfo_freq_" + str(i), 0))
+            web_interface.module_signal_processor.vfo_squelch_mode[i] = dsp_settings.get(
+                "vfo_squelch_mode_" + str(i), "Default"
+            )
             web_interface.module_signal_processor.vfo_squelch[i] = int(dsp_settings.get("vfo_squelch_" + str(i), 0))
             web_interface.module_signal_processor.vfo_demod[i] = dsp_settings.get("vfo_demod_" + str(i), "Default")
             web_interface.module_signal_processor.vfo_iq[i] = dsp_settings.get("vfo_iq_" + str(i), "Default")

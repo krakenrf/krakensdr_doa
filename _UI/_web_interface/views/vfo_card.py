@@ -13,6 +13,10 @@ def get_vfo_card_layout():
     layout = [" "] * web_interface.module_signal_processor.max_vfos
 
     for i in range(web_interface.module_signal_processor.max_vfos):
+        is_auto_squelch = webInterface_inst.module_signal_processor.vfo_squelch_mode[i] == "Auto" or (
+            webInterface_inst.module_signal_processor.vfo_default_squelch_mode == "Auto"
+            and webInterface_inst.module_signal_processor.vfo_squelch_mode[i] == "Default"
+        )
         layout[i] = html.Div(
             [
                 html.Div(
@@ -60,6 +64,26 @@ def get_vfo_card_layout():
                 ),
                 html.Div(
                     [
+                        html.Div("VFO-" + str(i) + " Squelch Mode:", className="field-label"),
+                        dcc.Dropdown(
+                            id=f"vfo_squelch_mode_{i}",
+                            options=[
+                                {
+                                    "label": f"Default ({webInterface_inst.module_signal_processor.vfo_default_squelch_mode})",
+                                    "value": "Default",
+                                },
+                                {"label": "None", "value": "None"},
+                                {"label": "Auto", "value": "Auto"},
+                            ],
+                            value=webInterface_inst.module_signal_processor.vfo_squelch_mode[i],
+                            style={"display": "inline-block"},
+                            className="field-body",
+                        ),
+                    ],
+                    className="field",
+                ),
+                html.Div(
+                    [
                         html.Div("VFO-" + str(i) + " Squelch [dB] :", className="field-label"),
                         dcc.Input(
                             id="vfo_" + str(i) + "_squelch",
@@ -69,6 +93,7 @@ def get_vfo_card_layout():
                             className="field-body-textbox",
                         ),
                     ],
+                    style={"display": "inline-block"} if not is_auto_squelch else {"display": "none"},
                     className="field",
                 ),
                 html.Div(
