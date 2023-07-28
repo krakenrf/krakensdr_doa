@@ -69,14 +69,14 @@ def get_vfo_card_layout():
                             id=f"vfo_squelch_mode_{i}",
                             options=[
                                 {
-                                    "label": f"Default ({webInterface_inst.module_signal_processor.vfo_default_squelch_mode})",
+                                    "label": f"Default ({web_interface.module_signal_processor.vfo_default_squelch_mode})",
                                     "value": "Default",
                                 },
                                 {"label": "None", "value": "None"},
                                 {"label": "Auto", "value": "Auto"},
                                 {"label": "Auto Channel", "value": "Auto Channel"},
                             ],
-                            value=webInterface_inst.module_signal_processor.vfo_squelch_mode[i],
+                            value=web_interface.module_signal_processor.vfo_squelch_mode[i],
                             style={"display": "inline-block"},
                             className="field-body",
                         ),
