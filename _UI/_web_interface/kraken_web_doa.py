@@ -3,18 +3,18 @@ import plotly.graph_objects as go
 from variables import figure_font_size, x, y
 
 
-def plot_doa(app, webInterface_inst, doa_fig):
-    if webInterface_inst.reset_doa_graph_flag:
+def plot_doa(app, web_interface, doa_fig):
+    if web_interface.reset_doa_graph_flag:
         doa_fig.data = []
         # Just generate with junk data initially, as the spectrum array may not
         # be ready yet if we have sqeulching active etc.
-        if True:  # webInterface_inst.doa_thetas is not None:
+        if True:  # web_interface.doa_thetas is not None:
             # --- Linear plot ---
-            if webInterface_inst._doa_fig_type == "Linear":
+            if web_interface._doa_fig_type == "Linear":
                 # Plot traces
                 doa_fig.add_trace(
                     go.Scattergl(
-                        x=x,  # webInterface_inst.doa_thetas,
+                        x=x,  # web_interface.doa_thetas,
                         y=y,
                     )
                 )
@@ -39,11 +39,11 @@ def plot_doa(app, webInterface_inst, doa_fig):
                     showline=True,
                 )
             # --- Polar plot ---
-            elif webInterface_inst._doa_fig_type == "Polar":
-                label = "DOA Angle"  # webInterface_inst.doa_labels[i]
+            elif web_interface._doa_fig_type == "Polar":
+                label = "DOA Angle"  # web_interface.doa_labels[i]
                 doa_fig.add_trace(
                     go.Scatterpolargl(
-                        theta=x,  # webInterface_inst.doa_thetas,
+                        theta=x,  # web_interface.doa_thetas,
                         r=y,  # doa_result,
                         name=label,
                         fill="toself",
@@ -58,12 +58,12 @@ def plot_doa(app, webInterface_inst, doa_fig):
                 )
 
             # --- Compass  ---
-            elif webInterface_inst._doa_fig_type == "Compass":
+            elif web_interface._doa_fig_type == "Compass":
                 doa_fig.update_layout(
                     polar=dict(
                         radialaxis_tickfont_size=figure_font_size,
                         angularaxis=dict(
-                            rotation=90 + webInterface_inst.compass_offset,
+                            rotation=90 + web_interface.compass_offset,
                             direction="clockwise",
                             tickfont_size=figure_font_size,
                         ),
@@ -74,35 +74,35 @@ def plot_doa(app, webInterface_inst, doa_fig):
 
                 doa_fig.add_trace(
                     go.Scatterpolargl(
-                        theta=x,  # (360-webInterface_inst.doa_thetas+webInterface_inst.compass_offset)%360,
+                        theta=x,  # (360-web_interface.doa_thetas+web_interface.compass_offset)%360,
                         r=y,  # doa_result,
                         name=label,
-                        # line = dict(color = doa_trace_colors[webInterface_inst.doa_labels[i]]),
+                        # line = dict(color = doa_trace_colors[web_interface.doa_labels[i]]),
                         fill="toself",
                     )
                 )
 
-        webInterface_inst.reset_doa_graph_flag = False
+        web_interface.reset_doa_graph_flag = False
     else:
         update_data = []
         doa_max_str = ""
-        if webInterface_inst.doa_thetas is not None and webInterface_inst.doa_results[0].size > 0:
-            doa_max_str = str(webInterface_inst.doas[0]) + "°"
+        if web_interface.doa_thetas is not None and web_interface.doa_results[0].size > 0:
+            doa_max_str = str(web_interface.doas[0]) + "°"
 
-            thetas = webInterface_inst.doa_thetas
-            result = webInterface_inst.doa_results[0]
+            thetas = web_interface.doa_thetas
+            result = web_interface.doa_results[0]
 
             update_data = dict(x=[thetas], y=[result])
 
-            if webInterface_inst._doa_fig_type == "Polar":
-                thetas = np.append(webInterface_inst.doa_thetas, webInterface_inst.doa_thetas[0])
-                result = np.append(webInterface_inst.doa_results[0], webInterface_inst.doa_results[0][0])
+            if web_interface._doa_fig_type == "Polar":
+                thetas = np.append(web_interface.doa_thetas, web_interface.doa_thetas[0])
+                result = np.append(web_interface.doa_results[0], web_interface.doa_results[0][0])
                 update_data = dict(theta=[thetas], r=[result])
-            elif webInterface_inst._doa_fig_type == "Compass":
-                thetas = np.append(webInterface_inst.doa_thetas, webInterface_inst.doa_thetas[0])
-                result = np.append(webInterface_inst.doa_results[0], webInterface_inst.doa_results[0][0])
-                doa_max_str = (360 - webInterface_inst.doas[0] + webInterface_inst.compass_offset) % 360
-                update_data = dict(theta=[(360 - thetas + webInterface_inst.compass_offset) % 360], r=[result])
+            elif web_interface._doa_fig_type == "Compass":
+                thetas = np.append(web_interface.doa_thetas, web_interface.doa_thetas[0])
+                result = np.append(web_interface.doa_results[0], web_interface.doa_results[0][0])
+                doa_max_str = (360 - web_interface.doas[0] + web_interface.compass_offset) % 360
+                update_data = dict(theta=[(360 - thetas + web_interface.compass_offset) % 360], r=[result])
 
             app.push_mods(
                 {

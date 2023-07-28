@@ -1,5 +1,5 @@
 # isort: off
-from maindash import app, webInterface_inst
+from maindash import app, web_interface
 
 # isort: on
 
@@ -24,21 +24,21 @@ def display_page(pathname):
     # if self.needs_refresh:
     #    self.needs_refresh = False
     global spectrum_fig
-    webInterface_inst.pathname = pathname
+    web_interface.pathname = pathname
 
     if pathname == "/" or pathname == "/init":
-        webInterface_inst.module_signal_processor.en_spectrum = False
-        return [generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"]
+        web_interface.module_signal_processor.en_spectrum = False
+        return [generate_config_page_layout(web_interface), "header_active", "header_inactive", "header_inactive"]
     elif pathname == "/config":
-        webInterface_inst.module_signal_processor.en_spectrum = False
-        return [generate_config_page_layout(webInterface_inst), "header_active", "header_inactive", "header_inactive"]
+        web_interface.module_signal_processor.en_spectrum = False
+        return [generate_config_page_layout(web_interface), "header_active", "header_inactive", "header_inactive"]
     elif pathname == "/spectrum":
-        webInterface_inst.module_signal_processor.en_spectrum = True
-        webInterface_inst.reset_spectrum_graph_flag = True
+        web_interface.module_signal_processor.en_spectrum = True
+        web_interface.reset_spectrum_graph_flag = True
         return [spectrum_page.layout, "header_inactive", "header_active", "header_inactive"]
     elif pathname == "/doa":
-        webInterface_inst.module_signal_processor.en_spectrum = False
-        webInterface_inst.reset_doa_graph_flag = True
-        plot_doa(app, webInterface_inst, doa_fig)
+        web_interface.module_signal_processor.en_spectrum = False
+        web_interface.reset_doa_graph_flag = True
+        plot_doa(app, web_interface, doa_fig)
         return [generate_doa_page.layout, "header_inactive", "header_inactive", "header_active"]
     return Output("dummy_output", "children", "")

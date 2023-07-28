@@ -1,5 +1,5 @@
 import dash_devices as dash
-from kraken_web_interface import webInterface
+from kraken_web_interface import WebInterface
 from kraken_web_spectrum import init_spectrum_fig
 from variables import fig_layout, trace_colors
 from waterfall import init_waterfall
@@ -18,10 +18,10 @@ app.config.suppress_callback_exceptions = True
 #############################################
 #          Prepare Dash application         #
 ############################################
-webInterface_inst = webInterface()
+web_interface = WebInterface()
 
 #############################################
 #       Prepare component dependencies      #
 #############################################
-spectrum_fig = init_spectrum_fig(webInterface_inst, fig_layout, trace_colors)
-waterfall_fig = init_waterfall(webInterface_inst)
+spectrum_fig = init_spectrum_fig(web_interface, fig_layout, trace_colors)
+waterfall_fig = init_waterfall(web_interface)

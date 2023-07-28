@@ -13,8 +13,8 @@ from views.vfo_card import get_vfo_card_layout
 from views.vfo_config_card import get_vfo_config_card_layout
 
 
-def write_config_file_dict(webInterface_inst, param_dict, dsp_settings):
-    webInterface_inst.logger.info("Write config file: {0}".format(param_dict))
+def write_config_file_dict(web_interface, param_dict, dsp_settings):
+    web_interface.logger.info("Write config file: {0}".format(param_dict))
     parser = ConfigParser()
     found = parser.read([daq_config_filename])
     if not found:
@@ -29,7 +29,7 @@ def write_config_file_dict(webInterface_inst, param_dict, dsp_settings):
     parser["daq"]["sample_rate"] = str(param_dict["sample_rate"])
     parser["daq"]["en_noise_source_ctr"] = str(param_dict["en_noise_source_ctr"])
     # Set these for reconfigure
-    parser["daq"]["center_freq"] = str(int(webInterface_inst.module_receiver.daq_center_freq))
+    parser["daq"]["center_freq"] = str(int(web_interface.module_receiver.daq_center_freq))
     parser["pre_processing"]["cpi_size"] = str(param_dict["cpi_size"])
     parser["pre_processing"]["decimation_ratio"] = str(param_dict["decimation_ratio"])
     parser["pre_processing"]["fir_relative_bandwidth"] = str(param_dict["fir_relative_bandwidth"])
@@ -59,7 +59,7 @@ def write_config_file_dict(webInterface_inst, param_dict, dsp_settings):
 
     if len(error_list):
         for e in error_list:
-            webInterface_inst.logger.error(e)
+            web_interface.logger.error(e)
         return -1, error_list
     else:
         with open(daq_config_filename, "w") as configfile:
@@ -67,9 +67,8 @@ def write_config_file_dict(webInterface_inst, param_dict, dsp_settings):
         return 0, []
 
 
-def generate_config_page_layout(webInterface_inst):
+def generate_config_page_layout(web_interface):
     vfo_card = get_vfo_card_layout()
-
     config_page_component_list = [
         start_stop_card.layout,
         daq_status_card.layout,
@@ -82,10 +81,10 @@ def generate_config_page_layout(webInterface_inst):
         system_control_card.layout,
     ]
 
-    for i in range(webInterface_inst.module_signal_processor.max_vfos):
+    for i in range(web_interface.module_signal_processor.max_vfos):
         config_page_component_list.append(vfo_card[i])
 
-    if not webInterface_inst.disable_tooltips:
+    if not web_interface.disable_tooltips:
         config_page_component_list.append(tooltips.dsp_config_tooltips)
         config_page_component_list.append(tooltips.daq_ini_config_tooltips)
         config_page_component_list.append(tooltips.station_parameters_tooltips)

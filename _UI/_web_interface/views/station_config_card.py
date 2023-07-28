@@ -2,14 +2,14 @@ import dash_core_components as dcc
 import dash_html_components as html
 
 # isort: off
-from maindash import webInterface_inst
+from maindash import web_interface
 
 # isort: on
 from variables import option
 
 
 def get_station_config_card_layout():
-    en_fixed_heading = [1] if webInterface_inst.module_signal_processor.fixed_heading else []
+    en_fixed_heading = [1] if web_interface.module_signal_processor.fixed_heading else []
     # --------------------------------
     # Misc station config parameters
     # --------------------------------
@@ -21,7 +21,7 @@ def get_station_config_card_layout():
                     html.Div("Station ID:", id="station_id_label", className="field-label"),
                     dcc.Input(
                         id="station_id_input",
-                        value=webInterface_inst.module_signal_processor.station_id,
+                        value=web_interface.module_signal_processor.station_id,
                         pattern="[A-Za-z0-9\\-]*",
                         type="text",
                         className="field-body-textbox",
@@ -44,7 +44,7 @@ def get_station_config_card_layout():
                             {"label": "RDF Mapper", "value": "RDF Mapper"},
                             {"label": "Full POST", "value": "Full POST"},
                         ],
-                        value=webInterface_inst.module_signal_processor.DOA_data_format,
+                        value=web_interface.module_signal_processor.DOA_data_format,
                         style={"display": "inline-block"},
                         className="field-body",
                     ),
@@ -56,7 +56,7 @@ def get_station_config_card_layout():
                     html.Div("RDF Mapper / Generic Server URL:", className="field-label"),
                     dcc.Input(
                         id="rdf_mapper_server_address",
-                        value=webInterface_inst.module_signal_processor.RDF_mapper_server,
+                        value=web_interface.module_signal_processor.RDF_mapper_server,
                         type="text",
                         className="field-body-textbox",
                         debounce=True,
@@ -70,7 +70,7 @@ def get_station_config_card_layout():
                     html.Div("Kraken Pro Key:", className="field-label"),
                     dcc.Input(
                         id="krakenpro_key",
-                        value=webInterface_inst.module_signal_processor.krakenpro_key,
+                        value=web_interface.module_signal_processor.krakenpro_key,
                         type="text",
                         className="field-body-textbox",
                         debounce=True,
@@ -90,10 +90,10 @@ def get_station_config_card_layout():
                             {
                                 "label": "GPS",
                                 "value": "gpsd",
-                                "disabled": not webInterface_inst.module_signal_processor.hasgps,
+                                "disabled": not web_interface.module_signal_processor.hasgps,
                             },
                         ],
-                        value=webInterface_inst.location_source,
+                        value=web_interface.location_source,
                         style={"display": "inline-block"},
                         className="field-body",
                     ),
@@ -108,7 +108,7 @@ def get_station_config_card_layout():
                     ),
                     # html.Div("Fixed Heading:", className="field-label"),
                     # daq.BooleanSwitch(id="fixed_heading_check",
-                    #                   on=webInterface_inst.module_signal_processor.fixed_heading,
+                    #                   on=web_interface.module_signal_processor.fixed_heading,
                     #                   label="Use Fixed Heading",
                     #                   labelPosition="right"),
                 ],
@@ -122,7 +122,7 @@ def get_station_config_card_layout():
                             html.Div("Latitude:", className="field-label"),
                             dcc.Input(
                                 id="latitude_input",
-                                value=webInterface_inst.module_signal_processor.latitude,
+                                value=web_interface.module_signal_processor.latitude,
                                 type="number",
                                 className="field-body-textbox",
                                 debounce=True,
@@ -136,7 +136,7 @@ def get_station_config_card_layout():
                             html.Div("Longitude:", className="field-label"),
                             dcc.Input(
                                 id="longitude_input",
-                                value=webInterface_inst.module_signal_processor.longitude,
+                                value=web_interface.module_signal_processor.longitude,
                                 type="number",
                                 className="field-body-textbox",
                                 debounce=True,
@@ -153,7 +153,7 @@ def get_station_config_card_layout():
                     html.Div("Heading:", className="field-label"),
                     dcc.Input(
                         id="heading_input",
-                        value=webInterface_inst.module_signal_processor.heading,
+                        value=web_interface.module_signal_processor.heading,
                         type="number",
                         className="field-body-textbox",
                         debounce=True,
@@ -203,7 +203,7 @@ def get_station_config_card_layout():
                             html.Div("Min speed for heading [m/s]:", className="field-label"),
                             dcc.Input(
                                 id="min_speed_input",
-                                value=webInterface_inst.module_signal_processor.gps_min_speed_for_valid_heading,
+                                value=web_interface.module_signal_processor.gps_min_speed_for_valid_heading,
                                 type="number",
                                 className="field-body-textbox",
                                 debounce=True,
@@ -218,7 +218,7 @@ def get_station_config_card_layout():
                             html.Div("Min speed duration for heading [s]", className="field-label"),
                             dcc.Input(
                                 id="min_speed_duration_input",
-                                value=webInterface_inst.module_signal_processor.gps_min_duration_for_valid_heading,
+                                value=web_interface.module_signal_processor.gps_min_duration_for_valid_heading,
                                 type="number",
                                 className="field-body-textbox",
                                 debounce=True,
