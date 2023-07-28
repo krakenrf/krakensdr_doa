@@ -115,7 +115,7 @@ def get_vfo_card_layout():
                         ),
                     ],
                     id="beta_features_container " + str(i),
-                    style={"display": "none"},
+                    style={"display": "block"} if web_interface.en_beta_features else {"display": "none"},
                 ),
             ],
             id="vfo" + str(i),
