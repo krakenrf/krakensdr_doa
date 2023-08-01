@@ -23,6 +23,7 @@ import _thread
 import logging
 import os
 import socket
+import sys
 
 # Import built-in modules
 from struct import pack
@@ -32,6 +33,7 @@ from threading import Lock
 import numpy as np
 from iq_header import IQHeader
 from shmemIface import inShmemIface
+from variables import AUTO_GAIN_VALUE
 
 
 class ReceiverRTLSDR:
@@ -54,6 +56,7 @@ class ReceiverRTLSDR:
         # Values are configured externally upon configuration request
         self.daq_center_freq = 100  # MHz
         self.daq_rx_gain = 0  # [dB]
+        self.daq_agc = False
 
         # UI interface
         self.data_que = data_que
@@ -354,12 +357,32 @@ class ReceiverRTLSDR:
         """
         if self.receiver_connection_status:  # Check connection
             self.daq_rx_gain = gain
+            self.daq_agc = False
 
             # Set center frequency
             cmd = "GAIN"
             gain_list = [int(gain * 10)] * self.M
             gain_bytes = pack("I" * self.M, *gain_list)
             msg_bytes = cmd.encode() + gain_bytes + bytearray(128 - (self.M + 1) * 4)
+            try:
+                _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))
+            except Exception as error:
+                self.logger.error("Unable to start communication thread")
+                self.logger.error(f"Error message: {error}")
+
+    def set_if_agc(self):
+        """
+        Enables RF Automatic Gain Control State (AGC)
+        of the receiver through the control interface
+
+        """
+        if self.receiver_connection_status:  # Check connection
+            self.daq_rx_gain = AUTO_GAIN_VALUE
+            self.daq_agc = True
+
+            # Set agc
+            cmd = "AGC ".encode()
+            msg_bytes = cmd + bytearray(128 - sys.getsizeof(cmd))
             try:
                 _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))
             except Exception as error:

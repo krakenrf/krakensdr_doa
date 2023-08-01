@@ -10,6 +10,9 @@ from maindash import web_interface
 # isort: on
 
 from variables import (
+    AGC_WARNING,
+    AGC_WARNING_DEFAULT_STYLE,
+    AUTO_GAIN_VALUE,
     calibration_tack_modes,
     daq_config_filename,
     daq_preconfigs_path,
@@ -82,6 +85,7 @@ def get_daq_config_card_layout():
                 dcc.Dropdown(
                     id="daq_rx_gain",
                     options=[
+                        {"label": "Auto", "value": AUTO_GAIN_VALUE},
                         {"label": "0 dB", "value": 0},
                         {"label": "0.9 dB", "value": 0.9},
                         {"label": "1.4 dB", "value": 1.4},
@@ -125,6 +129,16 @@ def get_daq_config_card_layout():
                 html.Button("Update Receiver Parameters", id="btn-update_rx_param", className="btn"),
             ],
             className="field",
+        ),
+        html.Div(
+            [
+                html.Div(
+                    AGC_WARNING,
+                    id="agc_warning",
+                    className="field",
+                    style=AGC_WARNING_DEFAULT_STYLE,
+                )
+            ]
         ),
         html.Div(
             [

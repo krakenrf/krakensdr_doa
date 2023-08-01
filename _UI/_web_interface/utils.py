@@ -9,6 +9,7 @@ from kraken_web_doa import plot_doa
 from kraken_web_spectrum import plot_spectrum
 from krakenSDR_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR
 from variables import (
+    AUTO_GAIN_VALUE,
     DEFAULT_MAPPING_SERVER_ENDPOINT,
     HZ_TO_MHZ,
     daq_config_filename,
@@ -239,7 +240,11 @@ def settings_change_watcher(web_interface, settings_file_path):
                 dsp_settings = json.loads(myfile.read())
 
         center_freq = float(dsp_settings.get("center_freq", 100.0))
-        gain = float(dsp_settings.get("uniform_gain", 1.4))
+        gain = (
+            float(dsp_settings.get("uniform_gain", 1.4))
+            if dsp_settings.get("uniform_gain", 1.4) != "Auto"
+            else AUTO_GAIN_VALUE
+        )
 
         web_interface.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
