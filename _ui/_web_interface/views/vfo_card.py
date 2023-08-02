@@ -31,6 +31,10 @@ def get_vfo_card_layout():
                             className="field-body-textbox",
                         ),
                     ],
+                    id="menu_vfo_" + str(i) + "_freq",
+                    style={"display": "block"}
+                    if (i < web_interface.active_vfos and web_interface.module_signal_processor.vfo_mode != "Scan")
+                    else {"display": "none"},
                     className="field",
                 ),
                 html.Div(
@@ -147,9 +151,9 @@ def get_vfo_card_layout():
             ],
             id="vfo" + str(i),
             className="card",
-            style=(
-                {"display": "block"} if i < web_interface.module_signal_processor.active_vfos else {"display": "none"}
-            ),
+            style={"display": "block"}
+            if (i < web_interface.active_vfos and web_interface.module_signal_processor.vfo_mode != "Scan")
+            else {"display": "none"},
         )
 
     return layout

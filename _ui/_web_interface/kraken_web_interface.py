@@ -146,7 +146,8 @@ class WebInterface:
         self.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
         self.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
         self.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 1))
-        self.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 1))
+        self.active_vfos = int(dsp_settings.get("active_vfos", 1))
+        self.module_signal_processor.active_vfos = self.active_vfos
         self.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
         self.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", False)
         self.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", False)
@@ -216,7 +217,7 @@ class WebInterface:
         self.module_signal_processor.compass_offset = self.compass_offset
         self.daq_dsp_latency = 0  # [ms]
         self.max_amplitude = 0  # Used to help setting the threshold level of the squelch
-        self.active_vfos = []
+        self.active_vfos = 1
         self.vfo_freq = []
         self.vfo_bw = []
         self.vfo_squelch = []

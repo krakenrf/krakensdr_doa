@@ -269,6 +269,7 @@ def update_vfo_params(*args):
 
     web_interface.module_signal_processor.dsp_decimation = max(int(kwargs_dict["dsp_decimation"]), 1)
     web_interface.module_signal_processor.active_vfos = active_vfos
+    web_interface.active_vfos = web_interface.module_signal_processor.active_vfos
     web_interface.module_signal_processor.output_vfo = kwargs_dict["output_vfo"]
 
     en_optimize_short_bursts = kwargs_dict["en_optimize_short_bursts"]
