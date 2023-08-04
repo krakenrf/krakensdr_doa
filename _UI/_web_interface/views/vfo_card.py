@@ -72,7 +72,7 @@ def get_vfo_card_layout():
                                     "label": f"Default ({web_interface.module_signal_processor.vfo_default_squelch_mode})",
                                     "value": "Default",
                                 },
-                                {"label": "None", "value": "None"},
+                                {"label": "Manual", "value": "Manual"},
                                 {"label": "Auto", "value": "Auto"},
                                 {"label": "Auto Channel", "value": "Auto Channel"},
                             ],

@@ -57,7 +57,7 @@ def get_vfo_config_card_layout():
                     dcc.Dropdown(
                         id="vfo_default_squelch_mode",
                         options=[
-                            {"label": "None", "value": "None"},
+                            {"label": "Manual", "value": "Manual"},
                             {"label": "Auto", "value": "Auto"},
                             {"label": "Auto Channel", "value": "Auto Channel"},
                         ],

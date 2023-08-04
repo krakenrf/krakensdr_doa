@@ -121,7 +121,7 @@ dsp_config_tooltips = html.Div(
         ),
         dbc.Tooltip(
             [
-                html.P("None - vfo_squelch should be provided manually"),
+                html.P("Manual - vfo_squelch should be provided manually"),
                 html.P("Auto - automatically calculated value for all vfo_squelch based average level of noise"),
                 html.P(
                     "Auto Channel - automatically calculated value for each vfo_squelch based average level of noise near concrete vfo"
