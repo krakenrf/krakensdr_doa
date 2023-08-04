@@ -850,16 +850,16 @@ class SignalProcessor(threading.Thread):
                                     elif self.vfo_iq_enabled[i]:
                                         self.vfo_iq_channel[i] = np.concatenate((self.vfo_iq_channel[i], iq_channel))
                                 else:
-                                    self.vfo_time[i] = 0
-                                    self.vfo_blocked[i] = False
                                     fm_demod_channel = self.vfo_demod_channel[i]
                                     iq_channel = self.vfo_iq_channel[i]
                                     thetas = self.vfo_theta_channel[i]
                                     vfo_freq = int(self.vfo_freq[i])
                                     self.fm_demod_channel_list.append(
-                                        (now_dt_str, vfo_freq, fm_demod_channel, iq_channel, thetas)
+                                        (now_dt_str, vfo_freq, fm_demod_channel, iq_channel, thetas, self.vfo_time[i])
                                     )
                                     self.vfo_demod_channel[i] = np.array([])
+                                    self.vfo_time[i] = 0
+                                    self.vfo_blocked[i] = False
                                     self.vfo_theta_channel[i] = []
                                     self.vfo_iq_channel[i] = np.array([])
 
@@ -897,6 +897,7 @@ class SignalProcessor(threading.Thread):
                                 fm_demod_channel,
                                 iq_channel,
                                 thetas,
+                                vfo_time,
                             ) in self.fm_demod_channel_list:
                                 store_demod_channel = fm_demod_channel.size > 0
                                 store_iq_channel = iq_channel.size > 0
@@ -927,7 +928,7 @@ class SignalProcessor(threading.Thread):
                                         )
                                         self.vfo_demod[:] = ["None"] * len(self.vfo_demod)
                                 if store_iq_channel:
-                                    record_file_name = f"{now_dt_str},IQ_{vfo_freq / 1e6:.3f}MHz"
+                                    record_file_name = f"{now_dt_str},{vfo_time:3f}s,{vfo_freq / 1e6:.3f}MHz"
                                     filename = f"{self.iq_record_path}/{record_file_name},DOA_{doa_max_str}.iq"
                                     if can_store_file(self.iq_record_path):
                                         iq_channel.tofile(filename)
