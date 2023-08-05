@@ -152,6 +152,9 @@ class SignalProcessor(threading.Thread):
         self.vfo_blocked = [False] * self.max_vfos
         self.vfo_time = [0] * self.max_vfos
         self.max_demod_timeout = 60
+        self.default_auto_db_offset = 5  # 5dB for Auto Squelch
+        self.default_auto_channel_db_offset = 3  # 3dB for Auto Channel Squelch and Scan modes
+        self.moving_avg_freq_window = 100_000  # 100kHz
 
         self.en_fm_demod = False
         self.vfo_fm_demod = [False] * self.max_vfos
@@ -241,45 +244,35 @@ class SignalProcessor(threading.Thread):
         if self.spectrum_fig_type == "Single":
             self.peak_hold_spectrum = np.ones(self.spectrum_window_size) * -200
 
-    def calculate_squelch(self, sampling_freq, N):
+    def mean_spectrum(self, spectrum):
         def is_enabled_auto_squelch(v):
             return v == "Auto" or (v == "Default" and self.vfo_default_squelch_mode == "Auto")
 
+        auto_squelch = any(is_enabled_auto_squelch(vfo_squelch_mode) for vfo_squelch_mode in self.vfo_squelch_mode)
+        if auto_squelch:
+            sensor1_spec_mean = np.mean(spectrum)
+            vfo_auto_squelch = sensor1_spec_mean + self.default_auto_db_offset
+            self.vfo_squelch = [vfo_auto_squelch] * self.max_vfos
+
+    def calculate_squelch(self, sampling_freq, N, sensor1_spec, real_freqs):
         def find_nearest(array, value):
             array = np.asarray(array)
             idx = (np.abs(array - value)).argmin()
             return idx, array[idx]
 
-        if self.spectrum_fig_type == "Single":
-            spectrum_index = 1
-        else:
-            spectrum_index = 2
-        sensor1_spec = self.spectrum[spectrum_index, :]
-        default_auto_db_offset = 5
-        default_auto_channel_db_offset = 3
-
-        auto_squelch = any(is_enabled_auto_squelch(vfo_squelch_mode) for vfo_squelch_mode in self.vfo_squelch_mode)
-        if auto_squelch:
-            sensor1_spec_mean = np.mean(sensor1_spec)
-            vfo_auto_squelch = sensor1_spec_mean + default_auto_db_offset
-            self.vfo_squelch = [vfo_auto_squelch] * self.max_vfos
-
-        moving_avg_freq_window = 100_000  # 100kHz
-        freq_window = int(moving_avg_freq_window / (sampling_freq / N))
+        freq_window = int(self.moving_avg_freq_window / (sampling_freq / N))
 
         for i, vfo_squelch_mode in enumerate(self.vfo_squelch_mode[: self.active_vfos]):
-            freq_arr = self.spectrum[0, ::-1]
             if vfo_squelch_mode == "Auto Channel" or (
                 vfo_squelch_mode == "Default" and self.vfo_default_squelch_mode == "Auto Channel"
             ):
-                real_freq = self.module_receiver.daq_center_freq - freq_arr
                 vfo_bw_freq_window = int(self.vfo_bw[i] / (sampling_freq / N))
-                freq_idx, nearsest = find_nearest(real_freq, self.vfo_freq[i])
+                freq_idx, nearsest = find_nearest(real_freqs, self.vfo_freq[i])
                 vfo_freq_window = int(freq_window + vfo_bw_freq_window / 2)
                 vfo_start_measure_spec = freq_idx - min(abs(freq_idx), vfo_freq_window)
                 vfo_end_measure_spec = freq_idx + min(abs(len(sensor1_spec) - freq_idx), vfo_freq_window)
-                sensor1_spec_mean = np.mean(sensor1_spec[vfo_start_measure_spec:vfo_end_measure_spec])
-                self.vfo_squelch[i] = sensor1_spec_mean + default_auto_channel_db_offset
+                sensor1_spec_mean = jit_mean(sensor1_spec[vfo_start_measure_spec:vfo_end_measure_spec])
+                self.vfo_squelch[i] = sensor1_spec_mean + self.default_auto_channel_db_offset
 
     def run(self):
         """
@@ -441,7 +434,12 @@ class SignalProcessor(threading.Thread):
                             self.snrs.clear()
                             self.fm_demod_channel_list.clear()
 
-                            self.calculate_squelch(sampling_freq, N)
+                            relative_freqs = self.spectrum[0, ::-1]
+                            real_freqs = self.module_receiver.daq_center_freq - relative_freqs
+                            sensor1_spec = self.spectrum[1, :]
+
+                            self.mean_spectrum(sensor1_spec)
+                            self.calculate_squelch(sampling_freq, N, sensor1_spec, real_freqs)
 
                             for i in range(active_vfos):
                                 # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
@@ -1215,6 +1213,11 @@ def calc_sync(iq_samples):
     iq_diffs /= iq_diffs[0]
 
     return iq_diffs
+
+
+@njit(fastmath=True)
+def jit_mean(arr):
+    return np.mean(arr)
 
 
 # Reduce spectrum size for plotting purposes by taking the MAX val every few values
