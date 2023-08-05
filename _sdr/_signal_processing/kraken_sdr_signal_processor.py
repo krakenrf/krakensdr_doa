@@ -366,7 +366,7 @@ class SignalProcessor(threading.Thread):
                 measured_spec_mean = np.mean(measured_spec[vfo_start_measure_spec:vfo_end_measure_spec])
                 self.vfo_squelch[i] = measured_spec_mean + self.default_auto_channel_db_offset
 
-    def scan_channels(self, sampling_freq, N):
+    def scan_channels(self, sampling_freq, N, measured_spec, real_freqs):
         active_vfos = self.active_vfos = 0
         try:
             cur_freq_max = None
@@ -378,23 +378,15 @@ class SignalProcessor(threading.Thread):
 
             self.scan_channel_list = list(filter(lambda s: not s.deleted, self.scan_channel_list))
 
-            if self.spectrum_fig_type == "Single":
-                spectrum_index = 1
-            else:
-                spectrum_index = 2
-
-            freq_arr = self.spectrum[0, ::-1]
-            sensor1_spec = self.spectrum[spectrum_index, :]
-            self.mean_spectrum(sensor1_spec)
-
-            for _, (freq, spec) in enumerate(zip(freq_arr, sensor1_spec)):
-                real_freq = self.module_receiver.daq_center_freq - freq
-
+            for real_freq, spec in zip(real_freqs, measured_spec):
                 if self.vfo_default_squelch_mode == "Auto Channel":
                     if len(mov_avg_noises) < freq_window:
                         mov_avg_noises.append(spec)
                         continue
                     mov_avg_noise = sum(mov_avg_noises) / len(mov_avg_noises) + self.default_auto_channel_db_offset
+                    if len(mov_avg_noises) > 0:
+                        mov_avg_noises.pop(0)
+                        mov_avg_noises.append(spec)
                 else:
                     mov_avg_noise = self.vfo_squelch[0]
 
@@ -467,9 +459,6 @@ class SignalProcessor(threading.Thread):
                                     f"    center freq: {cur_freq_max.center_freq:3}MHz, start freq: {cur_freq_max.start_freq:3}MHz, end freq: {cur_freq_max.end_freq:3}MHz"
                                 )
                         cur_freq_max = None
-                    if len(mov_avg_noises) > 0:
-                        mov_avg_noises.pop(0)
-                        mov_avg_noises.append(spec)
 
             new_scan_channel_list: List[ScanFreq] = []
             for scan_channel in self.scan_channel_list:
@@ -703,9 +692,8 @@ class SignalProcessor(threading.Thread):
 
                             self.calculate_squelch(sampling_freq, N, measured_spec, real_freqs)
 
-                            # max_length_of_audio_secs = 60
-                            if self.en_DOA_estimation and self.vfo_mode == "Scan":
-                                active_vfos = self.scan_channels(sampling_freq, N)
+                            if self.vfo_mode == "Scan":
+                                active_vfos = self.scan_channels(sampling_freq, N, measured_spec, real_freqs)
 
                             for i in range(active_vfos):
                                 # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
