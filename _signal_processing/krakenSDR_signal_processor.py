@@ -260,6 +260,8 @@ class SignalProcessor(threading.Thread):
             idx = (np.abs(array - value)).argmin()
             return idx, array[idx]
 
+        self.mean_spectrum(measured_spec)
+
         freq_window = int(self.moving_avg_freq_window / (sampling_freq / N))
 
         for i, vfo_squelch_mode in enumerate(self.vfo_squelch_mode[: self.active_vfos]):
@@ -438,7 +440,6 @@ class SignalProcessor(threading.Thread):
                             real_freqs = self.module_receiver.daq_center_freq - relative_freqs
                             measured_spec = self.spectrum[1, :]
 
-                            self.mean_spectrum(measured_spec)
                             self.calculate_squelch(sampling_freq, N, measured_spec, real_freqs)
 
                             for i in range(active_vfos):
