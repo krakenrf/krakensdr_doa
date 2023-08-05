@@ -277,12 +277,6 @@ def update_vfo_params(*args):
     else:
         web_interface.module_signal_processor.optimize_short_bursts = False
 
-    for i in range(web_interface.module_signal_processor.max_vfos):
-        if i < kwargs_dict["active_vfos"]:
-            app.push_mods({"vfo" + str(i): {"style": {"display": "block"}}})
-        else:
-            app.push_mods({"vfo" + str(i): {"style": {"display": "none"}}})
-
     if web_interface.daq_fs > 0:
         bw = web_interface.daq_fs / web_interface.module_signal_processor.dsp_decimation
         vfo_min = web_interface.daq_center_freq - bw / 2
@@ -302,6 +296,32 @@ def update_vfo_params(*args):
             web_interface.module_signal_processor.vfo_squelch[i] = int(kwargs_dict["vfo_" + str(i) + "_squelch"])
             web_interface.module_signal_processor.vfo_demod[i] = kwargs_dict[f"vfo_{i}_demod"]
             web_interface.module_signal_processor.vfo_iq[i] = kwargs_dict[f"vfo_{i}_iq"]
+
+    for i in range(web_interface.module_signal_processor.max_vfos):
+        if i < kwargs_dict["active_vfos"]:
+            app.push_mods({"vfo" + str(i): {"style": {"display": "block"}}})
+            is_auto_squelch = web_interface.module_signal_processor.vfo_squelch_mode[i] in ["Auto", "Auto Channel"] or (
+                web_interface.module_signal_processor.vfo_default_squelch_mode in ["Auto", "Auto Channel"]
+                and web_interface.module_signal_processor.vfo_squelch_mode[i] == "Default"
+            )
+            if not is_auto_squelch or web_interface.module_signal_processor.vfo_squelch_mode[i] == "Manual":
+                app.push_mods({"label_vfo_squelch_" + str(i): {"style": {"display": "inline-block"}}})
+            else:
+                app.push_mods({"label_vfo_squelch_" + str(i): {"style": {"display": "none"}}})
+
+            if web_interface.module_signal_processor.vfo_squelch_mode[i] == "Default":
+                options = [
+                    {
+                        "label": f"Default ({web_interface.module_signal_processor.vfo_default_squelch_mode})",
+                        "value": "Default",
+                    },
+                    {"label": "Manual", "value": "Manual"},
+                    {"label": "Auto", "value": "Auto"},
+                    {"label": "Auto Channel", "value": "Auto Channel"},
+                ]
+                app.push_mods({f"vfo_squelch_mode_{i}": {"options": options}})
+        else:
+            app.push_mods({"vfo" + str(i): {"style": {"display": "none"}}})
 
 
 @app.callback_shared(

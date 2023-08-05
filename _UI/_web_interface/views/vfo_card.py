@@ -94,6 +94,7 @@ def get_vfo_card_layout():
                             className="field-body-textbox",
                         ),
                     ],
+                    id=f"label_vfo_squelch_{i}",
                     style={"display": "inline-block"} if not is_auto_squelch else {"display": "none"},
                     className="field",
                 ),
