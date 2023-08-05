@@ -243,8 +243,8 @@ def settings_change_watcher(web_interface, settings_file_path):
 
         web_interface.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
-        web_interface.en_system_control = dsp_settings.get("en_system_control", [])
-        web_interface.en_beta_features = dsp_settings.get("en_beta_features", [])
+        web_interface.en_system_control = [1] if dsp_settings.get("en_system_control", False) else []
+        web_interface.en_beta_features = [1] if dsp_settings.get("en_beta_features", False) else []
 
         web_interface.module_signal_processor.en_DOA_estimation = dsp_settings.get("en_doa", 0)
         web_interface.module_signal_processor.DOA_decorrelation_method = dsp_settings.get("doa_decorrelation_method", 0)

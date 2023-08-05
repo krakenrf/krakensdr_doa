@@ -181,8 +181,8 @@ class WebInterface:
         self.daq_if_gains = "[,,,,]"
         self.en_advanced_daq_cfg = False
         self.en_basic_daq_cfg = False
-        self.en_system_control = dsp_settings.get("en_system_control", [])
-        self.en_beta_features = dsp_settings.get("en_beta_features", [])
+        self.en_system_control = [1] if dsp_settings.get("en_system_control", False) else []
+        self.en_beta_features = [1] if dsp_settings.get("en_beta_features", False) else []
 
         self.daq_ini_cfg_dict = read_config_file_dict()
         # "Default" # Holds the string identifier of the actively loaded DAQ ini configuration
@@ -285,8 +285,8 @@ class WebInterface:
         data["expected_num_of_sources"] = self.module_signal_processor.DOA_expected_num_of_sources
 
         # Open System Control
-        data["en_system_control"] = self.en_system_control
-        data["en_beta_features"] = self.en_beta_features
+        data["en_system_control"] = True if self.en_system_control == [1] else False
+        data["en_beta_features"] = True if self.en_beta_features == [1] else False
 
         # Web Interface
         data["en_hw_check"] = dsp_settings.get("en_hw_check", 0)
