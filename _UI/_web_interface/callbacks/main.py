@@ -250,6 +250,8 @@ def enable_gps(toggle_value):
 
 @app.callback_shared(None, web_interface.vfo_cfg_inputs)
 def update_vfo_params(*args):
+    app_updates = {}
+
     # Get dict of input variables
     input_names = [item.component_id for item in web_interface.vfo_cfg_inputs]
     kwargs_dict = dict(zip(input_names, args))
@@ -265,7 +267,7 @@ def update_vfo_params(*args):
     # If VFO mode is in the VFO-0 Auto Max mode, we active VFOs to 1 only
     if kwargs_dict["vfo_mode"] == "Auto":
         active_vfos = 1
-        app.push_mods({"active_vfos": {"value": 1}})
+        app_updates["active_vfos"] = {"value": 1}
 
     web_interface.module_signal_processor.dsp_decimation = max(int(kwargs_dict["dsp_decimation"]), 1)
     web_interface.module_signal_processor.active_vfos = active_vfos
@@ -299,15 +301,15 @@ def update_vfo_params(*args):
 
     for i in range(web_interface.module_signal_processor.max_vfos):
         if i < kwargs_dict["active_vfos"]:
-            app.push_mods({"vfo" + str(i): {"style": {"display": "block"}}})
+            app_updates["vfo" + str(i)] = {"style": {"display": "block"}}
             is_auto_squelch = web_interface.module_signal_processor.vfo_squelch_mode[i] in ["Auto", "Auto Channel"] or (
                 web_interface.module_signal_processor.vfo_default_squelch_mode in ["Auto", "Auto Channel"]
                 and web_interface.module_signal_processor.vfo_squelch_mode[i] == "Default"
             )
             if not is_auto_squelch or web_interface.module_signal_processor.vfo_squelch_mode[i] == "Manual":
-                app.push_mods({"label_vfo_squelch_" + str(i): {"style": {"display": "inline-block"}}})
+                app_updates["label_vfo_squelch_" + str(i)] = {"style": {"display": "inline-block"}}
             else:
-                app.push_mods({"label_vfo_squelch_" + str(i): {"style": {"display": "none"}}})
+                app_updates["label_vfo_squelch_" + str(i)] = {"style": {"display": "none"}}
 
             if web_interface.module_signal_processor.vfo_squelch_mode[i] == "Default":
                 options = [
@@ -319,9 +321,12 @@ def update_vfo_params(*args):
                     {"label": "Auto", "value": "Auto"},
                     {"label": "Auto Channel", "value": "Auto Channel"},
                 ]
-                app.push_mods({f"vfo_squelch_mode_{i}": {"options": options}})
+                app_updates[f"vfo_squelch_mode_{i}"] = {"options": options}
         else:
-            app.push_mods({"vfo" + str(i): {"style": {"display": "none"}}})
+            app_updates["vfo" + str(i)] = {"style": {"display": "none"}}
+
+    if app_updates:
+        app.push_mods(app_updates)
 
 
 @app.callback_shared(
