@@ -10,6 +10,7 @@ from variables import (
     settings_file_path,
     settings_found,
     dsp_settings,
+    DEFAULT_MAPPING_SERVER_ENDPOINT
 )
 
 # isort: on
@@ -132,6 +133,9 @@ class WebInterface:
 
         # Kraken Pro Remote Key
         self.module_signal_processor.krakenpro_key = dsp_settings.get("krakenpro_key", "0ae4ca6b3")
+
+        # Mapping Server URL
+        self.mapping_server_url = dsp_settings.get("mapping_server_url", DEFAULT_MAPPING_SERVER_ENDPOINT)
 
         # VFO Configuration
         self.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
@@ -299,6 +303,7 @@ class WebInterface:
         data["longitude"] = self.module_signal_processor.longitude
         data["heading"] = self.module_signal_processor.heading
         data["krakenpro_key"] = self.module_signal_processor.krakenpro_key
+        data["mapping_server_url"] = self.mapping_server_url
         data["rdf_mapper_server"] = self.module_signal_processor.RDF_mapper_server
         data["gps_min_speed"] = self.module_signal_processor.gps_min_speed_for_valid_heading
         data["gps_min_speed_duration"] = self.module_signal_processor.gps_min_duration_for_valid_heading
