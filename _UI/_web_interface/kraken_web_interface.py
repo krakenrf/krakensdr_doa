@@ -6,12 +6,7 @@ import time
 import numpy as np
 
 # isort: off
-from variables import (
-    settings_file_path,
-    settings_found,
-    dsp_settings,
-    DEFAULT_MAPPING_SERVER_ENDPOINT
-)
+from variables import settings_file_path, settings_found, dsp_settings, DEFAULT_MAPPING_SERVER_ENDPOINT
 
 # isort: on
 
