@@ -118,7 +118,7 @@ def get_vfo_config_card_layout():
                     ),
                 ],
                 id="beta_features_container",
-                style={"display": "none"},
+                style={"display": "block"} if web_interface.en_beta_features else {"display": "none"},
             ),
             html.Div(
                 [

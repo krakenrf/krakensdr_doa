@@ -3,12 +3,13 @@ from configparser import ConfigParser
 import dash_html_components as html
 import ini_checker
 from variables import daq_config_filename
-from views import daq_status_card, start_stop_card, system_control_card, tooltips
+from views import daq_status_card, start_stop_card, tooltips
 from views.daq_config_card import get_daq_config_card_layout
 from views.display_options_card import get_display_options_card_layout
 from views.dsp_config_card import get_dsp_config_card_layout
 from views.recording_config_card import get_recording_config_card_layout
 from views.station_config_card import get_station_config_card_layout
+from views.system_control_card import get_system_control_card_layout
 from views.vfo_card import get_vfo_card_layout
 from views.vfo_config_card import get_vfo_config_card_layout
 
@@ -78,7 +79,7 @@ def generate_config_page_layout(web_interface):
         get_display_options_card_layout(),
         get_station_config_card_layout(),
         get_recording_config_card_layout(),
-        system_control_card.layout,
+        get_system_control_card_layout(),
     ]
 
     for i in range(web_interface.module_signal_processor.max_vfos):
