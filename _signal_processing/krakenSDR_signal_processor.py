@@ -139,6 +139,8 @@ class SignalProcessor(threading.Thread):
         self.vfo_bw = [12500] * self.max_vfos
         self.vfo_fir_order_factor = [DEFAULT_VFO_FIR_ORDER_FACTOR] * self.max_vfos
         self.vfo_freq = [self.module_receiver.daq_center_freq] * self.max_vfos
+        self.vfo_default_squelch_mode = "Auto"
+        self.vfo_squelch_mode = ["Auto"] * self.max_vfos
         self.vfo_squelch = [-120] * self.max_vfos
         self.vfo_default_demod = "None"
         self.vfo_demod = ["Default"] * self.max_vfos
@@ -150,6 +152,9 @@ class SignalProcessor(threading.Thread):
         self.vfo_blocked = [False] * self.max_vfos
         self.vfo_time = [0] * self.max_vfos
         self.max_demod_timeout = 60
+        self.default_auto_db_offset = 5  # 5dB for Auto Squelch
+        self.default_auto_channel_db_offset = 3  # 3dB for Auto Channel Squelch and Scan modes
+        self.moving_avg_freq_window = 100_000  # 100kHz
 
         self.en_fm_demod = False
         self.vfo_fm_demod = [False] * self.max_vfos
@@ -238,6 +243,38 @@ class SignalProcessor(threading.Thread):
     def resetPeakHold(self):
         if self.spectrum_fig_type == "Single":
             self.peak_hold_spectrum = np.ones(self.spectrum_window_size) * -200
+
+    def mean_spectrum(self, measured_spec):
+        def is_enabled_auto_squelch(v):
+            return v == "Auto" or (v == "Default" and self.vfo_default_squelch_mode == "Auto")
+
+        auto_squelch = any(is_enabled_auto_squelch(vfo_squelch_mode) for vfo_squelch_mode in self.vfo_squelch_mode)
+        if auto_squelch:
+            measured_spec_mean = np.mean(measured_spec)
+            vfo_auto_squelch = measured_spec_mean + self.default_auto_db_offset
+            self.vfo_squelch = [vfo_auto_squelch] * self.max_vfos
+
+    def calculate_squelch(self, sampling_freq, N, measured_spec, real_freqs):
+        def find_nearest(array, value):
+            array = np.asarray(array)
+            idx = (np.abs(array - value)).argmin()
+            return idx, array[idx]
+
+        self.mean_spectrum(measured_spec)
+
+        freq_window = int(self.moving_avg_freq_window / (sampling_freq / N))
+
+        for i, vfo_squelch_mode in enumerate(self.vfo_squelch_mode[: self.active_vfos]):
+            if vfo_squelch_mode == "Auto Channel" or (
+                vfo_squelch_mode == "Default" and self.vfo_default_squelch_mode == "Auto Channel"
+            ):
+                vfo_bw_freq_window = int(self.vfo_bw[i] / (sampling_freq / N))
+                freq_idx, nearsest = find_nearest(real_freqs, self.vfo_freq[i])
+                vfo_freq_window = int(freq_window + vfo_bw_freq_window / 2)
+                vfo_start_measure_spec = freq_idx - min(abs(freq_idx), vfo_freq_window)
+                vfo_end_measure_spec = freq_idx + min(abs(len(measured_spec) - freq_idx), vfo_freq_window)
+                measured_spec_mean = jit_mean(measured_spec[vfo_start_measure_spec:vfo_end_measure_spec])
+                self.vfo_squelch[i] = measured_spec_mean + self.default_auto_channel_db_offset
 
     def run(self):
         """
@@ -398,6 +435,12 @@ class SignalProcessor(threading.Thread):
                             self.number_of_correlated_sources.clear()
                             self.snrs.clear()
                             self.fm_demod_channel_list.clear()
+
+                            relative_freqs = self.spectrum[0, ::-1]
+                            real_freqs = self.module_receiver.daq_center_freq - relative_freqs
+                            measured_spec = self.spectrum[1, :]
+
+                            self.calculate_squelch(sampling_freq, N, measured_spec, real_freqs)
 
                             for i in range(active_vfos):
                                 # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
@@ -1171,6 +1214,11 @@ def calc_sync(iq_samples):
     iq_diffs /= iq_diffs[0]
 
     return iq_diffs
+
+
+@njit(fastmath=True)
+def jit_mean(arr):
+    return np.mean(arr)
 
 
 # Reduce spectrum size for plotting purposes by taking the MAX val every few values

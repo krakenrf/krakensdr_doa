@@ -277,6 +277,9 @@ def settings_change_watcher(web_interface, settings_file_path):
         # VFO Configuration
         web_interface.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
         web_interface.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
+        web_interface.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get(
+            "vfo_default_squelch_mode", "Auto"
+        )
         web_interface.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
         web_interface.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
         web_interface.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
@@ -294,6 +297,9 @@ def settings_change_watcher(web_interface, settings_file_path):
                 dsp_settings.get("vfo_fir_order_factor_" + str(i), DEFAULT_VFO_FIR_ORDER_FACTOR)
             )
             web_interface.module_signal_processor.vfo_freq[i] = float(dsp_settings.get("vfo_freq_" + str(i), 0))
+            web_interface.module_signal_processor.vfo_squelch_mode[i] = dsp_settings.get(
+                "vfo_squelch_mode_" + str(i), "Default"
+            )
             web_interface.module_signal_processor.vfo_squelch[i] = int(dsp_settings.get("vfo_squelch_" + str(i), 0))
             web_interface.module_signal_processor.vfo_demod[i] = dsp_settings.get("vfo_demod_" + str(i), "Default")
             web_interface.module_signal_processor.vfo_iq[i] = dsp_settings.get("vfo_iq_" + str(i), "Default")

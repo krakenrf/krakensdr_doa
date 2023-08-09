@@ -250,12 +250,15 @@ def enable_gps(toggle_value):
 
 @app.callback_shared(None, web_interface.vfo_cfg_inputs)
 def update_vfo_params(*args):
+    app_updates = {}
+
     # Get dict of input variables
     input_names = [item.component_id for item in web_interface.vfo_cfg_inputs]
     kwargs_dict = dict(zip(input_names, args))
 
     web_interface.module_signal_processor.spectrum_fig_type = kwargs_dict["spectrum_fig_type"]
     web_interface.module_signal_processor.vfo_mode = kwargs_dict["vfo_mode"]
+    web_interface.module_signal_processor.vfo_default_squelch_mode = kwargs_dict["vfo_default_squelch_mode"]
     web_interface.module_signal_processor.vfo_default_demod = kwargs_dict["vfo_default_demod"]
     web_interface.module_signal_processor.vfo_default_iq = kwargs_dict["vfo_default_iq"]
     web_interface.module_signal_processor.max_demod_timeout = int(kwargs_dict["max_demod_timeout"])
@@ -264,7 +267,7 @@ def update_vfo_params(*args):
     # If VFO mode is in the VFO-0 Auto Max mode, we active VFOs to 1 only
     if kwargs_dict["vfo_mode"] == "Auto":
         active_vfos = 1
-        app.push_mods({"active_vfos": {"value": 1}})
+        app_updates["active_vfos"] = {"value": 1}
 
     web_interface.module_signal_processor.dsp_decimation = max(int(kwargs_dict["dsp_decimation"]), 1)
     web_interface.module_signal_processor.active_vfos = active_vfos
@@ -275,12 +278,6 @@ def update_vfo_params(*args):
         web_interface.module_signal_processor.optimize_short_bursts = True
     else:
         web_interface.module_signal_processor.optimize_short_bursts = False
-
-    for i in range(web_interface.module_signal_processor.max_vfos):
-        if i < kwargs_dict["active_vfos"]:
-            app.push_mods({"vfo" + str(i): {"style": {"display": "block"}}})
-        else:
-            app.push_mods({"vfo" + str(i): {"style": {"display": "none"}}})
 
     if web_interface.daq_fs > 0:
         bw = web_interface.daq_fs / web_interface.module_signal_processor.dsp_decimation
@@ -297,9 +294,39 @@ def update_vfo_params(*args):
             web_interface.module_signal_processor.vfo_freq[i] = int(
                 max(min(kwargs_dict["vfo_" + str(i) + "_freq"], vfo_max), vfo_min) * 10**6
             )
+            web_interface.module_signal_processor.vfo_squelch_mode[i] = kwargs_dict[f"vfo_squelch_mode_{i}"]
             web_interface.module_signal_processor.vfo_squelch[i] = int(kwargs_dict["vfo_" + str(i) + "_squelch"])
             web_interface.module_signal_processor.vfo_demod[i] = kwargs_dict[f"vfo_{i}_demod"]
             web_interface.module_signal_processor.vfo_iq[i] = kwargs_dict[f"vfo_{i}_iq"]
+
+    for i in range(web_interface.module_signal_processor.max_vfos):
+        if i < kwargs_dict["active_vfos"]:
+            app_updates["vfo" + str(i)] = {"style": {"display": "block"}}
+            is_auto_squelch = web_interface.module_signal_processor.vfo_squelch_mode[i] in ["Auto", "Auto Channel"] or (
+                web_interface.module_signal_processor.vfo_default_squelch_mode in ["Auto", "Auto Channel"]
+                and web_interface.module_signal_processor.vfo_squelch_mode[i] == "Default"
+            )
+            if not is_auto_squelch or web_interface.module_signal_processor.vfo_squelch_mode[i] == "Manual":
+                app_updates["label_vfo_squelch_" + str(i)] = {"style": {"display": "inline-block"}}
+            else:
+                app_updates["label_vfo_squelch_" + str(i)] = {"style": {"display": "none"}}
+
+            if web_interface.module_signal_processor.vfo_squelch_mode[i] == "Default":
+                options = [
+                    {
+                        "label": f"Default ({web_interface.module_signal_processor.vfo_default_squelch_mode})",
+                        "value": "Default",
+                    },
+                    {"label": "Manual", "value": "Manual"},
+                    {"label": "Auto", "value": "Auto"},
+                    {"label": "Auto Channel", "value": "Auto Channel"},
+                ]
+                app_updates[f"vfo_squelch_mode_{i}"] = {"options": options}
+        else:
+            app_updates["vfo" + str(i)] = {"style": {"display": "none"}}
+
+    if app_updates:
+        app.push_mods(app_updates)
 
 
 @app.callback_shared(
