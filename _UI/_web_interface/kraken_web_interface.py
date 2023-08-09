@@ -5,6 +5,7 @@ import time
 
 import numpy as np
 
+# isort: off
 from variables import (
     settings_file_path,
     settings_found,
@@ -12,6 +13,7 @@ from variables import (
     DEFAULT_MAPPING_SERVER_ENDPOINT,
     AUTO_GAIN_VALUE,
 )
+# isort: on
 
 from dash_devices.dependencies import Input
 from krakenSDR_receiver import ReceiverRTLSDR
