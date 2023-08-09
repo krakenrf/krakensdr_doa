@@ -6,7 +6,13 @@ import time
 import numpy as np
 
 # isort: off
-from variables import settings_file_path, settings_found, dsp_settings, DEFAULT_MAPPING_SERVER_ENDPOINT
+from variables import (
+    settings_file_path,
+    settings_found,
+    dsp_settings,
+    DEFAULT_MAPPING_SERVER_ENDPOINT,
+    AUTO_GAIN_VALUE,
+)
 
 # isort: on
 
@@ -58,7 +64,11 @@ class WebInterface:
         self.module_receiver.daq_center_freq = (
             float(dsp_settings.get("center_freq", default_center_frequency_mhz)) * 10**6
         )
-        self.module_receiver.daq_rx_gain = float(dsp_settings.get("uniform_gain", 15.7))
+        self.module_receiver.daq_rx_gain = (
+            float(dsp_settings.get("uniform_gain", 15.7))
+            if dsp_settings.get("uniform_gain", 15.7) != "Auto"
+            else AUTO_GAIN_VALUE
+        )
         self.module_receiver.rec_ip_addr = dsp_settings.get("default_ip", "0.0.0.0")
 
         # Remote Control
@@ -262,9 +272,11 @@ class WebInterface:
     def save_configuration(self):
         data = {}
 
-        # DAQ Configuration
+        # DAQ Configurations
         data["center_freq"] = self.module_receiver.daq_center_freq / 10**6
-        data["uniform_gain"] = self.module_receiver.daq_rx_gain
+        data["uniform_gain"] = (
+            self.module_receiver.daq_rx_gain if self.module_receiver.daq_rx_gain != AUTO_GAIN_VALUE else "Auto"
+        )
         data["data_interface"] = dsp_settings.get("data_interface", "shmem")
         data["default_ip"] = dsp_settings.get("default_ip", "0.0.0.0")
 
@@ -363,13 +375,16 @@ class WebInterface:
     def close(self):
         pass
 
-    def config_daq_rf(self, f0, gain):
+    def config_daq_rf(self, f0, gain, agc):
         """
         Configures the RF parameters in the DAQ module
         """
         self.daq_cfg_iface_status = 1
         self.module_receiver.set_center_freq(int(f0 * 10**6))
-        self.module_receiver.set_if_gain(gain)
+        if agc:
+            self.module_receiver.set_if_agc()
+        else:
+            self.module_receiver.set_if_gain(gain)
 
         self.logger.info("Updating receiver parameters")
         self.logger.info("Center frequency: {:f} MHz".format(f0))

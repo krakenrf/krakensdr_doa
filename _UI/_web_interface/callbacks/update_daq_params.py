@@ -1,10 +1,13 @@
+import copy
+
 import numpy as np
-from dash_devices.dependencies import Input, State
+from dash_devices.dependencies import Input, Output, State
 from maindash import app, web_interface
+from variables import AGC_WARNING_DEFAULT_STYLE, AUTO_GAIN_VALUE
 
 
 @app.callback_shared(
-    None,
+    Output("agc_warning", "style"),
     [Input(component_id="btn-update_rx_param", component_property="n_clicks")],
     [
         State(component_id="daq_center_freq", component_property="value"),
@@ -14,7 +17,11 @@ from maindash import app, web_interface
 def update_daq_params(input_value, f0, gain):
     if web_interface.module_signal_processor.run_processing:
         web_interface.daq_center_freq = f0
-        web_interface.config_daq_rf(f0, gain)
+        agc = True if (gain == AUTO_GAIN_VALUE) else False
+        web_interface.config_daq_rf(f0, gain, agc)
+
+        agc_warning_style = copy.deepcopy(AGC_WARNING_DEFAULT_STYLE)
+        agc_warning_style["display"] = "block" if agc else "none"
 
         for i in range(web_interface.module_signal_processor.max_vfos):
             half_band_width = (web_interface.module_signal_processor.vfo_bw[i] / 10**6) / 2
@@ -44,3 +51,4 @@ def update_daq_params(input_value, f0, gain):
                 "body_ant_spacing_wavelength": {"children": str(ant_spacing_wavelength)},
             }
         )
+    return agc_warning_style
