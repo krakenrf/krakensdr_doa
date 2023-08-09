@@ -13,6 +13,7 @@ from variables import (
     DEFAULT_MAPPING_SERVER_ENDPOINT,
     AUTO_GAIN_VALUE,
 )
+
 # isort: on
 
 from dash_devices.dependencies import Input
