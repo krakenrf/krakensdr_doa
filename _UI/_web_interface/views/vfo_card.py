@@ -13,6 +13,10 @@ def get_vfo_card_layout():
     layout = [" "] * web_interface.module_signal_processor.max_vfos
 
     for i in range(web_interface.module_signal_processor.max_vfos):
+        is_auto_squelch = web_interface.module_signal_processor.vfo_squelch_mode[i] in ["Auto", "Auto Channel"] or (
+            web_interface.module_signal_processor.vfo_default_squelch_mode in ["Auto", "Auto Channel"]
+            and web_interface.module_signal_processor.vfo_squelch_mode[i] == "Default"
+        )
         layout[i] = html.Div(
             [
                 html.Div(
@@ -60,6 +64,27 @@ def get_vfo_card_layout():
                 ),
                 html.Div(
                     [
+                        html.Div("VFO-" + str(i) + " Squelch Mode:", className="field-label"),
+                        dcc.Dropdown(
+                            id=f"vfo_squelch_mode_{i}",
+                            options=[
+                                {
+                                    "label": f"Default ({web_interface.module_signal_processor.vfo_default_squelch_mode})",
+                                    "value": "Default",
+                                },
+                                {"label": "Manual", "value": "Manual"},
+                                {"label": "Auto", "value": "Auto"},
+                                {"label": "Auto Channel", "value": "Auto Channel"},
+                            ],
+                            value=web_interface.module_signal_processor.vfo_squelch_mode[i],
+                            style={"display": "inline-block"},
+                            className="field-body",
+                        ),
+                    ],
+                    className="field",
+                ),
+                html.Div(
+                    [
                         html.Div("VFO-" + str(i) + " Squelch [dB] :", className="field-label"),
                         dcc.Input(
                             id="vfo_" + str(i) + "_squelch",
@@ -69,6 +94,8 @@ def get_vfo_card_layout():
                             className="field-body-textbox",
                         ),
                     ],
+                    id=f"label_vfo_squelch_{i}",
+                    style={"display": "inline-block"} if not is_auto_squelch else {"display": "none"},
                     className="field",
                 ),
                 html.Div(
@@ -115,7 +142,7 @@ def get_vfo_card_layout():
                         ),
                     ],
                     id="beta_features_container " + str(i),
-                    style={"display": "none"},
+                    style={"display": "block"} if web_interface.en_beta_features else {"display": "none"},
                 ),
             ],
             id="vfo" + str(i),

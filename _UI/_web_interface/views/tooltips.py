@@ -121,6 +121,18 @@ dsp_config_tooltips = html.Div(
         ),
         dbc.Tooltip(
             [
+                html.P("Manual - vfo_squelch should be provided manually"),
+                html.P("Auto - automatically calculated value for all vfo_squelch based average level of noise"),
+                html.P(
+                    "Auto Channel - automatically calculated value for each vfo_squelch based average level of noise near concrete vfo"
+                ),
+            ],
+            target="label_vfo_default_squelch_mode",
+            placement="bottom",
+            className="tooltip",
+        ),
+        dbc.Tooltip(
+            [
                 html.P("Standard - VFOs are set manually."),
                 html.P(
                     "VFO-0 Auto Max - VFO-0 will auto tune to the strongest signal in the spectrum. Only supports a single VFO."

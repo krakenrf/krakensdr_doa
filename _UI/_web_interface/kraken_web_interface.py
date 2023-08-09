@@ -5,7 +5,6 @@ import time
 
 import numpy as np
 
-# isort: off
 from variables import (
     settings_file_path,
     settings_found,
@@ -13,8 +12,6 @@ from variables import (
     DEFAULT_MAPPING_SERVER_ENDPOINT,
     AUTO_GAIN_VALUE,
 )
-
-# isort: on
 
 from dash_devices.dependencies import Input
 from krakenSDR_receiver import ReceiverRTLSDR
@@ -145,6 +142,7 @@ class WebInterface:
         # VFO Configuration
         self.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
         self.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
+        self.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get("vfo_default_squelch_mode", "Auto")
         self.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
         self.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
         self.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
@@ -154,6 +152,7 @@ class WebInterface:
         self.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", False)
         self.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", False)
         self.selected_vfo = 0
+        self.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get("vfo_default_squelch_mode", "Auto")
 
         for i in range(self.module_signal_processor.max_vfos):
             self.module_signal_processor.vfo_bw[i] = int(
@@ -165,6 +164,7 @@ class WebInterface:
             self.module_signal_processor.vfo_freq[i] = float(
                 dsp_settings.get("vfo_freq_" + str(i), self.module_receiver.daq_center_freq)
             )
+            self.module_signal_processor.vfo_squelch_mode[i] = dsp_settings.get("vfo_squelch_mode_" + str(i), "Default")
             self.module_signal_processor.vfo_squelch[i] = int(
                 dsp_settings.get("vfo_squelch_" + str(i), self.module_signal_processor.vfo_squelch[i])
             )
@@ -190,8 +190,9 @@ class WebInterface:
         self.daq_if_gains = "[,,,,]"
         self.en_advanced_daq_cfg = False
         self.en_basic_daq_cfg = False
-        self.en_system_control = []
-        self.en_beta_features = []
+        self.en_system_control = [1] if dsp_settings.get("en_system_control", False) else []
+        self.en_beta_features = [1] if dsp_settings.get("en_beta_features", False) else []
+
         self.daq_ini_cfg_dict = read_config_file_dict()
         # "Default" # Holds the string identifier of the actively loaded DAQ ini configuration
         self.active_daq_ini_cfg = self.daq_ini_cfg_dict["config_name"]
@@ -242,6 +243,7 @@ class WebInterface:
         self.vfo_cfg_inputs = []
         self.vfo_cfg_inputs.append(Input(component_id="spectrum_fig_type", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_mode", component_property="value"))
+        self.vfo_cfg_inputs.append(Input(component_id="vfo_default_squelch_mode", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_default_demod", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_default_iq", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="max_demod_timeout", component_property="value"))
@@ -256,6 +258,7 @@ class WebInterface:
                 Input(component_id="vfo_" + str(i) + "_fir_order_factor", component_property="value")
             )
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_freq", component_property="value"))
+            self.vfo_cfg_inputs.append(Input(component_id=f"vfo_squelch_mode_{i}", component_property="value"))
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_squelch", component_property="value"))
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_demod", component_property="value"))
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_iq", component_property="value"))
@@ -294,6 +297,10 @@ class WebInterface:
         data["en_peak_hold"] = self.module_signal_processor.en_peak_hold
         data["expected_num_of_sources"] = self.module_signal_processor.DOA_expected_num_of_sources
 
+        # Open System Control
+        data["en_system_control"] = True if self.en_system_control == [1] else False
+        data["en_beta_features"] = True if self.en_beta_features == [1] else False
+
         # Web Interface
         data["en_hw_check"] = dsp_settings.get("en_hw_check", 0)
         data["logging_level"] = dsp_settings.get("logging_level", 5)
@@ -318,6 +325,7 @@ class WebInterface:
         # VFO Information
         data["spectrum_calculation"] = self.module_signal_processor.spectrum_fig_type
         data["vfo_mode"] = self.module_signal_processor.vfo_mode
+        data["vfo_default_squelch_mode"] = self.module_signal_processor.vfo_default_squelch_mode
         data["vfo_default_demod"] = self.module_signal_processor.vfo_default_demod
         data["vfo_default_iq"] = self.module_signal_processor.vfo_default_iq
         data["max_demod_timeout"] = self.module_signal_processor.max_demod_timeout
@@ -330,6 +338,7 @@ class WebInterface:
             data["vfo_bw_" + str(i)] = self.module_signal_processor.vfo_bw[i]
             data["vfo_fir_order_factor_" + str(i)] = self.module_signal_processor.vfo_fir_order_factor[i]
             data["vfo_freq_" + str(i)] = self.module_signal_processor.vfo_freq[i]
+            data["vfo_squelch_mode_" + str(i)] = self.module_signal_processor.vfo_squelch_mode[i]
             data["vfo_squelch_" + str(i)] = self.module_signal_processor.vfo_squelch[i]
             data["vfo_demod_" + str(i)] = self.module_signal_processor.vfo_demod[i]
             data["vfo_iq_" + str(i)] = self.module_signal_processor.vfo_iq[i]
