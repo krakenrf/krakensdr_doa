@@ -247,7 +247,7 @@ class SignalProcessor(threading.Thread):
         def is_enabled_auto_squelch(v):
             return v == "Auto" or (v == "Default" and self.vfo_default_squelch_mode == "Auto")
 
-        measured_spec_mean = jit_mean(measured_spec)
+        measured_spec_mean = np.mean(measured_spec)
         vfo_auto_squelch = measured_spec_mean + self.default_auto_db_offset
 
         for i in range(len(self.vfo_squelch)):
@@ -1215,11 +1215,6 @@ def calc_sync(iq_samples):
     iq_diffs /= iq_diffs[0]
 
     return iq_diffs
-
-
-@njit(fastmath=True, cache=True)
-def jit_mean(arr):
-    return np.mean(arr)
 
 
 # Reduce spectrum size for plotting purposes by taking the MAX val every few values
