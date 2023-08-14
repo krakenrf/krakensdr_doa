@@ -30,7 +30,7 @@ def init_spectrum_fig(web_interface, fig_layout, trace_colors):
         name="VFO" + str(0),
         line=VFO_color,
         # dict(color = trace_colors[m], width = 0),
-        opacity=0.33,
+        opacity=0.6,
         fill="toself",
         visible=False,
     )
