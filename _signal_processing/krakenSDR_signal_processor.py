@@ -247,13 +247,15 @@ class SignalProcessor(threading.Thread):
         def is_enabled_auto_squelch(v):
             return v == "Auto" or (v == "Default" and self.vfo_default_squelch_mode == "Auto")
 
-        measured_spec_mean = np.mean(measured_spec)
-        vfo_auto_squelch = measured_spec_mean + self.default_auto_db_offset
+        auto_squelch = any(is_enabled_auto_squelch(vfo_squelch_mode) for vfo_squelch_mode in self.vfo_squelch_mode)
+        if auto_squelch:
+            measured_spec_mean = np.mean(measured_spec)
+            vfo_auto_squelch = measured_spec_mean + self.default_auto_db_offset
 
-        for i in range(len(self.vfo_squelch)):
-            auto_squelch = is_enabled_auto_squelch(self.vfo_squelch_mode[i])
-            if auto_squelch:
-                self.vfo_squelch[i] = vfo_auto_squelch
+            for i in range(len(self.vfo_squelch)):
+                auto_squelch = is_enabled_auto_squelch(self.vfo_squelch_mode[i])
+                if auto_squelch:
+                    self.vfo_squelch[i] = vfo_auto_squelch
 
     def calculate_squelch(self, sampling_freq, N, measured_spec, real_freqs):
         def find_nearest(array, value):
