@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import queue
@@ -9,6 +10,8 @@ from kraken_web_doa import plot_doa
 from kraken_web_spectrum import plot_spectrum
 from krakenSDR_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR
 from variables import (
+    AGC_WARNING_DISABLED_STYLE,
+    AGC_WARNING_ENABLED_STYLE,
     AUTO_GAIN_VALUE,
     DEFAULT_MAPPING_SERVER_ENDPOINT,
     HZ_TO_MHZ,
@@ -471,3 +474,11 @@ def update_daq_status(app, web_interface):
     # Update local recording file size
     recording_file_size = web_interface.module_signal_processor.get_recording_filesize()
     app.push_mods({"body_file_size": {"children": recording_file_size}})
+
+
+def get_agc_warning_style_from_gain(gain):
+    return (
+        copy.deepcopy(AGC_WARNING_ENABLED_STYLE)
+        if gain == AUTO_GAIN_VALUE
+        else copy.deepcopy(AGC_WARNING_DISABLED_STYLE)
+    )

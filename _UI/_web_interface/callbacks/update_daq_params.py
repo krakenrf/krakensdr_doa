@@ -1,9 +1,7 @@
-import copy
-
 import numpy as np
 from dash_devices.dependencies import Input, Output, State
 from maindash import app, web_interface
-from variables import AGC_WARNING_DEFAULT_STYLE, AUTO_GAIN_VALUE
+from utils import get_agc_warning_style_from_gain
 
 
 @app.callback_shared(
@@ -17,11 +15,9 @@ from variables import AGC_WARNING_DEFAULT_STYLE, AUTO_GAIN_VALUE
 def update_daq_params(input_value, f0, gain):
     if web_interface.module_signal_processor.run_processing:
         web_interface.daq_center_freq = f0
-        agc = True if (gain == AUTO_GAIN_VALUE) else False
-        web_interface.config_daq_rf(f0, gain, agc)
+        web_interface.config_daq_rf(f0, gain)
 
-        agc_warning_style = copy.deepcopy(AGC_WARNING_DEFAULT_STYLE)
-        agc_warning_style["display"] = "block" if agc else "none"
+        agc_warning_style = get_agc_warning_style_from_gain(gain)
 
         for i in range(web_interface.module_signal_processor.max_vfos):
             half_band_width = (web_interface.module_signal_processor.vfo_bw[i] / 10**6) / 2
