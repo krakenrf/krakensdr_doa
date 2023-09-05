@@ -65,7 +65,7 @@ def get_system_control_card_layout():
                         ],
                         className="field",
                     ),
-                    html.Div("Version 1.6.1"),
+                    html.Div("Version 1.7.0"),
                 ],
                 id="system_control_container",
                 style={"display": "block"} if web_interface.en_system_control else {"display": "none"},
