@@ -9,9 +9,9 @@ from maindash import web_interface
 
 # isort: on
 
+from utils import get_agc_warning_style_from_gain
 from variables import (
     AGC_WARNING,
-    AGC_WARNING_DEFAULT_STYLE,
     AUTO_GAIN_VALUE,
     calibration_tack_modes,
     daq_config_filename,
@@ -136,7 +136,7 @@ def get_daq_config_card_layout():
                     AGC_WARNING,
                     id="agc_warning",
                     className="field",
-                    style=AGC_WARNING_DEFAULT_STYLE,
+                    style=get_agc_warning_style_from_gain(web_interface.module_receiver.daq_rx_gain),
                 )
             ]
         ),

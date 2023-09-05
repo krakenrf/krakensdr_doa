@@ -375,13 +375,14 @@ class WebInterface:
     def close(self):
         pass
 
-    def config_daq_rf(self, f0, gain, agc):
+    def config_daq_rf(self, f0, gain):
         """
         Configures the RF parameters in the DAQ module
         """
         self.daq_cfg_iface_status = 1
         self.module_receiver.set_center_freq(int(f0 * 10**6))
-        if agc:
+
+        if gain == AUTO_GAIN_VALUE:
             self.module_receiver.set_if_agc()
         else:
             self.module_receiver.set_if_gain(gain)
