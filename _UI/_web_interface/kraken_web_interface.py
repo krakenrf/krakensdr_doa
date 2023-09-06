@@ -133,6 +133,7 @@ class WebInterface:
         self.module_signal_processor.latitude = dsp_settings.get("latitude", 0.0)
         self.module_signal_processor.longitude = dsp_settings.get("longitude", 0.0)
         self.module_signal_processor.heading = dsp_settings.get("heading", 0.0)
+        self.module_signal_processor.fixed_heading = dsp_settings.get("gps_fixed_heading", False)
         self.module_signal_processor.gps_min_speed_for_valid_heading = dsp_settings.get("gps_min_speed", 2)
         self.module_signal_processor.gps_min_duration_for_valid_heading = dsp_settings.get("gps_min_speed_duration", 3)
 
@@ -322,6 +323,7 @@ class WebInterface:
         data["krakenpro_key"] = self.module_signal_processor.krakenpro_key
         data["mapping_server_url"] = self.mapping_server_url
         data["rdf_mapper_server"] = self.module_signal_processor.RDF_mapper_server
+        data["gps_fixed_heading"] = self.module_signal_processor.fixed_heading
         data["gps_min_speed"] = self.module_signal_processor.gps_min_speed_for_valid_heading
         data["gps_min_speed_duration"] = self.module_signal_processor.gps_min_duration_for_valid_heading
 
