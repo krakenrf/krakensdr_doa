@@ -748,6 +748,7 @@ class SignalProcessor(threading.Thread):
                                 self.latitude,
                                 self.longitude,
                                 self.heading,
+                                self.speed,
                                 self.adc_overdrive,
                                 self.number_of_correlated_sources[0],
                                 self.snrs[0],
@@ -776,6 +777,7 @@ class SignalProcessor(threading.Thread):
                                 self.latitude,
                                 self.longitude,
                                 self.heading,
+                                self.speed,
                                 self.adc_overdrive,
                                 self.number_of_correlated_sources[0],
                                 self.snrs[0],
@@ -791,6 +793,7 @@ class SignalProcessor(threading.Thread):
                                 self.latitude,
                                 self.longitude,
                                 self.heading,
+                                self.speed,
                                 self.adc_overdrive,
                                 self.number_of_correlated_sources[0],
                                 self.snrs[0],
@@ -835,6 +838,7 @@ class SignalProcessor(threading.Thread):
                                     "lat": str(self.latitude),
                                     "lng": str(self.longitude),
                                     "gpsheading": str(self.heading),
+                                    "speed": str(self.speed),
                                     "radiobearing": DOA_str,
                                     "conf": confidence_str,
                                     "power": max_power_level_str,
@@ -1004,7 +1008,8 @@ class SignalProcessor(threading.Thread):
             try:
                 packet = gpsd.get_current()
                 self.latitude, self.longitude = packet.position()
-                if (not self.fixed_heading) and (packet.speed() >= self.gps_min_speed_for_valid_heading):
+                self.speed = packet.speed()
+                if (not self.fixed_heading) and (self.speed >= self.gps_min_speed_for_valid_heading):
                     if (time.time() - self.time_of_last_invalid_heading) >= self.gps_min_duration_for_valid_heading:
                         self.heading = round(packet.movement().get("track"), 1)
                 else:
@@ -1022,7 +1027,19 @@ class SignalProcessor(threading.Thread):
             self.gps_status = "Error"
 
     def wr_xml(
-        self, station_id, doa, conf, pwr, freq, latitude, longitude, heading, adc_overdrive, num_corr_sources, snr_db
+        self,
+        station_id,
+        doa,
+        conf,
+        pwr,
+        freq,
+        latitude,
+        longitude,
+        heading,
+        speed,
+        adc_overdrive,
+        num_corr_sources,
+        snr_db,
     ):
         # Kerberos-ify the data
         confidence_str = "{}".format(np.max(int(float(conf) * 100)))
@@ -1038,6 +1055,7 @@ class SignalProcessor(threading.Thread):
         xml_latitide = ET.SubElement(xml_location, "LATITUDE")
         xml_longitude = ET.SubElement(xml_location, "LONGITUDE")
         xml_heading = ET.SubElement(xml_location, "HEADING")
+        xml_speed = ET.SubElement(xml_location, "SPEED")
         xml_doa = ET.SubElement(data, "DOA")
         xml_pwr = ET.SubElement(data, "PWR")
         xml_conf = ET.SubElement(data, "CONF")
@@ -1054,6 +1072,7 @@ class SignalProcessor(threading.Thread):
         xml_latitide.text = str(latitude)
         xml_longitude.text = str(longitude)
         xml_heading.text = str(heading)
+        xml_speed.text = str(speed)
         xml_doa.text = doa
         xml_pwr.text = max_power_level_str
         xml_conf.text = confidence_str
@@ -1128,6 +1147,7 @@ class SignalProcessor(threading.Thread):
         latitude,
         longitude,
         heading,
+        speed,
         adc_overdrive,
         num_corr_sources,
         snr_db,
@@ -1151,6 +1171,7 @@ class SignalProcessor(threading.Thread):
         jsonDict["latitude"] = str(latitude)
         jsonDict["longitude"] = str(longitude)
         jsonDict["gpsBearing"] = str(heading)
+        jsonDict["speed"] = str(speed)
         jsonDict["radioBearing"] = DOA_str
         jsonDict["conf"] = confidence_str
         jsonDict["power"] = max_power_level_str
