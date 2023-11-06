@@ -302,7 +302,9 @@ class SignalProcessor(threading.Thread):
                     self.update_location_and_timestamp()
 
                 # -----> ACQUIRE NEW DATA FRAME <-----
-                self.module_receiver.get_iq_online()
+                if self.module_receiver.get_iq_online():
+                    continue
+
                 self.adc_overdrive = self.module_receiver.iq_header.adc_overdrive_flags
 
                 start_time = time.time()
