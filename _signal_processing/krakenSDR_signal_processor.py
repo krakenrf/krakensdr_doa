@@ -69,6 +69,8 @@ MIN_DURATION_FOR_VALID_HEADING = 3.0  # s
 DEFAULT_VFO_FIR_ORDER_FACTOR = int(2)
 DEFAULT_ROOT_MUSIC_STD_DEGREES = 1
 
+NEAR_ZERO = 1e-15
+
 
 class SignalProcessor(threading.Thread):
     def __init__(self, data_que, module_receiver, logging_level=10):
@@ -296,18 +298,26 @@ class SignalProcessor(threading.Thread):
                 self.is_running = True
                 que_data_packet = []
 
-                self.timestamp = self.module_receiver.iq_header.time_stamp
-
-                if self.hasgps and self.usegps:
-                    self.update_location_and_timestamp()
+                # We get time here in case the frame is skipped
+                start_time = time.time()
 
                 # -----> ACQUIRE NEW DATA FRAME <-----
                 if self.module_receiver.get_iq_online():
+                    logging.error(
+                        """The data frame was lost while processing was active!\n
+                        This might indicate issues with USB data cable or USB host,\n
+                        inadequate power supply, overloaded CPU, wrong host OS settings, etc."""
+                    )
+                    self.dropped_frames += 1
                     continue
 
+                self.timestamp = self.module_receiver.iq_header.time_stamp
                 self.adc_overdrive = self.module_receiver.iq_header.adc_overdrive_flags
 
                 start_time = time.time()
+
+                if self.hasgps and self.usegps:
+                    self.update_location_and_timestamp()
 
                 # Check frame type for processing
                 en_proc = (
@@ -576,6 +586,10 @@ class SignalProcessor(threading.Thread):
                                     # print("IQ DIFFS ANGLE: " + str(np.rad2deg(np.angle(iq_diffs))))
                                     #
                                     theta_0 = self.estimate_DOA(vfo_channel, self.vfo_freq[i])
+
+                                    if not numba_isfinite(self.DOA):
+                                        logging.error("""Estimated DOA is not finite.""")
+                                        continue
 
                                     doa_result_log = DOA_plot_util(self.DOA)
                                     conf_val = calculate_doa_papr(self.DOA)
@@ -1280,6 +1294,11 @@ def numba_mult(a, b):
     return a * b
 
 
+@njit(cache=True)
+def numba_isfinite(a):
+    return np.all(np.isfinite(a))
+
+
 # Memoize the total shift filter
 @lru_cache(maxsize=32)
 def shift_filter(decimation_factor, fir_order_factor, freq, sampling_freq, padd):
@@ -1660,9 +1679,12 @@ def DOA_plot_util(DOA_data, log_scale_min=-100):
     - Noramlize DoA estimation results
     - Changes to log scale
     """
+    # Normalization
+    max_doa_amplitude = np.max(np.abs(DOA_data))
+    DOA_data = (np.abs(DOA_data) / max_doa_amplitude) if max_doa_amplitude > NEAR_ZERO else np.abs(DOA_data)
 
-    DOA_data = np.divide(np.abs(DOA_data), np.max(np.abs(DOA_data)))  # Normalization
-    DOA_data = 10 * np.log10(DOA_data)  # Change to logscale
+    # Change to logscale
+    DOA_data = 10 * np.log10(DOA_data)
 
     for i in range(len(DOA_data)):  # Remove extremely low values
         if DOA_data[i] < log_scale_min:
@@ -1673,7 +1695,8 @@ def DOA_plot_util(DOA_data, log_scale_min=-100):
 
 @njit(fastmath=True, cache=True)
 def calculate_doa_papr(DOA_data):
-    return 10 * np.log10(np.max(np.abs(DOA_data)) / np.mean(np.abs(DOA_data)))
+    mean_doa_amplitude = np.mean(np.abs(DOA_data))
+    return 10 * np.log10(np.max(np.abs(DOA_data)) / mean_doa_amplitude) if mean_doa_amplitude > NEAR_ZERO else 0.0
 
 
 # Old time-domain squelch algorithm (Unused as freq domain FFT with overlaps gives significantly better sensitivity with acceptable time resolution expense
