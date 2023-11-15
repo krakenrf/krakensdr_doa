@@ -1,4 +1,5 @@
 import math
+import shutil
 
 import numpy as np
 from scipy.signal import butter, firwin, lfilter
@@ -7,6 +8,8 @@ DEFAULT_NUM_OF_FREQ = 1024
 DEFAULT_FILTER_ORDER = 5
 DEFAULT_FILTER_WINDOW = "hamming"
 DEFAULT_NUM_TAPS = 256
+
+DISK_SPACE_HEADROOM = 0.1
 
 
 def audible(signal):
@@ -80,3 +83,8 @@ def write_wav(f, sample_freq, x):
     from scipy.io.wavfile import write
 
     write(f, sample_freq, x)
+
+
+def can_store_file(path: str) -> bool:
+    total, _, free = shutil.disk_usage(path)
+    return True if (free / total) >= DISK_SPACE_HEADROOM else False

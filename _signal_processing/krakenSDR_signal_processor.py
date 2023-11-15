@@ -48,7 +48,7 @@ import scipy
 from numba import float32, njit, vectorize
 from pyargus import directionEstimation as de
 from scipy import fft, signal
-from signal_utils import fm_demod, write_wav
+from signal_utils import can_store_file, fm_demod, write_wav
 from variables import root_path, shared_path
 
 # os.environ['OPENBLAS_NUM_THREADS'] = '4'
@@ -92,14 +92,17 @@ class SignalProcessor(threading.Thread):
         self.data_que = data_que
         self.en_spectrum = False
         self.en_record = False
-        self.wav_record_path = f"{self.root_path}/records/fm"
+        self.wav_record_path = f"{shared_path}/records/fm"
         self.en_iq_files = False
-        self.iq_record_path = f"{self.root_path}/records/iq"
+        self.iq_record_path = f"{shared_path}/records/iq"
         self.en_DOA_estimation = True
         self.doa_measure = "Linear"
         self.compass_offset = 0.0
         self.first_frame = 1  # Used to configure local variables from the header fields
         self.processed_signal = np.empty(0)
+
+        Path(f"{self.wav_record_path}/").mkdir(parents=True, exist_ok=True)
+        Path(f"{self.iq_record_path}").mkdir(parents=True, exist_ok=True)
 
         # Squelch feature
         self.data_ready = False
@@ -147,9 +150,9 @@ class SignalProcessor(threading.Thread):
         self.vfo_demod = ["Default"] * self.max_vfos
         self.vfo_default_iq = "False"
         self.vfo_iq = ["Default"] * self.max_vfos
-        self.vfo_demod_channel = [None] * self.max_vfos
+        self.vfo_demod_channel = [np.array([])] * self.max_vfos
         self.vfo_theta_channel = [[]] * self.max_vfos
-        self.vfo_iq_channel = [None] * self.max_vfos
+        self.vfo_iq_channel = [np.array([])] * self.max_vfos
         self.vfo_blocked = [False] * self.max_vfos
         self.vfo_time = [0] * self.max_vfos
         self.max_demod_timeout = 60
@@ -286,11 +289,6 @@ class SignalProcessor(threading.Thread):
         Main processing thread
         """
         # scipy.fft.set_workers(4)
-        myip = "127.0.0.1"
-        try:
-            myip = json.loads(requests.get("https://ip.seeip.org/jsonip?").text)["ip"]
-        except Exception:
-            pass
         while True:
             self.is_running = False
             time.sleep(1)
@@ -553,33 +551,6 @@ class SignalProcessor(threading.Thread):
                                     )
                                     iq_channel = vfo_channel[1]
 
-                                    self.vfo_time[i] += self.processed_signal[1].size / sampling_freq
-                                    if 0 < self.max_demod_timeout < self.vfo_time[i] and (
-                                        self.vfo_demod_modes[i] == "FM" or self.vfo_iq_enabled[i]
-                                    ):
-                                        self.vfo_blocked[i] = True
-                                        self.vfo_demod_channel[i] = None
-                                        self.vfo_theta_channel[i] = []
-                                        self.vfo_iq_channel[i] = None
-                                        continue
-
-                                    if self.vfo_demod_modes[i] == "FM":
-                                        fm_demod_channel = fm_demod(iq_channel, decimate_sampling_freq, self.vfo_bw[i])
-                                        if self.vfo_demod_channel[i] is not None:
-                                            self.vfo_demod_channel[i] = np.concatenate(
-                                                (self.vfo_demod_channel[i], fm_demod_channel)
-                                            )
-                                        else:
-                                            self.vfo_demod_channel[i] = fm_demod_channel
-
-                                    if self.vfo_iq_enabled[i]:
-                                        if self.vfo_iq_channel[i] is not None:
-                                            self.vfo_iq_channel[i] = np.concatenate(
-                                                (self.vfo_iq_channel[i], iq_channel)
-                                            )
-                                        else:
-                                            self.vfo_iq_channel[i] = iq_channel
-
                                     # Method to check IQ diffs when noise source forced ON
                                     # iq_diffs = calc_sync(self.processed_signal)
                                     # print("IQ DIFFS: " + str(iq_diffs))
@@ -602,15 +573,30 @@ class SignalProcessor(threading.Thread):
                                     confidence_str = "{:.2f}".format(np.max(conf_val))
                                     max_power_level_str = "{:.1f}".format((np.maximum(-100, max_amplitude)))
 
-                                    if self.vfo_demod_modes[i] or self.vfo_iq_enabled[i]:
-                                        if theta_0 not in self.vfo_theta_channel[i]:
-                                            self.vfo_theta_channel[i].append(theta_0)
-
                                     self.theta_0_list.append(theta_0)
                                     self.confidence_list.append(np.max(conf_val))
                                     self.max_power_level_list.append(np.maximum(-100, max_amplitude))
                                     self.freq_list.append(write_freq)
                                     self.doa_result_log_list.append(doa_result_log)
+
+                                    if self.vfo_demod_modes[i] or self.vfo_iq_enabled[i]:
+                                        if theta_0 not in self.vfo_theta_channel[i]:
+                                            self.vfo_theta_channel[i].append(theta_0)
+
+                                    self.vfo_time[i] += self.processed_signal[1].size / sampling_freq
+                                    if 0 < self.max_demod_timeout < self.vfo_time[i] and (
+                                        self.vfo_demod_modes[i] == "FM" or self.vfo_iq_enabled[i]
+                                    ):
+                                        self.vfo_demod_channel[i] = np.array([])
+                                        self.vfo_theta_channel[i] = []
+                                        self.vfo_iq_channel[i] = np.array([])
+                                    elif self.vfo_demod_modes[i] == "FM":
+                                        fm_demod_channel = fm_demod(iq_channel, decimate_sampling_freq, self.vfo_bw[i])
+                                        self.vfo_demod_channel[i] = np.concatenate(
+                                            (self.vfo_demod_channel[i], fm_demod_channel)
+                                        )
+                                    elif self.vfo_iq_enabled[i]:
+                                        self.vfo_iq_channel[i] = np.concatenate((self.vfo_iq_channel[i], iq_channel))
                                 else:
                                     self.vfo_time[i] = 0
                                     self.vfo_blocked[i] = False
@@ -621,9 +607,9 @@ class SignalProcessor(threading.Thread):
                                     self.fm_demod_channel_list.append(
                                         (now_dt_str, vfo_freq, fm_demod_channel, iq_channel, thetas)
                                     )
-                                    self.vfo_demod_channel[i] = None
+                                    self.vfo_demod_channel[i] = np.array([])
                                     self.vfo_theta_channel[i] = []
-                                    self.vfo_iq_channel[i] = None
+                                    self.vfo_iq_channel[i] = np.array([])
 
                             que_data_packet.append(["doa_thetas", self.DOA_theta])
                             que_data_packet.append(["DoA Result", doa_result_log])
@@ -655,7 +641,9 @@ class SignalProcessor(threading.Thread):
                                 iq_channel,
                                 thetas,
                             ) in self.fm_demod_channel_list:
-                                if fm_demod_channel is None and iq_channel is None:
+                                store_demod_channel = fm_demod_channel is not None
+                                store_iq_channel = iq_channel is not None
+                                if ((not store_demod_channel) and (not store_iq_channel)) or (not thetas):
                                     continue
                                 avg_theta, max_diff_theta = average_thetas(thetas)
                                 if max_diff_theta > 10:
@@ -666,18 +654,31 @@ class SignalProcessor(threading.Thread):
                                 else:
                                     doa_max_str = f"{adjust_theta(avg_theta):.1f}"
 
-                                if fm_demod_channel is not None:
+                                if store_demod_channel:
                                     record_file_name = f"{now_dt_str},FM_{vfo_freq / 1e6:.3f}MHz"
-                                    Path(f"{self.wav_record_path}/").mkdir(parents=True, exist_ok=True)
-                                    write_wav(
-                                        f"{self.wav_record_path}/{record_file_name},DOA_{doa_max_str}.wav",
-                                        48_000,
-                                        fm_demod_channel,
-                                    )
-                                if iq_channel is not None:
+                                    filename = f"{self.wav_record_path}/{record_file_name},DOA_{doa_max_str}.wav"
+                                    if can_store_file(self.wav_record_path):
+                                        write_wav(
+                                            filename,
+                                            48_000,
+                                            fm_demod_channel,
+                                        )
+                                    else:
+                                        self.logger.error(
+                                            "No disk space left for storing %s, demodulation and recording disabled.",
+                                            filename,
+                                        )
+                                        self.vfo_demod[:] = ["None"] * len(self.vfo_demod)
+                                if store_iq_channel:
                                     record_file_name = f"{now_dt_str},IQ_{vfo_freq / 1e6:.3f}MHz"
-                                    Path(f"{self.iq_record_path}").mkdir(parents=True, exist_ok=True)
-                                    iq_channel.tofile(f"{self.iq_record_path}/{record_file_name},DOA_{doa_max_str}.iq")
+                                    filename = f"{self.iq_record_path}/{record_file_name},DOA_{doa_max_str}.iq"
+                                    if can_store_file(self.iq_record_path):
+                                        iq_channel.tofile(filename)
+                                    else:
+                                        self.logger.error(
+                                            "No disk space left for storing %s, IQ recording disabled.", filename
+                                        )
+                                        self.vfo_iq[:] = ["False"] * len(self.vfo_iq)
                     except Exception:
                         self.logger.error(traceback.format_exc())
                         self.data_ready = False
@@ -839,6 +840,12 @@ class SignalProcessor(threading.Thread):
                             time_elapsed = time.time() - self.rdf_mapper_last_write_time
                             if time_elapsed > 1:  # reuse RDF mapper timer, it works the same
                                 self.rdf_mapper_last_write_time = time.time()
+
+                                myip = "127.0.0.1"
+                                try:
+                                    myip = json.loads(requests.get("https://ip.seeip.org/jsonip?").text)["ip"]
+                                except Exception:
+                                    pass
 
                                 message = ""
                                 if doa_result_log:
