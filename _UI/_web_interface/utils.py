@@ -284,6 +284,7 @@ def settings_change_watcher(web_interface, settings_file_path):
         web_interface.module_signal_processor.RDF_mapper_server = dsp_settings.get(
             "rdf_mapper_server", "http://RDF_MAPPER_SERVER.com/save.php"
         )
+        web_interface.self.module_signal_processor.DOA_data_format = dsp_settings.get("doa_data_format", "Kraken App")
 
         # VFO Configuration
         web_interface.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
