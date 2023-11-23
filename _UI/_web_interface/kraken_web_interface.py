@@ -384,10 +384,7 @@ class WebInterface:
         self.daq_cfg_iface_status = 1
         self.module_receiver.set_center_freq(int(f0 * 10**6))
 
-        if gain == AUTO_GAIN_VALUE:
-            self.module_receiver.set_if_agc()
-        else:
-            self.module_receiver.set_if_gain(gain)
+        self.module_receiver.set_if_gain(gain)
 
         self.logger.info("Updating receiver parameters")
         self.logger.info("Center frequency: {:f} MHz".format(f0))
