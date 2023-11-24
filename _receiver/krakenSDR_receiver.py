@@ -355,6 +355,11 @@ class ReceiverRTLSDR:
             :param: gain: IF gain value [dB]
             :type:  gain: int
         """
+
+        if gain == AUTO_GAIN_VALUE:
+            self.set_if_agc()
+            return
+
         if self.receiver_connection_status:  # Check connection
             self.daq_rx_gain = gain
             self.daq_agc = False

@@ -18,7 +18,7 @@ settings_found = False
 if os.path.exists(settings_file_path):
     settings_found = True
     with open(settings_file_path, "r") as myfile:
-        dsp_settings = json.loads(myfile.read())
+        dsp_settings = json.load(myfile)
 else:
     dsp_settings = dict()
 
