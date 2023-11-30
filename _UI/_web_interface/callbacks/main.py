@@ -46,11 +46,9 @@ def func(client, connect):
     if connect and len(app.clients) == 1:
         fetch_dsp_data(app, web_interface, spectrum_fig, waterfall_fig)
         fetch_gps_data(app, web_interface)
-        settings_change_watcher(web_interface, settings_file_path)
     elif not connect and len(app.clients) == 0:
         web_interface.dsp_timer.cancel()
         web_interface.gps_timer.cancel()
-        web_interface.settings_change_timer.cancel()
 
 
 @app.callback_shared(
@@ -894,6 +892,9 @@ def reconfig_daq_chain(input_value, freq, gain):
     web_interface.daq_restart = 1
     #    Restart DAQ Subsystem
 
+    # Stop settings file watcher
+    web_interface.settings_change_timer.cancel()
+
     # Stop signal processing
     web_interface.stop_processing()
     web_interface.logger.debug("Signal processing stopped")
@@ -1003,6 +1004,8 @@ def reconfig_daq_chain(input_value, freq, gain):
     print("M: " + str(web_interface.module_receiver.M))
 
     web_interface.module_signal_processor.start()
+
+    settings_change_watcher(web_interface, settings_file_path)
 
     # Reinit the spectrum fig, because number of traces may have changed if
     # tuner count is different

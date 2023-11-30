@@ -21,7 +21,7 @@ from krakenSDR_receiver import ReceiverRTLSDR
 
 # Import built-in modules
 from krakenSDR_signal_processor import SignalProcessor
-from utils import read_config_file_dict
+from utils import read_config_file_dict, settings_change_watcher
 
 
 class WebInterface:
@@ -118,11 +118,6 @@ class WebInterface:
 
         self.module_signal_processor.en_DOA_estimation = dsp_settings.get("en_doa", True)
         self.module_signal_processor.DOA_decorrelation_method = dsp_settings.get("doa_decorrelation_method", "Off")
-        self.module_signal_processor.start()
-
-        #############################################
-        #       UI Status and Config variables      #
-        #############################################
 
         # Output Data format.
         self.module_signal_processor.DOA_data_format = dsp_settings.get("doa_data_format", "Kraken App")
@@ -174,6 +169,12 @@ class WebInterface:
             )
             self.module_signal_processor.vfo_demod[i] = dsp_settings.get("vfo_demod_" + str(i), "Default")
             self.module_signal_processor.vfo_iq[i] = dsp_settings.get("vfo_iq_" + str(i), "Default")
+
+        self.module_signal_processor.start()
+
+        #############################################
+        #       UI Status and Config variables      #
+        #############################################
 
         # DAQ Subsystem status parameters
         self.daq_conn_status = 0
@@ -269,6 +270,8 @@ class WebInterface:
 
         if not settings_found:
             self.save_configuration()
+
+        settings_change_watcher(self, settings_file_path)
 
     def save_configuration(self):
         data = {}
