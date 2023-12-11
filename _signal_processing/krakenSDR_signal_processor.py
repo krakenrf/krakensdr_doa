@@ -641,8 +641,8 @@ class SignalProcessor(threading.Thread):
                                 iq_channel,
                                 thetas,
                             ) in self.fm_demod_channel_list:
-                                store_demod_channel = fm_demod_channel is not None
-                                store_iq_channel = iq_channel is not None
+                                store_demod_channel = fm_demod_channel.size > 0
+                                store_iq_channel = iq_channel.size > 0
                                 if ((not store_demod_channel) and (not store_iq_channel)) or (not thetas):
                                     continue
                                 avg_theta, max_diff_theta = average_thetas(thetas)
