@@ -443,7 +443,7 @@ class SignalProcessor(threading.Thread):
                                     if cur_freq_max.spec > spec:
                                         if scan_channel.pick_freq != cur_freq_max.pick_freq:
                                             self.logger.debug(
-                                                f"Update pick freq: {scan_channel.pick_freq:3}MHz -> {cur_freq_max.pick_freq:3}MHz"
+                                                f"Update pick freq: {scan_channel.pick_freq / 10 ** 6:.3f}MHz -> {cur_freq_max.pick_freq / 10 ** 6:.3f}MHz"
                                             )
                                         self.scan_channel_list[i].pick_freq = cur_freq_max.pick_freq
                                         self.scan_channel_list[i].spec = cur_freq_max.spec
@@ -469,7 +469,7 @@ class SignalProcessor(threading.Thread):
                                     f"    dBm: {cur_freq_max.spec}dBm, spec = {spec}dBm, mov_avg = {mov_avg_noise}dBm"
                                 )
                                 self.logger.debug(
-                                    f"    pick freq: {cur_freq_max.pick_freq:3}MHz, start freq: {cur_freq_max.start_freq:3}MHz, end freq: {cur_freq_max.end_freq:3}MHz"
+                                    f"    pick freq: {cur_freq_max.pick_freq / 10 ** 6:.3f}MHz, start freq: {cur_freq_max.start_freq / 10 ** 6:.3f}MHz, end freq: {cur_freq_max.end_freq / 10 ** 6:.3f}MHz"
                                 )
                         cur_freq_max = None
 
@@ -480,7 +480,7 @@ class SignalProcessor(threading.Thread):
                     self.logger.debug(f"    band-width: {scan_channel.band_width}")
                     self.logger.debug(f"    dBm: {scan_channel.spec}dBm")
                     self.logger.debug(
-                        f"    pick freq: {scan_channel.pick_freq / 10 ** 6:3}MHz, start freq: {scan_channel.start_freq / 10 ** 6:3}MHz, end freq: {scan_channel.end_freq / 10 ** 6:3}MHz"
+                        f"    pick freq: {scan_channel.pick_freq / 10 ** 6:.3f}MHz, start freq: {scan_channel.start_freq / 10 ** 6:.3f}MHz, end freq: {scan_channel.end_freq / 10 ** 6:.3f}MHz"
                     )
                     scan_channel.deleted = True
                 new_scan_channel_list.append(scan_channel)
