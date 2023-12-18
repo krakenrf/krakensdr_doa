@@ -84,7 +84,7 @@ NEAR_ZERO = 1e-15
 @dataclass
 class ScanFreq:
     id: int
-    center_freq: float
+    pick_freq: float
     start_freq: float
     end_freq: float
     squelch: float
@@ -97,6 +97,21 @@ class ScanFreq:
     @property
     def band_width(self):
         return int(self.end_freq - self.start_freq)
+
+    @property
+    def center_freq(self):
+        return self.start_freq + (self.end_freq - self.start_freq) / 2
+
+    def intersect(self, freq):
+        return self.start_freq <= freq.start_freq <= self.end_freq or self.start_freq <= freq.end_freq <= self.end_freq
+
+    def distance(self, freq):
+        if self.intersect(freq):
+            return 0
+        else:
+            return (
+                freq.start_freq - self.end_freq if self.pick_freq < freq.pick_freq else self.start_freq - freq.end_freq
+            )
 
 
 class SignalProcessor(threading.Thread):
@@ -392,12 +407,12 @@ class SignalProcessor(threading.Thread):
 
                 if spec > mov_avg_noise:
                     if cur_freq_max is None:
-                        center_freq = real_freq
+                        pick_freq = real_freq
                         start_freq = real_freq
-                        end_freq = None
+                        end_freq = real_freq
                         cur_freq_max = ScanFreq(
                             self.scan_id,
-                            center_freq,
+                            pick_freq,
                             start_freq,
                             end_freq,
                             mov_avg_noise + self.default_auto_channel_db_offset,
@@ -408,31 +423,29 @@ class SignalProcessor(threading.Thread):
                             False,
                         )
                         self.scan_id += 1
+                    else:
+                        cur_freq_max.end_freq = real_freq
                     if spec > cur_freq_max.spec:
-                        cur_freq_max.center_freq = real_freq
+                        cur_freq_max.pick_freq = real_freq
                         cur_freq_max.spec = spec
                 else:
                     if cur_freq_max is not None:
                         cur_freq_max.end_freq = real_freq
-                        if (cur_freq_max.end_freq - cur_freq_max.start_freq) < 0:
+                        if cur_freq_max.band_width < 0:
                             cur_freq_max.start_freq, cur_freq_max.end_freq = (
                                 cur_freq_max.end_freq,
                                 cur_freq_max.start_freq,
                             )
-                        band_width = cur_freq_max.end_freq - cur_freq_max.start_freq
-                        if band_width > self.max_freq_diff:
+                        if cur_freq_max.band_width > self.max_freq_diff:
                             found_freq = False
                             for i, scan_channel in enumerate(self.scan_channel_list):
-                                if (
-                                    scan_channel.start_freq <= cur_freq_max.center_freq <= scan_channel.end_freq
-                                    or abs(scan_channel.center_freq - cur_freq_max.center_freq) < self.max_freq_diff
-                                ):
+                                if scan_channel.distance(cur_freq_max) < self.max_freq_diff:
                                     if cur_freq_max.spec > spec:
-                                        if scan_channel.center_freq != cur_freq_max.center_freq:
+                                        if scan_channel.pick_freq != cur_freq_max.pick_freq:
                                             self.logger.debug(
-                                                f"Update center_freq: {scan_channel.center_freq:3}MHz -> {cur_freq_max.center_freq:3}MHz"
+                                                f"Update pick freq: {scan_channel.pick_freq:3}MHz -> {cur_freq_max.pick_freq:3}MHz"
                                             )
-                                        self.scan_channel_list[i].center_freq = cur_freq_max.center_freq
+                                        self.scan_channel_list[i].pick_freq = cur_freq_max.pick_freq
                                         self.scan_channel_list[i].spec = cur_freq_max.spec
                                     if cur_freq_max.start_freq < scan_channel.start_freq:
                                         self.scan_channel_list[i].start_freq = cur_freq_max.start_freq
@@ -451,12 +464,12 @@ class SignalProcessor(threading.Thread):
                             if not found_freq:
                                 self.scan_channel_list.append(cur_freq_max)
                                 self.logger.debug("Detected start:")
-                                self.logger.debug(f"    band-width: {band_width}")
+                                self.logger.debug(f"    band-width: {cur_freq_max.band_width}")
                                 self.logger.debug(
                                     f"    dBm: {cur_freq_max.spec}dBm, spec = {spec}dBm, mov_avg = {mov_avg_noise}dBm"
                                 )
                                 self.logger.debug(
-                                    f"    center freq: {cur_freq_max.center_freq:3}MHz, start freq: {cur_freq_max.start_freq:3}MHz, end freq: {cur_freq_max.end_freq:3}MHz"
+                                    f"    pick freq: {cur_freq_max.pick_freq:3}MHz, start freq: {cur_freq_max.start_freq:3}MHz, end freq: {cur_freq_max.end_freq:3}MHz"
                                 )
                         cur_freq_max = None
 
@@ -467,7 +480,7 @@ class SignalProcessor(threading.Thread):
                     self.logger.debug(f"    band-width: {scan_channel.band_width}")
                     self.logger.debug(f"    dBm: {scan_channel.spec}dBm")
                     self.logger.debug(
-                        f"    center freq: {scan_channel.center_freq / 10 ** 6:3}MHz, start freq: {scan_channel.start_freq / 10 ** 6:3}MHz, end freq: {scan_channel.end_freq / 10 ** 6:3}MHz"
+                        f"    pick freq: {scan_channel.pick_freq / 10 ** 6:3}MHz, start freq: {scan_channel.start_freq / 10 ** 6:3}MHz, end freq: {scan_channel.end_freq / 10 ** 6:3}MHz"
                     )
                     scan_channel.deleted = True
                 new_scan_channel_list.append(scan_channel)
@@ -476,7 +489,7 @@ class SignalProcessor(threading.Thread):
             new_scan_channel_list: List[ScanFreq] = sorted(
                 new_scan_channel_list, key=lambda s: s.squelch, reverse=True
             )[: self.max_vfos]
-            new_scan_channel_list = sorted(new_scan_channel_list, key=lambda s: s.center_freq)
+            new_scan_channel_list = sorted(new_scan_channel_list, key=lambda s: s.pick_freq)
 
             def find_vfo_scan(scan_channel_list: List[ScanFreq], scan_channel: ScanFreq):
                 i = 0
