@@ -29,7 +29,6 @@ import threading
 import time
 import traceback
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
 from multiprocessing.dummy import Pool
@@ -47,6 +46,7 @@ import requests
 # Signal processing support
 import scipy
 from kraken_sdr_receiver import ReceiverRTLSDR
+from krakenSDR_types import ScanFreq
 from numba import float32, njit, vectorize
 from pyargus import directionEstimation as de
 from scipy import fft, signal
@@ -79,39 +79,6 @@ DEFAULT_VFO_FIR_ORDER_FACTOR = int(2)
 DEFAULT_ROOT_MUSIC_STD_DEGREES = 1
 
 NEAR_ZERO = 1e-15
-
-
-@dataclass
-class ScanFreq:
-    id: int
-    pick_freq: float
-    start_freq: float
-    end_freq: float
-    squelch: float
-    spec: float
-    detected: bool = True
-    time: int = 0
-    blocked: bool = False
-    deleted: bool = False
-
-    @property
-    def band_width(self):
-        return int(self.end_freq - self.start_freq)
-
-    @property
-    def center_freq(self):
-        return self.start_freq + (self.end_freq - self.start_freq) / 2
-
-    def intersect(self, freq):
-        return self.start_freq <= freq.start_freq <= self.end_freq or self.start_freq <= freq.end_freq <= self.end_freq
-
-    def distance(self, freq):
-        if self.intersect(freq):
-            return 0
-        else:
-            return (
-                freq.start_freq - self.end_freq if self.pick_freq < freq.pick_freq else self.start_freq - freq.end_freq
-            )
 
 
 class SignalProcessor(threading.Thread):
