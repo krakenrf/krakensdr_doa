@@ -89,10 +89,10 @@ class ScanFreq:
     end_freq: float
     squelch: float
     spec: float
-    detected: bool
-    time: int
-    blocked: bool
-    deleted: bool
+    detected: bool = True
+    time: int = 0
+    blocked: bool = False
+    deleted: bool = False
 
     @property
     def band_width(self):
@@ -407,20 +407,13 @@ class SignalProcessor(threading.Thread):
 
                 if spec > mov_avg_noise:
                     if cur_freq_max is None:
-                        pick_freq = real_freq
-                        start_freq = real_freq
-                        end_freq = real_freq
                         cur_freq_max = ScanFreq(
-                            self.scan_id,
-                            pick_freq,
-                            start_freq,
-                            end_freq,
-                            mov_avg_noise + self.default_auto_channel_db_offset,
-                            spec,
-                            True,
-                            0,
-                            False,
-                            False,
+                            id=self.scan_id,
+                            pick_freq=real_freq,
+                            start_freq=real_freq,
+                            end_freq=real_freq,
+                            squelch=mov_avg_noise + self.default_auto_channel_db_offset,
+                            spec=spec,
                         )
                         self.scan_id += 1
                     else:
