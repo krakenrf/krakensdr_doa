@@ -431,26 +431,26 @@ class SignalProcessor(threading.Thread):
                             )
                         if cur_freq_max.band_width > self.max_freq_diff:
                             found_freq = False
-                            for i, scan_channel in enumerate(self.scan_channel_list):
+                            for scan_channel in self.scan_channel_list:
                                 if scan_channel.distance(cur_freq_max) < self.max_freq_diff:
                                     if cur_freq_max.spec > spec:
                                         if scan_channel.pick_freq != cur_freq_max.pick_freq:
                                             self.logger.debug(
                                                 f"Update pick freq: {scan_channel.pick_freq / 10 ** 6:.3f}MHz -> {cur_freq_max.pick_freq / 10 ** 6:.3f}MHz"
                                             )
-                                        self.scan_channel_list[i].pick_freq = cur_freq_max.pick_freq
-                                        self.scan_channel_list[i].spec = cur_freq_max.spec
+                                        scan_channel.pick_freq = cur_freq_max.pick_freq
+                                        scan_channel.spec = cur_freq_max.spec
                                     if cur_freq_max.start_freq < scan_channel.start_freq:
-                                        self.scan_channel_list[i].start_freq = cur_freq_max.start_freq
+                                        scan_channel.start_freq = cur_freq_max.start_freq
                                     if cur_freq_max.end_freq < scan_channel.end_freq:
-                                        self.scan_channel_list[i].end_freq = cur_freq_max.end_freq
+                                        scan_channel.end_freq = cur_freq_max.end_freq
                                     proc_signal_size = self.processed_signal[1].size
                                     proc_signal_time = proc_signal_size / sampling_freq
                                     found_freq = True
-                                    self.scan_channel_list[i].time += proc_signal_time
-                                    if self.scan_channel_list[i].time > self.scan_blocked_time:
-                                        self.scan_channel_list[i].blocked = True
-                                    self.scan_channel_list[i].detected = True
+                                    scan_channel.time += proc_signal_time
+                                    if scan_channel.time > self.scan_blocked_time:
+                                        scan_channel.blocked = True
+                                    scan_channel.detected = True
                                     self.scan_id -= 1
                                     break
 
