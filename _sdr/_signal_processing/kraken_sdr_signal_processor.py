@@ -153,6 +153,8 @@ class SignalProcessor(threading.Thread):
         self.vfo_fir_order_factor = [DEFAULT_VFO_FIR_ORDER_FACTOR] * self.max_vfos
         self.vfo_freq = [self.module_receiver.daq_center_freq] * self.max_vfos
         self.vfo_default_squelch_mode = "Auto"
+        self.vfo_scan_time = 0
+        self.vfo_scan_period_time = 30
         self.vfo_squelch_mode = ["Auto"] * self.max_vfos
         self.vfo_squelch = [-120] * self.max_vfos
         self.vfo_default_demod = "None"
@@ -349,14 +351,25 @@ class SignalProcessor(threading.Thread):
                 self.vfo_squelch[i] = measured_spec_mean + self.default_auto_channel_db_offset
 
     def scan_channels(self, sampling_freq, N, measured_spec, real_freqs):
-        active_vfos = self.active_vfos = 0
+        active_vfos = self.active_vfos
         try:
             cur_freq_max = None
             mov_avg_noises = []
             freq_window = int(self.moving_avg_freq_window / (sampling_freq / N))
 
+            proc_signal_size = self.processed_signal[1].size
+            proc_signal_time = proc_signal_size / sampling_freq
+
             for i in range(len(self.scan_channel_list)):
                 self.scan_channel_list[i].detected = False
+                self.scan_channel_list[i].time += proc_signal_time
+
+            self.vfo_scan_time += proc_signal_time
+            if self.vfo_scan_time < self.vfo_scan_period_time:
+                return self.active_vfos
+
+            self.vfo_scan_time = 0
+            active_vfos = self.active_vfos = 0
 
             self.scan_channel_list = list(filter(lambda s: not s.deleted, self.scan_channel_list))
 
@@ -411,10 +424,7 @@ class SignalProcessor(threading.Thread):
                                         scan_channel.start_freq = cur_freq_max.start_freq
                                     if cur_freq_max.end_freq < scan_channel.end_freq:
                                         scan_channel.end_freq = cur_freq_max.end_freq
-                                    proc_signal_size = self.processed_signal[1].size
-                                    proc_signal_time = proc_signal_size / sampling_freq
                                     found_freq = True
-                                    scan_channel.time += proc_signal_time
                                     if scan_channel.time > self.scan_blocked_time:
                                         scan_channel.blocked = True
                                     scan_channel.detected = True

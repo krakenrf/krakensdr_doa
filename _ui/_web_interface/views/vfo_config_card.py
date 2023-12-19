@@ -81,6 +81,41 @@ def get_vfo_config_card_layout():
             ),
             html.Div(
                 [
+                    html.Div("VFO Scan Period Time:", id="label_vfo_scan_period_time", className="field-label"),
+                    dcc.Input(
+                        id="vfo_scan_period_time",
+                        value=web_interface.module_signal_processor.vfo_scan_period_time,
+                        type="number",
+                        max=web_interface.module_signal_processor.scan_blocked_time,
+                        debounce=True,
+                        style={"display": "inline-block"},
+                        className="field-body-textbox",
+                    ),
+                ],
+                className="field",
+                style={"display": "block"}
+                if web_interface.web_interface.module_signal_processor.vfo_mode == "Scan"
+                else {"display": "none"},
+            ),
+            html.Div(
+                [
+                    html.Div("Scan Channel Block Time:", id="label_scan_blocked_time", className="field-label"),
+                    dcc.Input(
+                        id="scan_blocked_time",
+                        value=web_interface.module_signal_processor.scan_blocked_time,
+                        type="number",
+                        debounce=True,
+                        style={"display": "inline-block"},
+                        className="field-body-textbox",
+                    ),
+                ],
+                className="field",
+                style={"display": "block"}
+                if web_interface.web_interface.module_signal_processor.vfo_mode == "Scan"
+                else {"display": "none"},
+            ),
+            html.Div(
+                [
                     html.Div(
                         [
                             html.Div("VFO Default Demod:", id="label_vfo_default_demod", className="field-label"),

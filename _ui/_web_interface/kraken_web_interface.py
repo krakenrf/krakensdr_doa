@@ -142,6 +142,8 @@ class WebInterface:
         self.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
         self.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
         self.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get("vfo_default_squelch_mode", "Auto")
+        self.module_signal_processor.vfo_scan_period_time = int(dsp_settings.get("vfo_scan_period_time", 30))
+        self.module_signal_processor.scan_blocked_time = int(dsp_settings.get("scan_blocked_time", 60))
         self.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
         self.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
         self.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
@@ -153,6 +155,8 @@ class WebInterface:
         self.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", False)
         self.selected_vfo = 0
         self.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get("vfo_default_squelch_mode", "Auto")
+        self.module_signal_processor.vfo_scan_period_time = int(dsp_settings.get("vfo_scan_period_time", 30))
+        self.module_signal_processor.scan_blocked_time = int(dsp_settings.get("scan_blocked_time", 60))
 
         for i in range(self.module_signal_processor.max_vfos):
             self.module_signal_processor.vfo_bw[i] = int(
@@ -337,6 +341,8 @@ class WebInterface:
         data["spectrum_calculation"] = self.module_signal_processor.spectrum_fig_type
         data["vfo_mode"] = self.module_signal_processor.vfo_mode
         data["vfo_default_squelch_mode"] = self.module_signal_processor.vfo_default_squelch_mode
+        data["vfo_scan_period_time"] = self.module_signal_processor.vfo_scan_period_time
+        data["scan_blocked_time"] = self.module_signal_processor.scan_blocked_time
         if (
             self.module_signal_processor.vfo_mode in ["Standard", "Auto"]
             and self.module_signal_processor.active_vfos == 0

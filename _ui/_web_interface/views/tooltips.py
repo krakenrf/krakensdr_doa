@@ -133,6 +133,22 @@ dsp_config_tooltips = html.Div(
         ),
         dbc.Tooltip(
             [
+                html.P("Period in seconds each one scan calculation happens"),
+            ],
+            target="label_vfo_scan_period_time",
+            placement="bottom",
+            className="tooltip",
+        ),
+        dbc.Tooltip(
+            [
+                html.P("Time for scanned channel after which channel is blocked"),
+            ],
+            target="label_scan_blocked_time",
+            placement="bottom",
+            className="tooltip",
+        ),
+        dbc.Tooltip(
+            [
                 html.P("Standard - VFOs are set manually."),
                 html.P(
                     "VFO-0 Auto Max - VFO-0 will auto tune to the strongest signal in the spectrum. Only supports a single VFO."

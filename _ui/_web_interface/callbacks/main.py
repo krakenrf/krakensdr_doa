@@ -257,6 +257,8 @@ def update_vfo_params(*args):
     web_interface.module_signal_processor.spectrum_fig_type = kwargs_dict["spectrum_fig_type"]
     web_interface.module_signal_processor.vfo_mode = kwargs_dict["vfo_mode"]
     web_interface.module_signal_processor.vfo_default_squelch_mode = kwargs_dict["vfo_default_squelch_mode"]
+    web_interface.module_signal_processor.vfo_scan_period_time = kwargs_dict["vfo_scan_period_time"]
+    web_interface.module_signal_processor.scan_blocked_time = kwargs_dict["scan_blocked_time"]
     web_interface.module_signal_processor.vfo_default_demod = kwargs_dict["vfo_default_demod"]
     web_interface.module_signal_processor.vfo_default_iq = kwargs_dict["vfo_default_iq"]
     web_interface.module_signal_processor.max_demod_timeout = int(kwargs_dict["max_demod_timeout"])
