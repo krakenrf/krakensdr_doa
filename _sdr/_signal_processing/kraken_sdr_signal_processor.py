@@ -45,7 +45,7 @@ import requests
 
 # Signal processing support
 import scipy
-from krakenSDR_receiver import ReceiverRTLSDR
+from kraken_sdr_receiver import ReceiverRTLSDR
 from numba import float32, njit, vectorize
 from pyargus import directionEstimation as de
 from scipy import fft, signal

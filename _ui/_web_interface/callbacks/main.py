@@ -11,10 +11,10 @@ from maindash import app, spectrum_fig, waterfall_fig, web_interface
 # isort: on
 
 from dash_devices.dependencies import Input, Output, State
+from kraken_sdr_receiver import ReceiverRTLSDR
+from kraken_sdr_signal_processor import SignalProcessor, xi
 from kraken_web_config import write_config_file_dict
 from kraken_web_spectrum import init_spectrum_fig
-from krakenSDR_receiver import ReceiverRTLSDR
-from krakenSDR_signal_processor import SignalProcessor, xi
 from utils import (
     fetch_dsp_data,
     fetch_gps_data,
