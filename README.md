@@ -8,45 +8,17 @@ Running these two subsystems on separate processing units can grant higher throu
 ## Full Instructions
 Please [consult the Wiki on the kraken_docs repo](https://github.com/krakenrf/krakensdr_docs/wiki) for full documentation on the use of the KrakenSDR.
 
-## Pi 4 Image QUICKSTART
+## Raspberry Pi 4/5 and Orange Pi 5B Image QUICKSTART
 
-We have a beta Pi 4 SD card image available here
+**Download Latest Images From :** https://mega.nz/folder/8T1jiIzR#_1Ujs4Eoy0wdRib9eHCVSg
 
-**Latest Image:** https://github.com/krakenrf/krakensdr_doa/releases/
-
-In this image the code will automatically run on boot. Note that it may take 2-3 minutes for the boot process to complete. 
+In these image the code will automatically run on boot. Note that it may take 2-3 minutes for the boot process to complete. 
 
 To run this code flash the image file to an SD Card using Etcher. The SD Card needs to be at least 8GB and we recommend using a class 10 card or faster. For advanced users the login/password details for SSH and terminal are "krakenrf"/"krakensdr"
 
-## Orange Pi 5B
+Note that for the Orange Pi 5B, the image is for the Orange Pi 5**B** specifically. This is the Orange Pi 5 model with the included WiFi module.
 
-We also now have an Orange Pi 5B image available. The following instructions will reference the Pi 4, but they are identical for operation with the Orange Pi 5B. (Note this image is for the Orange Pi 5B. This is the Orange Pi 5 model with the included WiFi module.)
-
-**Orange Pi 5B Image**: https://mega.nz/folder/8T1jiIzR#_1Ujs4Eoy0wdRib9eHCVSg
-
-Download the latest image by date.
-
-### Choose and Set up Connectivity Option 
-In this image there are three ways to connect to the web GUI interface.
-
-1) **Pi 4 WiFi Hotspot:** If you simply boot up the image without setting up options 2 or 3, then the Pi 4 will automatically create a WiFi hotspot with SSID name "krakensdr" that you can connect to. The SSID password is also "krakensdr". Once connected, you can use a web brower to browse to "http://192.168.50.5:8080", which will load up the web interface.
-
-Note that if you use this method, your mobile device will not have any internet access. So if you are using the Android App, be sure to download offline maps first.
-
-2) **Android WiFi  Mobile Hotspot:** In this method you use your Android device to set up a WiFi mobile 4G/5G hotspot with SSID/password "KrakenAndroid"/"KrakenAndroid". The setup procedure is different on every phone, but it's usually under a setting called "Mobile Hotspot". When the Pi 4 boots up the image, if the KrakenAndroid SSID is detected, the Pi4 will automatically connect to the KrakenAndroid SSID. With this method your mobile device will retain full mobile internet access, allowing the KrakenSDR Android App to download maps as you drive.
-
-To connect to the web interface you will need to determine the IP address given to the KrakenSDR. You can find this in the mobile hotspot settings too. Again this is different on every Android device, so you'll need to determine this yourself for your own device.
-
-If the KrakenAndroid SSID is not detected, the Pi 4 will automatically revert to option 1, and create it's own hotspot without internet.
-
-3) **Connect to your own WiFi Network** If you are running the KrakenSDR at a fixed location, it makes sense to connect to your home/facilities WiFi network. There are two ways to do this. 
-
-- Option A: Either connect a monitor, and etc `sudo nano /etc/wpa_supplicant/wpa_supplicant.conf` in terminal. In the entry where it says "MY_SSID" and "MY_SSID_PASSWORD" enter your own WiFi information there. If you are outside the USA, make sure to set your two letter country code on the top line too. Then press "CTRL+X", "Y", to save and exit.
-- Option B: Add a wpa_supplicant.conf file in the boot drive of the image. You can do this by connecting your SD Card to a Windows machine, and opening up the boot drive that can be seen. In the boot drive we've left a file called "wpa_supplicant_example.conf". Make a copy of this file in the same directory, and rename it to "wpa_supplicant.conf". Now edit wpa_supplicant.conf with Notepad, replacing "MY_SSID" and "MY_SSID_PASSWORD" with your own WiFi information. If you are outside the USA, make sure to set your two letter country code on the top line too. Save this file.
-
-Now after performing either option a) or b) when you reboot the Pi 4 should automatically connect to your home WiFi. If the KrakenAndroid WiFi is present, priority will be given to that connection first, so be sure to turn your hotspot off if you want to connect to the fixed WiFi network.
-
-With this method you can then browse to http://krakensdr:8080 to load up the web interface.
+Please follow the rest of the guide at https://github.com/krakenrf/krakensdr_docs/wiki/02.-Direction-Finding-Quickstart-Guide
     
 ### Pi 4 Overclock
 To get the best performance we recommend adding aftermarket cooling to your Pi 4 and overclocking to at least 2000 MHz. We won't provide instructions for overclocking here, but they can be easily Googled.
