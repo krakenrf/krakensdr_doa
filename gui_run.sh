@@ -43,7 +43,7 @@ sleep 0.1
 ./util/sync_daq_logs.sh >/dev/null 2>/dev/null &
 
 echo "Web Interface Running at $IPADDR:8080"
-python3 _ui/_web_interface/app.py >"${SHARED_FOLDER_DOA_LOGS}/ui.log" 2>&1 &
+python3 _UI/_web_interface/app.py >"${SHARED_FOLDER_DOA_LOGS}/ui.log" 2>&1 &
 
 # Start webserver to share output and settings with clients
 echo "Data Out Server Running at $IPADDR:$IPPORT"
