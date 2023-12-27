@@ -268,8 +268,7 @@ class WebInterface:
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_demod", component_property="value"))
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_iq", component_property="value"))
 
-        if not settings_found:
-            self.save_configuration()
+        self.save_configuration()
 
         settings_change_watcher(self, settings_file_path)
 
