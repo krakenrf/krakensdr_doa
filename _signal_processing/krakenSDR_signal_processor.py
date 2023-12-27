@@ -158,7 +158,8 @@ class SignalProcessor(threading.Thread):
         self.max_demod_timeout = 60
         self.default_auto_db_offset = 5  # 5dB for Auto Squelch
         self.default_auto_channel_db_offset = 3  # 3dB for Auto Channel Squelch and Scan modes
-        self.moving_avg_freq_window = 100_000  # 100kHz
+        # Ratio of Auto Channel, mean that how big should be measurement of spectrum outside of vfo_bw
+        self.ratio_auto_channel = 3
 
         self.en_fm_demod = False
         self.vfo_fm_demod = [False] * self.max_vfos
@@ -270,17 +271,15 @@ class SignalProcessor(threading.Thread):
 
         self.mean_spectrum(measured_spec)
 
-        freq_window = int(self.moving_avg_freq_window / (sampling_freq / N))
-
         for i, vfo_squelch_mode in enumerate(self.vfo_squelch_mode[: self.active_vfos]):
             if vfo_squelch_mode == "Auto Channel" or (
                 vfo_squelch_mode == "Default" and self.vfo_default_squelch_mode == "Auto Channel"
             ):
                 vfo_bw_freq_window = int(self.vfo_bw[i] / (sampling_freq / N))
                 freq_idx, nearsest = find_nearest(real_freqs, self.vfo_freq[i])
-                vfo_freq_window = int(freq_window + vfo_bw_freq_window / 2)
+                vfo_freq_window = int(vfo_bw_freq_window / 2 + self.ratio_auto_channel * vfo_bw_freq_window)
                 vfo_start_measure_spec = freq_idx - min(abs(freq_idx), vfo_freq_window)
-                vfo_end_measure_spec = freq_idx + min(abs(len(measured_spec) - freq_idx), vfo_freq_window)
+                vfo_end_measure_spec = freq_idx + min(abs(N - freq_idx), vfo_freq_window)
                 measured_spec_mean = np.mean(measured_spec[vfo_start_measure_spec:vfo_end_measure_spec])
                 self.vfo_squelch[i] = measured_spec_mean + self.default_auto_channel_db_offset
 
