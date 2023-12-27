@@ -30,7 +30,7 @@ daq_config_filename = os.path.join(daq_subsystem_path, "daq_chain_config.ini")
 # Import Kraken SDR modules
 receiver_path = os.path.join(root_path, "_receiver")
 signal_processor_path = os.path.join(root_path, "_signal_processing")
-ui_path = os.path.join(root_path, "_UI")
+ui_path = os.path.join(root_path, "_ui")
 
 
 sys.path.insert(0, receiver_path)
