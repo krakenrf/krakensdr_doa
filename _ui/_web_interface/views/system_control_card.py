@@ -5,7 +5,7 @@ import dash_html_components as html
 from maindash import web_interface
 
 # isort: on
-from variables import option
+from variables import SOFTWARE_GIT_HASH, SOFTWARE_VERSION, option
 
 
 def get_system_control_card_layout():
@@ -65,7 +65,7 @@ def get_system_control_card_layout():
                         ],
                         className="field",
                     ),
-                    html.Div("Version 1.7.0"),
+                    html.Div(f"Version {SOFTWARE_VERSION} ({SOFTWARE_GIT_HASH})"),
                 ],
                 id="system_control_container",
                 style={"display": "block"} if web_interface.en_system_control else {"display": "none"},
