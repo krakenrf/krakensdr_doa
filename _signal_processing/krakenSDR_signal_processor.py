@@ -308,8 +308,9 @@ class SignalProcessor(threading.Thread):
         status["software_git_hash"] = SOFTWARE_GIT_HASH
         status["uptime_ms"] = int(time.monotonic() * 1e3)
         status["gps_status"] = self.gps_status
-        status["daq_connected"] = self.module_receiver.receiver_connection_status
-        if status["daq_connected"]:
+
+        daq_status["daq_connected"] = self.module_receiver.receiver_connection_status
+        if self.module_receiver.receiver_connection_status:
             status["timestamp_ms"] = self.module_receiver.iq_header.time_stamp
             daq_status["data_frame_index"] = self.module_receiver.iq_header.cpi_index
             daq_status["frame_sync"] = not bool(self.module_receiver.iq_header.check_sync_word())
@@ -326,6 +327,12 @@ class SignalProcessor(threading.Thread):
             daq_status["dropped_frames"] = self.dropped_frames
 
         status["daq_status"] = daq_status
+        status["daq_ok"] = (
+            self.module_receiver.receiver_connection_status
+            and daq_status.get("frame_sync", False)
+            and daq_status.get("sample_delay_sync", False)
+            and daq_status.get("iq_sync", False)
+        )
 
         try:
             with open(status_file_path, "w", encoding="utf-8") as file:
