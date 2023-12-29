@@ -26,9 +26,9 @@ else:
 try:
     import git
 
-    SOFTWARE_GIT_HASH = git.Repo().head.object.hexsha
+    SOFTWARE_GIT_SHORT_HASH = git.Repo().head.object.hexsha[:7]
 except Exception:
-    SOFTWARE_GIT_HASH = "e5df8c99ef2447145bbfb88cc6ac28cf94f1906e"
+    SOFTWARE_GIT_SHORT_HASH = "e5df8c9"
 
 SOFTWARE_VERSION = "1.7.0"
 SYSTEM_UNAME = platform.uname()

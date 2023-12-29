@@ -51,7 +51,7 @@ from pyargus import directionEstimation as de
 from scipy import fft, signal
 from signal_utils import can_store_file, fm_demod, write_wav
 from variables import (
-    SOFTWARE_GIT_HASH,
+    SOFTWARE_GIT_SHORT_HASH,
     SOFTWARE_VERSION,
     SYSTEM_UNAME,
     root_path,
@@ -305,7 +305,7 @@ class SignalProcessor(threading.Thread):
         status["host_os_version"] = SYSTEM_UNAME.release
         status["host_os_architecture"] = SYSTEM_UNAME.machine
         status["software_version"] = SOFTWARE_VERSION
-        status["software_git_hash"] = SOFTWARE_GIT_HASH
+        status["software_git_short_hash"] = SOFTWARE_GIT_SHORT_HASH
         status["uptime_ms"] = int(time.monotonic() * 1e3)
         status["gps_status"] = self.gps_status
 
@@ -324,7 +324,7 @@ class SignalProcessor(threading.Thread):
             daq_status["buffer_size_ms"] = (
                 self.module_receiver.iq_header.cpi_length / self.module_receiver.iq_header.sampling_freq
             ) * 1e3
-            daq_status["dropped_frames"] = self.dropped_frames
+            daq_status["num_dropped_frames"] = self.dropped_frames
 
         status["daq_status"] = daq_status
         status["daq_ok"] = (
