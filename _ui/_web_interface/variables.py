@@ -3,7 +3,6 @@ import os
 import platform
 import sys
 
-import git
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
@@ -24,6 +23,15 @@ if os.path.exists(settings_file_path):
 else:
     dsp_settings = dict()
 
+try:
+    import git
+
+    SOFTWARE_GIT_HASH = git.Repo().head.object.hexsha
+except Exception:
+    SOFTWARE_GIT_HASH = "e5df8c99ef2447145bbfb88cc6ac28cf94f1906e"
+
+SOFTWARE_VERSION = "1.7.0"
+SYSTEM_UNAME = platform.uname()
 
 status_file_path = os.path.join(shared_path, "status.json")
 
@@ -114,8 +122,3 @@ AUTO_GAIN_VALUE = -100.0
 AGC_WARNING = "WARNING: Automatic gain control might lead to erroneous results because (a) it can overshoot and overdrive ADC and (b) gains are controlled independently on each channel."
 AGC_WARNING_DISABLED_STYLE = {"display": "none"}
 AGC_WARNING_ENABLED_STYLE = {"color": "#f39c12", "display": "block"}
-
-SOFTWARE_VERSION = "1.7.0"
-SOFTWARE_GIT_HASH = git.Repo().head.object.hexsha
-
-SYSTEM_UNAME = platform.uname()
