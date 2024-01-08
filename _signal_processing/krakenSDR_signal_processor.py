@@ -45,11 +45,19 @@ import requests
 
 # Signal processing support
 import scipy
+from krakenSDR_receiver import ReceiverRTLSDR
 from numba import float32, njit, vectorize
 from pyargus import directionEstimation as de
 from scipy import fft, signal
 from signal_utils import can_store_file, fm_demod, write_wav
-from variables import root_path, shared_path
+from variables import (
+    SOFTWARE_GIT_SHORT_HASH,
+    SOFTWARE_VERSION,
+    SYSTEM_UNAME,
+    root_path,
+    shared_path,
+    status_file_path,
+)
 
 # os.environ['OPENBLAS_NUM_THREADS'] = '4'
 # os.environ['NUMBA_CPU_NAME'] = 'cortex-a72'
@@ -73,7 +81,7 @@ NEAR_ZERO = 1e-15
 
 
 class SignalProcessor(threading.Thread):
-    def __init__(self, data_que, module_receiver, logging_level=10):
+    def __init__(self, data_que, module_receiver: ReceiverRTLSDR, logging_level=10):
         """
         Parameters:
         -----------
@@ -283,6 +291,55 @@ class SignalProcessor(threading.Thread):
                 measured_spec_mean = np.mean(measured_spec[vfo_start_measure_spec:vfo_end_measure_spec])
                 self.vfo_squelch[i] = measured_spec_mean + self.default_auto_channel_db_offset
 
+    def save_processing_status(self) -> None:
+        """This method serializes system status to file."""
+
+        status = {}
+        daq_status = {}
+
+        status["timestamp_ms"] = int(time.time() * 1e3)
+        status["station_id"] = self.station_id
+        status["hardware_id"] = self.module_receiver.iq_header.hardware_id.rstrip("\x00")
+        status["unit_id"] = self.module_receiver.iq_header.unit_id
+        status["host_os_type"] = SYSTEM_UNAME.system
+        status["host_os_version"] = SYSTEM_UNAME.release
+        status["host_os_architecture"] = SYSTEM_UNAME.machine
+        status["software_version"] = SOFTWARE_VERSION
+        status["software_git_short_hash"] = SOFTWARE_GIT_SHORT_HASH
+        status["uptime_ms"] = int(time.monotonic() * 1e3)
+        status["gps_status"] = self.gps_status
+
+        daq_status["daq_connected"] = self.module_receiver.receiver_connection_status
+        if self.module_receiver.receiver_connection_status:
+            status["timestamp_ms"] = self.module_receiver.iq_header.time_stamp
+            daq_status["data_frame_index"] = self.module_receiver.iq_header.cpi_index
+            daq_status["frame_sync"] = not bool(self.module_receiver.iq_header.check_sync_word())
+            daq_status["sample_delay_sync"] = bool(self.module_receiver.iq_header.delay_sync_flag)
+            daq_status["iq_sync"] = bool(self.module_receiver.iq_header.iq_sync_flag)
+            daq_status["noise_source_enabled"] = bool(self.module_receiver.iq_header.noise_source_state)
+            daq_status["adc_overdrive"] = bool(self.module_receiver.iq_header.adc_overdrive_flags)
+            daq_status["sampling_frequency_hz"] = self.module_receiver.iq_header.adc_sampling_freq
+            daq_status["bandwidth_hz"] = self.module_receiver.iq_header.sampling_freq
+            daq_status["decimated_bandwidth_hz"] = self.module_receiver.iq_header.sampling_freq // self.dsp_decimation
+            daq_status["buffer_size_ms"] = (
+                self.module_receiver.iq_header.cpi_length / self.module_receiver.iq_header.sampling_freq
+            ) * 1e3
+            daq_status["num_dropped_frames"] = self.dropped_frames
+
+        status["daq_status"] = daq_status
+        status["daq_ok"] = (
+            self.module_receiver.receiver_connection_status
+            and daq_status.get("frame_sync", False)
+            and daq_status.get("sample_delay_sync", False)
+            and daq_status.get("iq_sync", False)
+        )
+
+        try:
+            with open(status_file_path, "w", encoding="utf-8") as file:
+                json.dump(status, file)
+        except Exception:
+            pass
+
     def run(self):
         """
         Main processing thread
@@ -298,8 +355,15 @@ class SignalProcessor(threading.Thread):
                 # We get time here in case the frame is skipped
                 start_time = time.time()
 
+                if self.hasgps and self.usegps:
+                    self.update_location_and_timestamp()
+
                 # -----> ACQUIRE NEW DATA FRAME <-----
-                if self.module_receiver.get_iq_online():
+                get_iq_failed = self.module_receiver.get_iq_online()
+
+                self.save_processing_status()
+
+                if get_iq_failed:
                     logging.error(
                         """The data frame was lost while processing was active!\n
                         This might indicate issues with USB data cable or USB host,\n
@@ -310,11 +374,6 @@ class SignalProcessor(threading.Thread):
 
                 self.timestamp = self.module_receiver.iq_header.time_stamp
                 self.adc_overdrive = self.module_receiver.iq_header.adc_overdrive_flags
-
-                start_time = time.time()
-
-                if self.hasgps and self.usegps:
-                    self.update_location_and_timestamp()
 
                 # Check frame type for processing
                 en_proc = (

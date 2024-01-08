@@ -1,5 +1,6 @@
 import json
 import os
+import platform
 import sys
 
 import numpy as np
@@ -22,6 +23,17 @@ if os.path.exists(settings_file_path):
 else:
     dsp_settings = dict()
 
+try:
+    import git
+
+    SOFTWARE_GIT_SHORT_HASH = git.Repo().head.object.hexsha[:7]
+except Exception:
+    SOFTWARE_GIT_SHORT_HASH = "e5df8c9"
+
+SOFTWARE_VERSION = "1.7.0"
+SYSTEM_UNAME = platform.uname()
+
+status_file_path = os.path.join(shared_path, "status.json")
 
 daq_subsystem_path = os.path.join(os.path.join(os.path.dirname(root_path), "heimdall_daq_fw"), "Firmware")
 
