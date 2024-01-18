@@ -352,15 +352,13 @@ class SignalProcessor(threading.Thread):
                 self.is_running = True
                 que_data_packet = []
 
-                # We get time here in case the frame is skipped
-                start_time = time.time()
-
                 if self.hasgps and self.usegps:
                     self.update_location_and_timestamp()
 
                 # -----> ACQUIRE NEW DATA FRAME <-----
                 get_iq_failed = self.module_receiver.get_iq_online()
 
+                start_time = time.time()
                 self.save_processing_status()
 
                 if get_iq_failed:
