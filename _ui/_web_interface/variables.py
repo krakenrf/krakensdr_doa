@@ -13,15 +13,18 @@ trace_colors[3] = "rgb(255,255,51)"
 current_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.dirname(os.path.dirname(current_path))
 shared_path = os.path.join(root_path, "_share")
+
+INVALID_SETTINGS_FILE_TIMESTAMP = -np.inf
 # Load settings file
 settings_file_path = os.path.join(shared_path, "settings.json")
-settings_found = False
-if os.path.exists(settings_file_path):
-    settings_found = True
-    with open(settings_file_path, "r") as myfile:
+try:
+    with open(settings_file_path, "r", encoding="utf-8") as myfile:
         dsp_settings = json.load(myfile)
-else:
+except Exception:
     dsp_settings = dict()
+    dsp_settings["timestamp"] = INVALID_SETTINGS_FILE_TIMESTAMP
+else:
+    dsp_settings["timestamp"] = os.stat(settings_file_path).st_mtime
 
 try:
     import git

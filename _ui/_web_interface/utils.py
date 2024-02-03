@@ -6,6 +6,7 @@ from configparser import ConfigParser
 from threading import Timer
 
 import numpy as np
+import variables
 from kraken_sdr_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR
 from kraken_web_doa import plot_doa
 from kraken_web_spectrum import plot_spectrum
@@ -229,114 +230,133 @@ def fetch_gps_data(app, web_interface):
     web_interface.gps_timer.start()
 
 
-def settings_change_watcher(web_interface, settings_file_path):
-    last_changed_time = os.stat(settings_file_path).st_mtime
-    time_delta = last_changed_time - web_interface.last_changed_time_previous
+def settings_change_watcher(web_interface, settings_file_path, last_attempt_failed=False):
+    if os.path.exists(settings_file_path):
+        last_changed_time = os.stat(settings_file_path).st_mtime
+        time_delta = last_changed_time - variables.dsp_settings["timestamp"]
+        if time_delta > 0:
+            # Load settings file
+            try:
+                with open(settings_file_path, "r", encoding="utf-8") as file:
+                    dsp_settings = json.load(file)
+            except Exception as ex:
+                if not last_attempt_failed:
+                    web_interface.logger.error("Problem loading settings file: %s", ex)
+                last_attempt_failed = True
+            else:
+                variables.dsp_settings = dsp_settings
+                variables.dsp_settings["timestamp"] = last_changed_time
+                last_attempt_failed = False
 
-    # Load settings file
-    if time_delta > 0:  # If > 0, file was changed
-        global dsp_settings
-        if os.path.exists(settings_file_path):
-            with open(settings_file_path, "r") as myfile:
-                # update global dsp_settings, to ensureother functions using it
-                # get the most up to date values??
-                dsp_settings = json.loads(myfile.read())
+                center_freq = float(dsp_settings.get("center_freq", 100.0))
+                gain = (
+                    float(dsp_settings.get("uniform_gain", 1.4))
+                    if dsp_settings.get("uniform_gain", 1.4) != "Auto"
+                    else AUTO_GAIN_VALUE
+                )
 
-        center_freq = float(dsp_settings.get("center_freq", 100.0))
-        gain = (
-            float(dsp_settings.get("uniform_gain", 1.4))
-            if dsp_settings.get("uniform_gain", 1.4) != "Auto"
-            else AUTO_GAIN_VALUE
-        )
+                web_interface.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
-        web_interface.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
+                web_interface.en_system_control = [1] if dsp_settings.get("en_system_control", False) else []
+                web_interface.en_beta_features = [1] if dsp_settings.get("en_beta_features", False) else []
 
-        web_interface.en_system_control = [1] if dsp_settings.get("en_system_control", False) else []
-        web_interface.en_beta_features = [1] if dsp_settings.get("en_beta_features", False) else []
+                web_interface.module_signal_processor.en_DOA_estimation = dsp_settings.get("en_doa", 0)
+                web_interface.module_signal_processor.DOA_decorrelation_method = dsp_settings.get(
+                    "doa_decorrelation_method", 0
+                )
 
-        web_interface.module_signal_processor.en_DOA_estimation = dsp_settings.get("en_doa", 0)
-        web_interface.module_signal_processor.DOA_decorrelation_method = dsp_settings.get("doa_decorrelation_method", 0)
+                web_interface.module_signal_processor.DOA_ant_alignment = dsp_settings.get("ant_arrangement", "ULA")
+                web_interface.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
-        web_interface.module_signal_processor.DOA_ant_alignment = dsp_settings.get("ant_arrangement", "ULA")
-        web_interface.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
+                web_interface.custom_array_x_meters = np.float_(
+                    dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(",")
+                )
+                web_interface.custom_array_y_meters = np.float_(
+                    dsp_settings.get("custom_array_y_meters", "0.1,0.2,0.3,0.4,0.5").split(",")
+                )
+                web_interface.module_signal_processor.custom_array_x = web_interface.custom_array_x_meters / (
+                    300 / web_interface.module_receiver.daq_center_freq
+                )
+                web_interface.module_signal_processor.custom_array_y = web_interface.custom_array_y_meters / (
+                    300 / web_interface.module_receiver.daq_center_freq
+                )
 
-        web_interface.custom_array_x_meters = np.float_(
-            dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(",")
-        )
-        web_interface.custom_array_y_meters = np.float_(
-            dsp_settings.get("custom_array_y_meters", "0.1,0.2,0.3,0.4,0.5").split(",")
-        )
-        web_interface.module_signal_processor.custom_array_x = web_interface.custom_array_x_meters / (
-            300 / web_interface.module_receiver.daq_center_freq
-        )
-        web_interface.module_signal_processor.custom_array_y = web_interface.custom_array_y_meters / (
-            300 / web_interface.module_receiver.daq_center_freq
-        )
+                # Station Information
+                web_interface.module_signal_processor.station_id = dsp_settings.get("station_id", "NO-CALL")
+                web_interface.location_source = dsp_settings.get("location_source", "None")
+                web_interface.module_signal_processor.latitude = dsp_settings.get("latitude", 0.0)
+                web_interface.module_signal_processor.longitude = dsp_settings.get("longitude", 0.0)
+                web_interface.module_signal_processor.heading = dsp_settings.get("heading", 0.0)
+                web_interface.module_signal_processor.krakenpro_key = dsp_settings.get("krakenpro_key", 0.0)
+                web_interface.mapping_server_url = dsp_settings.get(
+                    "mapping_server_url", DEFAULT_MAPPING_SERVER_ENDPOINT
+                )
+                web_interface.module_signal_processor.RDF_mapper_server = dsp_settings.get(
+                    "rdf_mapper_server", "http://RDF_MAPPER_SERVER.com/save.php"
+                )
+                web_interface.module_signal_processor.DOA_data_format = dsp_settings.get(
+                    "doa_data_format", "Kraken App"
+                )
 
-        # Station Information
-        web_interface.module_signal_processor.station_id = dsp_settings.get("station_id", "NO-CALL")
-        web_interface.location_source = dsp_settings.get("location_source", "None")
-        web_interface.module_signal_processor.latitude = dsp_settings.get("latitude", 0.0)
-        web_interface.module_signal_processor.longitude = dsp_settings.get("longitude", 0.0)
-        web_interface.module_signal_processor.heading = dsp_settings.get("heading", 0.0)
-        web_interface.module_signal_processor.krakenpro_key = dsp_settings.get("krakenpro_key", 0.0)
-        web_interface.mapping_server_url = dsp_settings.get("mapping_server_url", DEFAULT_MAPPING_SERVER_ENDPOINT)
-        web_interface.module_signal_processor.RDF_mapper_server = dsp_settings.get(
-            "rdf_mapper_server", "http://RDF_MAPPER_SERVER.com/save.php"
-        )
-        web_interface.module_signal_processor.DOA_data_format = dsp_settings.get("doa_data_format", "Kraken App")
+                # VFO Configuration
+                web_interface.module_signal_processor.spectrum_fig_type = dsp_settings.get(
+                    "spectrum_calculation", "Single"
+                )
+                web_interface.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
+                web_interface.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get(
+                    "vfo_default_squelch_mode", "Auto"
+                )
+                web_interface.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
+                web_interface.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
+                web_interface.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
+                web_interface.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
+                web_interface.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
+                web_interface.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
+                web_interface.compass_offset = dsp_settings.get("compass_offset", 0)
+                web_interface.module_signal_processor.compass_offset = web_interface.compass_offset
+                web_interface.module_signal_processor.optimize_short_bursts = dsp_settings.get(
+                    "en_optimize_short_bursts", 0
+                )
+                web_interface.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", 0)
 
-        # VFO Configuration
-        web_interface.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
-        web_interface.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
-        web_interface.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get(
-            "vfo_default_squelch_mode", "Auto"
-        )
-        web_interface.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
-        web_interface.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
-        web_interface.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
-        web_interface.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
-        web_interface.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
-        web_interface.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
-        web_interface.compass_offset = dsp_settings.get("compass_offset", 0)
-        web_interface.module_signal_processor.compass_offset = web_interface.compass_offset
-        web_interface.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", 0)
-        web_interface.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", 0)
+                for i in range(web_interface.module_signal_processor.max_vfos):
+                    web_interface.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
+                    web_interface.module_signal_processor.vfo_fir_order_factor[i] = int(
+                        dsp_settings.get("vfo_fir_order_factor_" + str(i), DEFAULT_VFO_FIR_ORDER_FACTOR)
+                    )
+                    web_interface.module_signal_processor.vfo_freq[i] = float(dsp_settings.get("vfo_freq_" + str(i), 0))
+                    web_interface.module_signal_processor.vfo_squelch_mode[i] = dsp_settings.get(
+                        "vfo_squelch_mode_" + str(i), "Default"
+                    )
+                    web_interface.module_signal_processor.vfo_squelch[i] = int(
+                        dsp_settings.get("vfo_squelch_" + str(i), 0)
+                    )
+                    web_interface.module_signal_processor.vfo_demod[i] = dsp_settings.get(
+                        "vfo_demod_" + str(i), "Default"
+                    )
+                    web_interface.module_signal_processor.vfo_iq[i] = dsp_settings.get("vfo_iq_" + str(i), "Default")
 
-        for i in range(web_interface.module_signal_processor.max_vfos):
-            web_interface.module_signal_processor.vfo_bw[i] = int(dsp_settings.get("vfo_bw_" + str(i), 0))
-            web_interface.module_signal_processor.vfo_fir_order_factor[i] = int(
-                dsp_settings.get("vfo_fir_order_factor_" + str(i), DEFAULT_VFO_FIR_ORDER_FACTOR)
-            )
-            web_interface.module_signal_processor.vfo_freq[i] = float(dsp_settings.get("vfo_freq_" + str(i), 0))
-            web_interface.module_signal_processor.vfo_squelch_mode[i] = dsp_settings.get(
-                "vfo_squelch_mode_" + str(i), "Default"
-            )
-            web_interface.module_signal_processor.vfo_squelch[i] = int(dsp_settings.get("vfo_squelch_" + str(i), 0))
-            web_interface.module_signal_processor.vfo_demod[i] = dsp_settings.get("vfo_demod_" + str(i), "Default")
-            web_interface.module_signal_processor.vfo_iq[i] = dsp_settings.get("vfo_iq_" + str(i), "Default")
+                web_interface.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
+                web_interface.module_signal_processor.DOA_expected_num_of_sources = dsp_settings.get(
+                    "expected_num_of_sources", 1
+                )
+                web_interface._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
+                web_interface.module_signal_processor.doa_measure = web_interface._doa_fig_type
+                web_interface.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
+                web_interface.module_signal_processor.array_offset = int(dsp_settings.get("array_offset", 0))
 
-        web_interface.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
-        web_interface.module_signal_processor.DOA_expected_num_of_sources = dsp_settings.get(
-            "expected_num_of_sources", 1
-        )
-        web_interface._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
-        web_interface.module_signal_processor.doa_measure = web_interface._doa_fig_type
-        web_interface.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
-        web_interface.module_signal_processor.array_offset = int(dsp_settings.get("array_offset", 0))
+                freq_delta = web_interface.daq_center_freq - center_freq
+                gain_delta = web_interface.module_receiver.daq_rx_gain - gain
 
-        freq_delta = web_interface.daq_center_freq - center_freq
-        gain_delta = web_interface.module_receiver.daq_rx_gain - gain
+                if abs(freq_delta) > 0.001 or abs(gain_delta) > 0.001:
+                    web_interface.daq_center_freq = center_freq
+                    web_interface.config_daq_rf(center_freq, gain)
 
-        if abs(freq_delta) > 0.001 or abs(gain_delta) > 0.001:
-            web_interface.daq_center_freq = center_freq
-            web_interface.config_daq_rf(center_freq, gain)
+                web_interface.needs_refresh = True
 
-        web_interface.needs_refresh = True
-
-    web_interface.last_changed_time_previous = last_changed_time
-
-    web_interface.settings_change_timer = Timer(0.1, settings_change_watcher, args=(web_interface, settings_file_path))
+    web_interface.settings_change_timer = Timer(
+        0.5, settings_change_watcher, args=(web_interface, settings_file_path, last_attempt_failed)
+    )
     web_interface.settings_change_timer.start()
 
 
