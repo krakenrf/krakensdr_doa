@@ -568,17 +568,17 @@ class SignalProcessor(threading.Thread):
                                     signal_window[
                                         max(vfo_lower_bound, 4) : min(vfo_upper_bound, spectrum_window_size - 4)
                                     ] = 0  # max_amplitude
-                                    self.spectrum[
-                                        self.channel_number + (2 * i + 1), :
-                                    ] = signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
+                                    self.spectrum[self.channel_number + (2 * i + 1), :] = (
+                                        signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
+                                    )
 
                                     # Squelch Window
                                     signal_window[
                                         max(vfo_lower_bound, 4) : min(vfo_upper_bound, spectrum_window_size - 4)
                                     ] = self.vfo_squelch[i]
-                                    self.spectrum[
-                                        self.channel_number + (2 * i + 2), :
-                                    ] = signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
+                                    self.spectrum[self.channel_number + (2 * i + 2), :] = (
+                                        signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
+                                    )
 
                                 # -----> DoA ESIMATION <-----
 
