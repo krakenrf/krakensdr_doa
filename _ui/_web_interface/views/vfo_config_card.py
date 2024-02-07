@@ -93,9 +93,11 @@ def get_vfo_config_card_layout():
                     ),
                 ],
                 className="field",
-                style={"display": "block"}
-                if web_interface.web_interface.module_signal_processor.vfo_mode == "Scan"
-                else {"display": "none"},
+                style=(
+                    {"display": "block"}
+                    if web_interface.module_signal_processor.vfo_mode == "Scan"
+                    else {"display": "none"}
+                ),
             ),
             html.Div(
                 [
@@ -110,9 +112,11 @@ def get_vfo_config_card_layout():
                     ),
                 ],
                 className="field",
-                style={"display": "block"}
-                if web_interface.web_interface.module_signal_processor.vfo_mode == "Scan"
-                else {"display": "none"},
+                style=(
+                    {"display": "block"}
+                    if web_interface.module_signal_processor.vfo_mode == "Scan"
+                    else {"display": "none"}
+                ),
             ),
             html.Div(
                 [
@@ -195,9 +199,11 @@ def get_vfo_config_card_layout():
                     ),
                 ],
                 id="menu_active_vfos",
-                style={"display": "inline-block"}
-                if web_interface.module_signal_processor.vfo_mode == "Standard"
-                else {"display": "none"},
+                style=(
+                    {"display": "inline-block"}
+                    if web_interface.module_signal_processor.vfo_mode == "Standard"
+                    else {"display": "none"}
+                ),
                 className="field",
             ),
             html.Div(
