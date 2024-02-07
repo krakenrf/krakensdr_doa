@@ -17,10 +17,10 @@ from variables import (
 # isort: on
 
 from dash_devices.dependencies import Input
-from krakenSDR_receiver import ReceiverRTLSDR
+from kraken_sdr_receiver import ReceiverRTLSDR
 
 # Import built-in modules
-from krakenSDR_signal_processor import SignalProcessor
+from kraken_sdr_signal_processor import SignalProcessor
 from utils import read_config_file_dict, settings_change_watcher
 
 

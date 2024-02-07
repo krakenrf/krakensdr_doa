@@ -6,9 +6,9 @@ from configparser import ConfigParser
 from threading import Timer
 
 import numpy as np
+from kraken_sdr_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR
 from kraken_web_doa import plot_doa
 from kraken_web_spectrum import plot_spectrum
-from krakenSDR_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR
 from variables import (
     AGC_WARNING_DISABLED_STYLE,
     AGC_WARNING_ENABLED_STYLE,

@@ -73,7 +73,7 @@ class ReceiverRTLSDR:
         self.receiverBufferSize = 2**18
 
         # -> Shared memory
-        root_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        root_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
         daq_path = os.path.join(os.path.dirname(root_path), "heimdall_daq_fw")
         self.daq_shmem_control_path = os.path.join(os.path.join(daq_path, "Firmware"), "_data_control/")
         self.init_data_iface()

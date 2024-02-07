@@ -147,9 +147,9 @@ def get_vfo_card_layout():
             ],
             id="vfo" + str(i),
             className="card",
-            style={"display": "block"}
-            if i < web_interface.module_signal_processor.active_vfos
-            else {"display": "none"},
+            style=(
+                {"display": "block"} if i < web_interface.module_signal_processor.active_vfos else {"display": "none"}
+            ),
         )
 
     return layout
