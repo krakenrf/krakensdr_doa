@@ -46,7 +46,7 @@ import requests
 # Signal processing support
 import scipy
 from kraken_sdr_receiver import ReceiverRTLSDR
-from krakenSDR_types import ScanFreq
+from kraken_sdr_types import ScanFreq
 from numba import float32, njit, vectorize
 from pyargus import directionEstimation as de
 from scipy import fft, signal
@@ -340,7 +340,7 @@ class SignalProcessor(threading.Thread):
 
         for i, vfo_squelch_mode in enumerate(self.vfo_squelch_mode[: self.active_vfos]):
             if vfo_squelch_mode == "Auto Channel" or (
-                    vfo_squelch_mode == "Default" and self.vfo_default_squelch_mode == "Auto Channel"
+                vfo_squelch_mode == "Default" and self.vfo_default_squelch_mode == "Auto Channel"
             ):
                 vfo_bw_freq_window = int(self.vfo_bw[i] / (sampling_freq / N))
                 freq_idx, nearsest = find_nearest(real_freqs, self.vfo_freq[i])
@@ -735,17 +735,17 @@ class SignalProcessor(threading.Thread):
                                     signal_window[
                                         max(vfo_lower_bound, 4) : min(vfo_upper_bound, spectrum_window_size - 4)
                                     ] = 0  # max_amplitude
-                                    self.spectrum[self.channel_number + (2 * i + 1), :] = (
-                                        signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
-                                    )
+                                    self.spectrum[
+                                        self.channel_number + (2 * i + 1), :
+                                    ] = signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
 
                                     # Squelch Window
                                     signal_window[
                                         max(vfo_lower_bound, 4) : min(vfo_upper_bound, spectrum_window_size - 4)
                                     ] = self.vfo_squelch[i]
-                                    self.spectrum[self.channel_number + (2 * i + 2), :] = (
-                                        signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
-                                    )
+                                    self.spectrum[
+                                        self.channel_number + (2 * i + 2), :
+                                    ] = signal_window  # np.ones(len(spectrum[1,:])) * self.module_receiver.daq_squelch_th_dB # Plot threshold line
 
                                 # -----> DoA ESIMATION <-----
 
