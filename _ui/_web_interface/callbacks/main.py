@@ -197,6 +197,7 @@ def set_static_location(lat, lon, toggle_value):
         web_interface.module_signal_processor.longitude = lon
 
 
+
 # Enable Fixed Heading
 @app.callback(None, [Input(component_id="fixed_heading_check", component_property="value")])
 def set_fixed_heading(fixed):
@@ -320,6 +321,7 @@ def update_vfo_params(*args):
     if app_updates:
         app.push_mods(app_updates)
 
+    web_interface.save_configuration()
 
 
 @app.callback_shared(
@@ -873,8 +875,8 @@ def settings_change_refresh(toggle_value, pathname):
                 "en_doa_check": {"value": [1] if web_interface.module_signal_processor.en_DOA_estimation else []},
                 "doa_decorrelation_method": {"value": web_interface.module_signal_processor.DOA_decorrelation_method},
                 "radio_ant_arrangement": {"value": web_interface.module_signal_processor.DOA_ant_alignment},
-                "custom_array_x_meters": {"value": web_interface.custom_array_x_meters},
-                "custom_array_y_meters": {"value": web_interface.custom_array_y_meters},
+                "custom_array_x_meters": {"value": ",".join(["%.2f" % num for num in web_interface.custom_array_x_meters])},
+                "custom_array_y_meters": {"value": ",".join(["%.2f" % num for num in web_interface.custom_array_y_meters])},
                 "station_id_input": {"value": web_interface.module_signal_processor.station_id},
                 "loc_src_dropdown": {"value": web_interface.location_source},
                 "latitude_input": {"value": web_interface.module_signal_processor.latitude},
@@ -903,19 +905,18 @@ def settings_change_refresh(toggle_value, pathname):
             }
         )
 
-        for i in range(web_interface.module_signal_processor.max_vfos):
-            app.push_mods(
-                {
-                "vfo_" + str(i) + "_bw": {"value": web_interface.module_signal_processor.vfo_bw[i]},
-                "vfo_" + str(i) + "_fir_order_factor": {"value": web_interface.module_signal_processor.vfo_fir_order_factor[i]},
-                "vfo_" + str(i) + "_freq": {"value": web_interface.module_signal_processor.vfo_freq[i] / 10**6},
-                 f"vfo_squelch_mode_{i}": {"value": web_interface.module_signal_processor.vfo_squelch_mode[i]},
-                 "vfo_" + str(i) + "_squelch": {"value": web_interface.module_signal_processor.vfo_squelch[i]},
-                 f"vfo_{i}_demod": {"value": web_interface.module_signal_processor.vfo_demod[i]},
-                 f"vfo_{i}_iq": {"value": web_interface.module_signal_processor.vfo_iq[i]},
-                }
-
-            )
+        #for i in range(web_interface.module_signal_processor.max_vfos):
+        #    app.push_mods(
+        #        {
+        #        "vfo_" + str(i) + "_bw": {"value": web_interface.module_signal_processor.vfo_bw[i]},
+        #        "vfo_" + str(i) + "_fir_order_factor": {"value": web_interface.module_signal_processor.vfo_fir_order_factor[i]},
+        #        "vfo_" + str(i) + "_freq": {"value": web_interface.module_signal_processor.vfo_freq[i] / 10**6},
+        #         f"vfo_squelch_mode_{i}": {"value": web_interface.module_signal_processor.vfo_squelch_mode[i]},
+        #         "vfo_" + str(i) + "_squelch": {"value": web_interface.module_signal_processor.vfo_squelch[i]},
+        #         f"vfo_{i}_demod": {"value": web_interface.module_signal_processor.vfo_demod[i]},
+        #         f"vfo_{i}_iq": {"value": web_interface.module_signal_processor.vfo_iq[i]},
+        #        }
+        #    )
 
         web_interface.needs_refresh = False
 
