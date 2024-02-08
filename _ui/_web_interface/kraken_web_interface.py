@@ -8,10 +8,10 @@ import numpy as np
 # isort: off
 from variables import (
     settings_file_path,
-    settings_found,
     dsp_settings,
     DEFAULT_MAPPING_SERVER_ENDPOINT,
     AUTO_GAIN_VALUE,
+    INVALID_SETTINGS_FILE_TIMESTAMP,
 )
 
 # isort: on
@@ -34,8 +34,8 @@ class WebInterface:
         self.logger.setLevel(self.logging_level)
         self.logger.info("Inititalizing web interface ")
 
-        if not settings_found:
-            self.logger.warning("Web Interface settings file is not found!")
+        if dsp_settings["timestamp"] == INVALID_SETTINGS_FILE_TIMESTAMP:
+            self.logger.warning("Settings file is not found or corrupted!")
 
         #############################################
         #  Initialize and Configure Kraken modules  #
@@ -230,7 +230,6 @@ class WebInterface:
         self.oldMaxIndex = 9999
 
         # Refresh Settings Paramaters
-        self.last_changed_time_previous = float("inf")
         self.needs_refresh = False
 
         # Basic DAQ Config
