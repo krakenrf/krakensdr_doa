@@ -89,22 +89,18 @@ def send_recorded_file(n_clicks):
 def set_doa_format(doa_format):
     web_interface.module_signal_processor.DOA_data_format = doa_format
 
-
 # Update Station ID
 @app.callback_shared(None, [Input(component_id="station_id_input", component_property="value")])
 def set_station_id(station_id):
     web_interface.module_signal_processor.station_id = station_id
 
-
 @app.callback_shared(None, [Input(component_id="krakenpro_key", component_property="value")])
 def set_kraken_pro_key(key):
     web_interface.module_signal_processor.krakenpro_key = key
 
-
 @app.callback_shared(None, [Input(component_id="rdf_mapper_server_address", component_property="value")])
 def set_rdf_mapper_server(url):
     web_interface.module_signal_processor.RDF_mapper_server = url
-
 
 # Enable GPS Relevant fields
 
@@ -323,6 +319,7 @@ def update_vfo_params(*args):
 
     if app_updates:
         app.push_mods(app_updates)
+
 
 
 @app.callback_shared(
@@ -867,12 +864,58 @@ def settings_change_refresh(toggle_value, pathname):
     if web_interface.needs_refresh:
         app.push_mods(
             {
-                #"daq_center_freq": {"value": web_interface.module_receiver.daq_center_freq / 10**6},
-                #"daq_rx_gain": {"value": web_interface.module_receiver.daq_rx_gain},
+                "daq_center_freq": {"value": web_interface.module_receiver.daq_center_freq / 10**6},
+                "daq_rx_gain": {"value": web_interface.module_receiver.daq_rx_gain},
                 "ant_spacing_meter": {"value": web_interface.ant_spacing_meters},
-                #"array_offset": {"value": web_interface.module_signal_processor.array_offset},
+                "array_offset": {"value": web_interface.module_signal_processor.array_offset},
+                "en_system_control": {"value": web_interface.en_system_control},
+                "en_beta_features": {"value": web_interface.en_beta_features},
+                "en_doa_check": {"value": [1] if web_interface.module_signal_processor.en_DOA_estimation else []},
+                "doa_decorrelation_method": {"value": web_interface.module_signal_processor.DOA_decorrelation_method},
+                "radio_ant_arrangement": {"value": web_interface.module_signal_processor.DOA_ant_alignment},
+                "custom_array_x_meters": {"value": web_interface.custom_array_x_meters},
+                "custom_array_y_meters": {"value": web_interface.custom_array_y_meters},
+                "station_id_input": {"value": web_interface.module_signal_processor.station_id},
+                "loc_src_dropdown": {"value": web_interface.location_source},
+                "latitude_input": {"value": web_interface.module_signal_processor.latitude},
+                "longitude_input": {"value": web_interface.module_signal_processor.longitude},
+                "heading_input": {"value": web_interface.module_signal_processor.heading},
+                "krakenpro_key": {"value": web_interface.module_signal_processor.krakenpro_key},
+                "rdf_mapper_server_address": {"value": web_interface.module_signal_processor.RDF_mapper_server},
+                "doa_format_type": {"value": web_interface.module_signal_processor.DOA_data_format},
+                "spectrum_fig_type": {"value": web_interface.module_signal_processor.spectrum_fig_type},
+                "vfo_mode": {"value": web_interface.module_signal_processor.vfo_mode},
+                "vfo_default_squelch_mode": {"value": web_interface.module_signal_processor.vfo_default_squelch_mode},
+                "vfo_default_demod": {"value": web_interface.module_signal_processor.vfo_default_demod},
+                "vfo_default_iq": {"value": web_interface.module_signal_processor.vfo_default_iq},
+                "max_demod_timeout": {"value": web_interface.module_signal_processor.max_demod_timeout},
+                "dsp_decimation": {"value": web_interface.module_signal_processor.dsp_decimation},
+                "active_vfos": {"value": web_interface.module_signal_processor.active_vfos},
+                "output_vfo": {"value": web_interface.module_signal_processor.output_vfo},
+                "compass_offset": {"value": web_interface.compass_offset},
+                "en_optimize_short_bursts": {"value": [1] if web_interface.module_signal_processor.optimize_short_bursts else []},
+                "en_peak_hold": {"value": [1] if web_interface.module_signal_processor.en_peak_hold else []},
+                "doa_method": {"value": web_interface.module_signal_processor.DOA_algorithm},
+                "expected_num_of_sources": {"value": web_interface.module_signal_processor.DOA_expected_num_of_sources},
+                "doa_fig_type": {"value": web_interface._doa_fig_type},
+                "ula_direction": {"value": web_interface.module_signal_processor.ula_direction},
+                "array_offset": {"value": web_interface.module_signal_processor.array_offset},
             }
         )
+
+        for i in range(web_interface.module_signal_processor.max_vfos):
+            app.push_mods(
+                {
+                "vfo_" + str(i) + "_bw": {"value": web_interface.module_signal_processor.vfo_bw[i]},
+                "vfo_" + str(i) + "_fir_order_factor": {"value": web_interface.module_signal_processor.vfo_fir_order_factor[i]},
+                "vfo_" + str(i) + "_freq": {"value": web_interface.module_signal_processor.vfo_freq[i] / 10**6},
+                 f"vfo_squelch_mode_{i}": {"value": web_interface.module_signal_processor.vfo_squelch_mode[i]},
+                 "vfo_" + str(i) + "_squelch": {"value": web_interface.module_signal_processor.vfo_squelch[i]},
+                 f"vfo_{i}_demod": {"value": web_interface.module_signal_processor.vfo_demod[i]},
+                 f"vfo_{i}_iq": {"value": web_interface.module_signal_processor.vfo_iq[i]},
+                }
+
+            )
 
         web_interface.needs_refresh = False
 

@@ -47,4 +47,5 @@ def update_daq_params(input_value, f0, gain):
                 "body_ant_spacing_wavelength": {"children": str(ant_spacing_wavelength)},
             }
         )
+    web_interface.save_configuration()
     return agc_warning_style
