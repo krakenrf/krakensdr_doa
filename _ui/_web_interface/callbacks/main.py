@@ -143,15 +143,19 @@ def toggle_heading_info(static_loc, fixed_heading, heading):
     if static_loc == "Static":
         web_interface.module_signal_processor.fixed_heading = True
         web_interface.module_signal_processor.heading = heading
+        web_interface.save_configuration()
         return {"display": "block"}
     elif static_loc == "gpsd" and fixed_heading:
         web_interface.module_signal_processor.heading = heading
+        web_interface.save_configuration()
         return {"display": "block"}
     elif static_loc == "gpsd" and not fixed_heading:
         web_interface.module_signal_processor.fixed_heading = False
+        web_interface.save_configuration()
         return {"display": "none"}
     elif static_loc == "None":
         web_interface.module_signal_processor.fixed_heading = False
+        web_interface.save_configuration()
         return {"display": "none"}
     else:
         return {"display": "none"}
@@ -161,6 +165,7 @@ def toggle_heading_info(static_loc, fixed_heading, heading):
 @app.callback(Output("location_fields", "style"), [Input("loc_src_dropdown", "value")])
 def toggle_location_info(toggle_value):
     web_interface.location_source = toggle_value
+    web_interface.save_configuration()
     if toggle_value == "Static":
         return {"display": "block"}
     else:
@@ -174,6 +179,7 @@ def toggle_location_info(toggle_value):
 )
 def toggle_min_speed_heading_filter(toggle_value, fixed_heading):
     web_interface.location_source = toggle_value
+    web_interface.save_configuration()
     if toggle_value == "gpsd" and not fixed_heading:
         return {"display": "block"}
     else:
@@ -195,6 +201,7 @@ def set_static_location(lat, lon, toggle_value):
     if toggle_value == "Static":
         web_interface.module_signal_processor.latitude = lat
         web_interface.module_signal_processor.longitude = lon
+        web_interface.save_configuration()
 
 
 
@@ -205,24 +212,28 @@ def set_fixed_heading(fixed):
         web_interface.module_signal_processor.fixed_heading = True
     else:
         web_interface.module_signal_processor.fixed_heading = False
+    web_interface.save_configuration()
 
 
 # Set heading data
 @app.callback_shared(None, [Input(component_id="heading_input", component_property="value")])
 def set_static_heading(heading):
     web_interface.module_signal_processor.heading = heading
+    web_interface.save_configuration()
 
 
 # Set minimum speed for trustworthy GPS heading
 @app.callback_shared(None, [Input(component_id="min_speed_input", component_property="value")])
 def set_min_speed_for_valid_gps_heading(min_speed):
     web_interface.module_signal_processor.gps_min_speed_for_valid_heading = min_speed
+    web_interface.save_configuration()
 
 
 # Set minimum speed duration for trustworthy GPS heading
 @app.callback_shared(None, [Input(component_id="min_speed_duration_input", component_property="value")])
 def set_min_speed_duration_for_valid_gps_heading(min_speed_duration):
     web_interface.module_signal_processor.gps_min_duration_for_valid_heading = min_speed_duration
+    web_interface.save_configuration()
 
 
 # Enable GPS (note that we need this to fire on load, so we cannot use callback_shared!)
@@ -235,11 +246,13 @@ def enable_gps(toggle_value):
         status = web_interface.module_signal_processor.enable_gps()
         if status:
             web_interface.module_signal_processor.usegps = True
+            web_interface.save_configuration()
             return ["Connected", {"color": "#7ccc63"}]
         else:
             return ["Error", {"color": "#e74c3c"}]
     else:
         web_interface.module_signal_processor.usegps = False
+        web_interface.save_configuration()
         return ["-", {"color": "white"}]
 
 
@@ -624,6 +637,8 @@ def update_dsp_params(
     )
 
     num_of_sources_state = False if "MUSIC" in doa_method else True
+
+    web_interface.save_configuration()
 
     return [
         str(ant_spacing_wavelength),
