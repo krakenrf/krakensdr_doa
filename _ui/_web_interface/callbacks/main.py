@@ -905,18 +905,18 @@ def settings_change_refresh(toggle_value, pathname):
             }
         )
 
-        #for i in range(web_interface.module_signal_processor.max_vfos):
-        #    app.push_mods(
-        #        {
-        #        "vfo_" + str(i) + "_bw": {"value": web_interface.module_signal_processor.vfo_bw[i]},
-        #        "vfo_" + str(i) + "_fir_order_factor": {"value": web_interface.module_signal_processor.vfo_fir_order_factor[i]},
-        #        "vfo_" + str(i) + "_freq": {"value": web_interface.module_signal_processor.vfo_freq[i] / 10**6},
-        #         f"vfo_squelch_mode_{i}": {"value": web_interface.module_signal_processor.vfo_squelch_mode[i]},
-        #         "vfo_" + str(i) + "_squelch": {"value": web_interface.module_signal_processor.vfo_squelch[i]},
-        #         f"vfo_{i}_demod": {"value": web_interface.module_signal_processor.vfo_demod[i]},
-        #         f"vfo_{i}_iq": {"value": web_interface.module_signal_processor.vfo_iq[i]},
-        #        }
-        #    )
+        for i in range(web_interface.module_signal_processor.max_vfos):
+            app.push_mods(
+                {
+                "vfo_" + str(i) + "_bw": {"value": web_interface.module_signal_processor.vfo_bw[i]},
+                "vfo_" + str(i) + "_fir_order_factor": {"value": web_interface.module_signal_processor.vfo_fir_order_factor[i]},
+                "vfo_" + str(i) + "_freq": {"value": web_interface.module_signal_processor.vfo_freq[i] / 10**6},
+                 f"vfo_squelch_mode_{i}": {"value": web_interface.module_signal_processor.vfo_squelch_mode[i]},
+                 "vfo_" + str(i) + "_squelch": {"value": web_interface.module_signal_processor.vfo_squelch[i]},
+                 f"vfo_{i}_demod": {"value": web_interface.module_signal_processor.vfo_demod[i]},
+                 f"vfo_{i}_iq": {"value": web_interface.module_signal_processor.vfo_iq[i]},
+                }
+            )
 
         web_interface.needs_refresh = False
 
