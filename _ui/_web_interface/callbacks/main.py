@@ -860,12 +860,23 @@ def toggle_beta_features(toggle_value):
     [State("url", "pathname")],
 )
 def settings_change_refresh(toggle_value, pathname):
+    #if web_interface.needs_refresh:
+    #    if pathname == "/" or pathname == "/init" or pathname == "/config":
+    #        return ["upd"]
+
     if web_interface.needs_refresh:
-        if pathname == "/" or pathname == "/init" or pathname == "/config":
-            return ["upd"]
+        app.push_mods(
+            {
+                #"daq_center_freq": {"value": web_interface.module_receiver.daq_center_freq / 10**6},
+                #"daq_rx_gain": {"value": web_interface.module_receiver.daq_rx_gain},
+                "ant_spacing_meter": {"value": web_interface.ant_spacing_meters},
+                #"array_offset": {"value": web_interface.module_signal_processor.array_offset},
+            }
+        )
+
+        web_interface.needs_refresh = False
 
     return Output("dummy_output", "children", "")
-
 
 @app.callback(
     None,
