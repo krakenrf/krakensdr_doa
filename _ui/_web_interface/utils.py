@@ -314,27 +314,6 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
                 web_interface.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get(
                     "vfo_default_squelch_mode", "Auto"
                 )
-                web_interface.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
-                web_interface.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
-                web_interface.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
-                web_interface.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
-                web_interface.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
-                web_interface.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
-                web_interface.compass_offset = dsp_settings.get("compass_offset", 0)
-                web_interface.module_signal_processor.compass_offset = web_interface.compass_offset
-                web_interface.module_signal_processor.optimize_short_bursts = dsp_settings.get(
-                    "en_optimize_short_bursts", 0
-                )
-                web_interface.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", 0)
-
-                # VFO Configuration
-                web_interface.module_signal_processor.spectrum_fig_type = dsp_settings.get(
-                    "spectrum_calculation", "Single"
-                )
-                web_interface.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
-                web_interface.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get(
-                    "vfo_default_squelch_mode", "Auto"
-                )
                 web_interface.module_signal_processor.vfo_scan_period_time = int(
                     dsp_settings.get("vfo_scan_period_time", 30)
                 )
