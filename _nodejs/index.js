@@ -29,20 +29,24 @@ function loadSettingsJson (){
   if (settingsJson.center_freq) {
     const oldHash = crypto.createHash('md5').update(JSON.stringify(settingsJson)).digest("hex")
     // load ne Data and ten check if there are changes
-    let rawdata = fs.readFileSync(settingsJsonPath);
-    let newSettings = JSON.parse(rawdata);
-    const newHash = crypto.createHash('md5').update(JSON.stringify(newSettings)).digest("hex")
-    if (newHash != oldHash) {
-      console.log("hashes not the same")
-      settingsChanged = true;
-    }
-    settingsJson = newSettings;
+    try {
+        let rawdata = fs.readFileSync(settingsJsonPath);
+        let newSettings = JSON.parse(rawdata);
+        const newHash = crypto.createHash('md5').update(JSON.stringify(newSettings)).digest("hex")
+        if (newHash != oldHash) {
+          console.log("hashes not the same")
+          settingsChanged = true;
+        }
+        settingsJson = newSettings;
+    } catch (error) {}
   } else {
-    console.log("Settings are empty, so initial load")
-    settingsChanged = true;
-    let rawdata = fs.readFileSync(settingsJsonPath);
-    settingsJson = JSON.parse(rawdata)
-    remoteServer = settingsJson.mapping_server_url || remoteServerDefault
+    try {
+        console.log("Settings are empty, so initial load")
+        settingsChanged = true;
+        let rawdata = fs.readFileSync(settingsJsonPath);
+        settingsJson = JSON.parse(rawdata)
+        remoteServer = settingsJson.mapping_server_url || remoteServerDefault
+    } catch (error) {}
   }
   /*
   console.log("Loaded Settings from json")

@@ -147,19 +147,19 @@ def toggle_heading_info(static_loc, fixed_heading, heading):
     if static_loc == "Static":
         web_interface.module_signal_processor.fixed_heading = True
         web_interface.module_signal_processor.heading = heading
-        web_interface.save_configuration()
+        #web_interface.save_configuration()
         return {"display": "block"}
     elif static_loc == "gpsd" and fixed_heading:
         web_interface.module_signal_processor.heading = heading
-        web_interface.save_configuration()
+        #web_interface.save_configuration()
         return {"display": "block"}
     elif static_loc == "gpsd" and not fixed_heading:
         web_interface.module_signal_processor.fixed_heading = False
-        web_interface.save_configuration()
+        #web_interface.save_configuration()
         return {"display": "none"}
     elif static_loc == "None":
         web_interface.module_signal_processor.fixed_heading = False
-        web_interface.save_configuration()
+        #web_interface.save_configuration()
         return {"display": "none"}
     else:
         return {"display": "none"}
