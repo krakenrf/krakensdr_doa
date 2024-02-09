@@ -88,19 +88,23 @@ def send_recorded_file(n_clicks):
 @app.callback_shared(None, [Input(component_id="doa_format_type", component_property="value")])
 def set_doa_format(doa_format):
     web_interface.module_signal_processor.DOA_data_format = doa_format
+    web_interface.save_configuration()
 
 # Update Station ID
 @app.callback_shared(None, [Input(component_id="station_id_input", component_property="value")])
 def set_station_id(station_id):
     web_interface.module_signal_processor.station_id = station_id
+    web_interface.save_configuration()
 
 @app.callback_shared(None, [Input(component_id="krakenpro_key", component_property="value")])
 def set_kraken_pro_key(key):
     web_interface.module_signal_processor.krakenpro_key = key
+    web_interface.save_configuration()
 
 @app.callback_shared(None, [Input(component_id="rdf_mapper_server_address", component_property="value")])
 def set_rdf_mapper_server(url):
     web_interface.module_signal_processor.RDF_mapper_server = url
+    web_interface.save_configuration()
 
 # Enable GPS Relevant fields
 
