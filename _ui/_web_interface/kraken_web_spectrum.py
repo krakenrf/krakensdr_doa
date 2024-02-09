@@ -128,18 +128,6 @@ def plot_spectrum(app, web_interface, spectrum_fig, waterfall_fig):
                 spectrum_fig.data[m]["visible"] = True
                 spectrum_fig.data[m]["line"]["color"] = trace_colors[m]
 
-        waterfall_fig.data[0]["x"] = x
-        waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], showgrid=False)
-
-        web_interface.reset_spectrum_graph_flag = False
-        app.push_mods(
-            {
-                "spectrum-graph": {"figure": spectrum_fig},
-                "waterfall-graph": {"figure": waterfall_fig},
-            }
-        )
-
-    else:
         # Hide non active traces
         for i in range(web_interface.active_vfos):
             if i < web_interface.active_vfos:
@@ -153,6 +141,18 @@ def plot_spectrum(app, web_interface, spectrum_fig, waterfall_fig):
                 spectrum_fig.layout.annotations[i]["visible"] = False
                 spectrum_fig.layout.annotations[web_interface.module_signal_processor.max_vfos + i]["visible"] = False
 
+        waterfall_fig.data[0]["x"] = x
+        waterfall_fig.update_xaxes(tickfont_size=1, range=[np.min(x), np.max(x)], showgrid=False)
+
+        web_interface.reset_spectrum_graph_flag = False
+        app.push_mods(
+            {
+                "spectrum-graph": {"figure": spectrum_fig},
+                "waterfall-graph": {"figure": waterfall_fig},
+            }
+        )
+
+    else:
         # Update entire graph to update VFO-0 text. There is no way to just update annotations in Dash, but updating the entire spectrum is fast
         # enough to do on click
         x = web_interface.spectrum[0, :] + web_interface.daq_center_freq * 10**6

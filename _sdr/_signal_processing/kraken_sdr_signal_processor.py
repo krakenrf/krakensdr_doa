@@ -281,55 +281,6 @@ class SignalProcessor(threading.Thread):
                 if auto_squelch:
                     self.vfo_squelch[i] = vfo_auto_squelch
 
-    def save_processing_status(self) -> None:
-        """This method serializes system status to file."""
-
-        status = {}
-        daq_status = {}
-
-        status["timestamp_ms"] = int(time.time() * 1e3)
-        status["station_id"] = self.station_id
-        status["hardware_id"] = self.module_receiver.iq_header.hardware_id.rstrip("\x00")
-        status["unit_id"] = self.module_receiver.iq_header.unit_id
-        status["host_os_type"] = SYSTEM_UNAME.system
-        status["host_os_version"] = SYSTEM_UNAME.release
-        status["host_os_architecture"] = SYSTEM_UNAME.machine
-        status["software_version"] = SOFTWARE_VERSION
-        status["software_git_short_hash"] = SOFTWARE_GIT_SHORT_HASH
-        status["uptime_ms"] = int(time.monotonic() * 1e3)
-        status["gps_status"] = self.gps_status
-
-        daq_status["daq_connected"] = self.module_receiver.receiver_connection_status
-        if self.module_receiver.receiver_connection_status:
-            status["timestamp_ms"] = self.module_receiver.iq_header.time_stamp
-            daq_status["data_frame_index"] = self.module_receiver.iq_header.cpi_index
-            daq_status["frame_sync"] = not bool(self.module_receiver.iq_header.check_sync_word())
-            daq_status["sample_delay_sync"] = bool(self.module_receiver.iq_header.delay_sync_flag)
-            daq_status["iq_sync"] = bool(self.module_receiver.iq_header.iq_sync_flag)
-            daq_status["noise_source_enabled"] = bool(self.module_receiver.iq_header.noise_source_state)
-            daq_status["adc_overdrive"] = bool(self.module_receiver.iq_header.adc_overdrive_flags)
-            daq_status["sampling_frequency_hz"] = self.module_receiver.iq_header.adc_sampling_freq
-            daq_status["bandwidth_hz"] = self.module_receiver.iq_header.sampling_freq
-            daq_status["decimated_bandwidth_hz"] = self.module_receiver.iq_header.sampling_freq // self.dsp_decimation
-            daq_status["buffer_size_ms"] = (
-                self.module_receiver.iq_header.cpi_length / self.module_receiver.iq_header.sampling_freq
-            ) * 1e3
-            daq_status["num_dropped_frames"] = self.dropped_frames
-
-        status["daq_status"] = daq_status
-        status["daq_ok"] = (
-            self.module_receiver.receiver_connection_status
-            and daq_status.get("frame_sync", False)
-            and daq_status.get("sample_delay_sync", False)
-            and daq_status.get("iq_sync", False)
-        )
-
-        try:
-            with open(status_file_path, "w", encoding="utf-8") as file:
-                json.dump(status, file)
-        except Exception:
-            pass
-
     def calculate_squelch(self, sampling_freq, N, measured_spec, real_freqs):
         def find_nearest(array, value):
             array = np.asarray(array)
@@ -503,6 +454,55 @@ class SignalProcessor(threading.Thread):
             print(traceback.format_exc())
 
         return active_vfos
+
+    def save_processing_status(self) -> None:
+        """This method serializes system status to file."""
+
+        status = {}
+        daq_status = {}
+
+        status["timestamp_ms"] = int(time.time() * 1e3)
+        status["station_id"] = self.station_id
+        status["hardware_id"] = self.module_receiver.iq_header.hardware_id.rstrip("\x00")
+        status["unit_id"] = self.module_receiver.iq_header.unit_id
+        status["host_os_type"] = SYSTEM_UNAME.system
+        status["host_os_version"] = SYSTEM_UNAME.release
+        status["host_os_architecture"] = SYSTEM_UNAME.machine
+        status["software_version"] = SOFTWARE_VERSION
+        status["software_git_short_hash"] = SOFTWARE_GIT_SHORT_HASH
+        status["uptime_ms"] = int(time.monotonic() * 1e3)
+        status["gps_status"] = self.gps_status
+
+        daq_status["daq_connected"] = self.module_receiver.receiver_connection_status
+        if self.module_receiver.receiver_connection_status:
+            status["timestamp_ms"] = self.module_receiver.iq_header.time_stamp
+            daq_status["data_frame_index"] = self.module_receiver.iq_header.cpi_index
+            daq_status["frame_sync"] = not bool(self.module_receiver.iq_header.check_sync_word())
+            daq_status["sample_delay_sync"] = bool(self.module_receiver.iq_header.delay_sync_flag)
+            daq_status["iq_sync"] = bool(self.module_receiver.iq_header.iq_sync_flag)
+            daq_status["noise_source_enabled"] = bool(self.module_receiver.iq_header.noise_source_state)
+            daq_status["adc_overdrive"] = bool(self.module_receiver.iq_header.adc_overdrive_flags)
+            daq_status["sampling_frequency_hz"] = self.module_receiver.iq_header.adc_sampling_freq
+            daq_status["bandwidth_hz"] = self.module_receiver.iq_header.sampling_freq
+            daq_status["decimated_bandwidth_hz"] = self.module_receiver.iq_header.sampling_freq // self.dsp_decimation
+            daq_status["buffer_size_ms"] = (
+                self.module_receiver.iq_header.cpi_length / self.module_receiver.iq_header.sampling_freq
+            ) * 1e3
+            daq_status["num_dropped_frames"] = self.dropped_frames
+
+        status["daq_status"] = daq_status
+        status["daq_ok"] = (
+            self.module_receiver.receiver_connection_status
+            and daq_status.get("frame_sync", False)
+            and daq_status.get("sample_delay_sync", False)
+            and daq_status.get("iq_sync", False)
+        )
+
+        try:
+            with open(status_file_path, "w", encoding="utf-8") as file:
+                json.dump(status, file)
+        except Exception:
+            pass
 
     def run(self):
         """
