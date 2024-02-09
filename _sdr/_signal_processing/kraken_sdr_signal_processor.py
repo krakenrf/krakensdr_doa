@@ -183,9 +183,9 @@ class SignalProcessor(threading.Thread):
         self.fm_demod_channels_thetas = [[]] * self.max_vfos
         self.iq_channels = [None] * self.max_vfos
 
-        self.active_vfos = 1
+        self._active_vfos = 1
         self.output_vfo = 0
-        self.vfo_mode = "Standard"
+        self._vfo_mode = "Standard"
         self.optimize_short_bursts = False
 
         # self.DOA_theta =  np.linspace(0,359,360)
@@ -246,6 +246,30 @@ class SignalProcessor(threading.Thread):
         self.dropped_frames = 0
 
     @property
+    def vfo_mode(self):
+        return self._vfo_mode
+
+    @vfo_mode.setter
+    def vfo_mode(self, value: str):
+        self._vfo_mode = value
+        if value == "Scan":
+            pass
+
+    @property
+    def active_vfos(self):
+        if self._vfo_mode == "Scan":
+            active_vfos = 0
+            for i, scan_channel in enumerate(self.vfo_scan_freq):
+                if scan_channel:
+                    active_vfos = i + 1
+            return active_vfos
+        return self._active_vfos
+
+    @active_vfos.setter
+    def active_vfos(self, value: int):
+        self._active_vfos = value
+
+    @property
     def vfo_demod_modes(self):
         vfo_demod = [self.vfo_default_demod] * self.max_vfos
         for i in range(len(self.vfo_demod)):
@@ -302,7 +326,6 @@ class SignalProcessor(threading.Thread):
                 self.vfo_squelch[i] = measured_spec_mean + self.default_auto_channel_db_offset
 
     def scan_channels(self, sampling_freq, N, measured_spec, real_freqs):
-        active_vfos = self.active_vfos
         try:
             cur_freq_max = None
             mov_avg_noises = []
@@ -320,8 +343,6 @@ class SignalProcessor(threading.Thread):
                 return self.active_vfos
 
             self.vfo_scan_time = 0
-            active_vfos = self.active_vfos = 0
-
             self.scan_channel_list = list(filter(lambda s: not s.deleted, self.scan_channel_list))
 
             for real_freq, spec in zip(real_freqs, measured_spec):
@@ -440,7 +461,6 @@ class SignalProcessor(threading.Thread):
                     id = vfo_scan_freq_ids.pop(0)
                     self.vfo_scan_freq[id] = scan_channel
 
-            active_vfos = 0
             for i, scan_channel in enumerate(self.vfo_scan_freq):
                 if scan_channel:
                     self.vfo_freq[i] = scan_channel.center_freq
@@ -448,12 +468,10 @@ class SignalProcessor(threading.Thread):
                     self.vfo_squelch[i] = scan_channel.squelch
                     self.vfo_demod[i] = self.vfo_default_demod
                     self.vfo_iq[i] = self.vfo_default_iq
-                    active_vfos = i + 1
-            self.active_vfos = active_vfos
         except Exception:
             print(traceback.format_exc())
 
-        return active_vfos
+        return self.active_vfos
 
     def save_processing_status(self) -> None:
         """This method serializes system status to file."""
