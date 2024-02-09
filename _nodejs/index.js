@@ -101,6 +101,7 @@ function websocketConnect (){
       //settingsJson.center_freq = Number.parseFloat(jsn.freq);      
       //fs.writeFileSync(settingsJsonPath, JSON.stringify(settingsJson, null, 2));
       var newSettings = JSON.parse(jsn.settings);
+      newSettings.ext_upd_flag = true;
       fs.writeFileSync(settingsJsonPath, JSON.stringify(newSettings, null, 2));
     } else {
       console.log(jsn);

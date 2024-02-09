@@ -349,6 +349,8 @@ class WebInterface:
             data["vfo_demod_" + str(i)] = self.module_signal_processor.vfo_demod[i]
             data["vfo_iq_" + str(i)] = self.module_signal_processor.vfo_iq[i]
 
+        data["ext_upd_flag"] = False
+
         with open(settings_file_path, "w") as outfile:
             json.dump(data, outfile, indent=2)
 
