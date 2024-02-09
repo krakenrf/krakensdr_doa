@@ -257,8 +257,9 @@ def update_vfo_params(*args):
     web_interface.module_signal_processor.spectrum_fig_type = kwargs_dict["spectrum_fig_type"]
     web_interface.module_signal_processor.vfo_mode = kwargs_dict["vfo_mode"]
     web_interface.module_signal_processor.vfo_default_squelch_mode = kwargs_dict["vfo_default_squelch_mode"]
-    web_interface.module_signal_processor.vfo_scan_period_time = kwargs_dict["vfo_scan_period_time"]
-    web_interface.module_signal_processor.scan_blocked_time = kwargs_dict["scan_blocked_time"]
+    if web_interface.module_signal_processor.vfo_mode == "Scan":
+        web_interface.module_signal_processor.vfo_scan_period_time = kwargs_dict["vfo_scan_period_time"]
+        web_interface.module_signal_processor.scan_blocked_time = kwargs_dict["scan_blocked_time"]
     web_interface.module_signal_processor.vfo_default_demod = kwargs_dict["vfo_default_demod"]
     web_interface.module_signal_processor.vfo_default_iq = kwargs_dict["vfo_default_iq"]
     web_interface.module_signal_processor.max_demod_timeout = int(kwargs_dict["max_demod_timeout"])
@@ -271,7 +272,6 @@ def update_vfo_params(*args):
 
     web_interface.module_signal_processor.dsp_decimation = max(int(kwargs_dict["dsp_decimation"]), 1)
     web_interface.module_signal_processor.active_vfos = active_vfos
-    web_interface.active_vfos = web_interface.module_signal_processor.active_vfos
     web_interface.module_signal_processor.output_vfo = kwargs_dict["output_vfo"]
 
     en_optimize_short_bursts = kwargs_dict["en_optimize_short_bursts"]

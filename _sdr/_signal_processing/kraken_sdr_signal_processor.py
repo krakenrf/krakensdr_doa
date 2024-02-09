@@ -340,7 +340,7 @@ class SignalProcessor(threading.Thread):
 
             self.vfo_scan_time += proc_signal_time
             if self.vfo_scan_time < self.vfo_scan_period_time:
-                return self.active_vfos
+                return self._active_vfos
 
             self.vfo_scan_time = 0
             self.scan_channel_list = list(filter(lambda s: not s.deleted, self.scan_channel_list))
@@ -860,11 +860,6 @@ class SignalProcessor(threading.Thread):
                             que_data_packet.append(["DoA Max List", self.doa_max_list])
                             if self.vfo_mode == "Auto":
                                 que_data_packet.append(["VFO-0 Frequency", self.vfo_freq[0]])
-
-                            que_data_packet.append(["active_vfos", self.active_vfos])
-                            que_data_packet.append(["vfo_freq", self.vfo_freq])
-                            que_data_packet.append(["vfo_bw", self.vfo_bw])
-                            que_data_packet.append(["vfo_squelch", self.vfo_squelch])
 
                             def adjust_theta(theta):
                                 if self.doa_measure == "Compass":

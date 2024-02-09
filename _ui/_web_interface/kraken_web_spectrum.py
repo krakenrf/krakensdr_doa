@@ -55,7 +55,7 @@ def init_spectrum_fig(web_interface, fig_layout, trace_colors):
         )
 
     # Now add the angle display text
-    # web_interface.active_vfos):
+    # web_interface.module_signal_processor.active_vfos):
     for _ in range(web_interface.module_signal_processor.max_vfos):
         spectrum_fig.add_annotation(
             x=415640000,
@@ -130,7 +130,7 @@ def plot_spectrum(app, web_interface, spectrum_fig, waterfall_fig):
 
         # Hide non active traces
         for i in range(web_interface.module_signal_processor.max_vfos):
-            if i < web_interface.active_vfos:
+            if i < web_interface.module_signal_processor.active_vfos:
                 spectrum_fig.data[web_interface.module_receiver.M + (i * 2)]["visible"] = True
                 spectrum_fig.data[web_interface.module_receiver.M + (i * 2 + 1)]["visible"] = True
                 spectrum_fig.layout.annotations[i]["visible"] = True
@@ -156,7 +156,7 @@ def plot_spectrum(app, web_interface, spectrum_fig, waterfall_fig):
         # Update entire graph to update VFO-0 text. There is no way to just update annotations in Dash, but updating the entire spectrum is fast
         # enough to do on click
         x = web_interface.spectrum[0, :] + web_interface.daq_center_freq * 10**6
-        for i in range(web_interface.active_vfos):
+        for i in range(web_interface.module_signal_processor.active_vfos):
             # Find center of VFO display window
             maxIndex = web_interface.spectrum[web_interface.module_receiver.M + (i * 2 + 1), :].argmax()
 
