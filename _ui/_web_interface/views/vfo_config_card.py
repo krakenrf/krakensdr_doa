@@ -193,7 +193,7 @@ def get_vfo_config_card_layout():
                             {"label": "15", "value": 15},
                             {"label": "16", "value": 16},
                         ],
-                        value=web_interface.active_vfos,
+                        value=web_interface.module_signal_processor.active_vfos,
                         style={"display": "inline-block"},
                         className="field-body",
                     ),

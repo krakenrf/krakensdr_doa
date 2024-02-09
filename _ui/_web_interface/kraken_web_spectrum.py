@@ -129,7 +129,7 @@ def plot_spectrum(app, web_interface, spectrum_fig, waterfall_fig):
                 spectrum_fig.data[m]["line"]["color"] = trace_colors[m]
 
         # Hide non active traces
-        for i in range(web_interface.active_vfos):
+        for i in range(web_interface.module_signal_processor.max_vfos):
             if i < web_interface.active_vfos:
                 spectrum_fig.data[web_interface.module_receiver.M + (i * 2)]["visible"] = True
                 spectrum_fig.data[web_interface.module_receiver.M + (i * 2 + 1)]["visible"] = True

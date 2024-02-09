@@ -34,7 +34,10 @@ def get_vfo_card_layout():
                     id="menu_vfo_" + str(i) + "_freq",
                     style=(
                         {"display": "block"}
-                        if (i < web_interface.active_vfos and web_interface.module_signal_processor.vfo_mode != "Scan")
+                        if (
+                            i < web_interface.module_signal_processor.active_vfos
+                            and web_interface.module_signal_processor.vfo_mode != "Scan"
+                        )
                         else {"display": "none"}
                     ),
                     className="field",
@@ -155,7 +158,10 @@ def get_vfo_card_layout():
             className="card",
             style=(
                 {"display": "block"}
-                if (i < web_interface.active_vfos and web_interface.module_signal_processor.vfo_mode != "Scan")
+                if (
+                    i < web_interface.module_signal_processor.active_vfos
+                    and web_interface.module_signal_processor.vfo_mode != "Scan"
+                )
                 else {"display": "none"}
             ),
         )
