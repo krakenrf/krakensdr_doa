@@ -23,13 +23,11 @@ def update_daq_params(input_value, f0, gain):
             half_band_width = (web_interface.module_signal_processor.vfo_bw[i] / 10**6) / 2
             min_freq = web_interface.daq_center_freq - web_interface.daq_fs / 2 + half_band_width
             max_freq = web_interface.daq_center_freq + web_interface.daq_fs / 2 - half_band_width
-            #if not (min_freq < (web_interface.module_signal_processor.vfo_freq[i] / 10**6) < max_freq):
             if (min_freq < (web_interface.module_signal_processor.vfo_freq[i] / 10**6) or max_freq > (web_interface.module_signal_processor.vfo_freq[i] / 10**6)):
                 web_interface.module_signal_processor.vfo_freq[i] = f0
                 app.push_mods({f"vfo_{i}_freq": {"value": f0}})
 
         wavelength = 300 / web_interface.daq_center_freq
-        # web_interface.module_signal_processor.DOA_inter_elem_space = web_interface.ant_spacing_meters / wavelength
 
         if web_interface.module_signal_processor.DOA_ant_alignment == "UCA":
             # Convert RADIUS to INTERELEMENT SPACING

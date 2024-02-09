@@ -360,8 +360,8 @@ def stop_proc_btn(input_value):
     [Input(component_id="btn-save_cfg", component_property="n_clicks")],
 )
 def save_config_btn(input_value):
-    web_interface.logger.info("Saving DAQ and DSP Configuration")
-    web_interface.save_configuration()
+    web_interface.logger.info("Loading Default DSP Configuration")
+    web_interface.load_default_configuration()
 
 
 @app.callback_shared(
