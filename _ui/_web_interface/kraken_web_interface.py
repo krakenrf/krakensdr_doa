@@ -148,7 +148,7 @@ class WebInterface:
         self.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
         self.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
         self.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 1))
-        self.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 1))
+        self.module_signal_processor._active_vfos = int(dsp_settings.get("active_vfos", 1))
         self.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
         self.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", False)
         self.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", False)
@@ -252,6 +252,8 @@ class WebInterface:
         self.vfo_cfg_inputs.append(Input(component_id="spectrum_fig_type", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_mode", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_default_squelch_mode", component_property="value"))
+        self.vfo_cfg_inputs.append(Input(component_id="vfo_scan_period_time", component_property="value"))
+        self.vfo_cfg_inputs.append(Input(component_id="scan_blocked_time", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_default_demod", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="vfo_default_iq", component_property="value"))
         self.vfo_cfg_inputs.append(Input(component_id="max_demod_timeout", component_property="value"))
@@ -336,13 +338,15 @@ class WebInterface:
         data["spectrum_calculation"] = self.module_signal_processor.spectrum_fig_type
         data["vfo_mode"] = self.module_signal_processor.vfo_mode
         data["vfo_default_squelch_mode"] = self.module_signal_processor.vfo_default_squelch_mode
+        print(f"save_configuration: vfo_scan_period_time = {self.module_signal_processor.vfo_scan_period_time}")
+
         data["vfo_scan_period_time"] = self.module_signal_processor.vfo_scan_period_time
         data["scan_blocked_time"] = self.module_signal_processor.scan_blocked_time
         data["vfo_default_demod"] = self.module_signal_processor.vfo_default_demod
         data["vfo_default_iq"] = self.module_signal_processor.vfo_default_iq
         data["max_demod_timeout"] = self.module_signal_processor.max_demod_timeout
         data["dsp_decimation"] = self.module_signal_processor.dsp_decimation
-        data["active_vfos"] = self.module_signal_processor.active_vfos
+        data["active_vfos"] = self.module_signal_processor._active_vfos
         data["output_vfo"] = self.module_signal_processor.output_vfo
         data["en_optimize_short_bursts"] = self.module_signal_processor.optimize_short_bursts
 

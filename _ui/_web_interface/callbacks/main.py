@@ -265,14 +265,21 @@ def update_vfo_params(*args):
     web_interface.module_signal_processor.max_demod_timeout = int(kwargs_dict["max_demod_timeout"])
 
     active_vfos = kwargs_dict["active_vfos"]
+    print(f'update_vfo_params: kwargs_dict["active_vfos"] = {kwargs_dict["active_vfos"]}')
     # If VFO mode is in the VFO-0 Auto Max mode, we active VFOs to 1 only
     if kwargs_dict["vfo_mode"] == "Auto":
         active_vfos = 1
         app_updates["active_vfos"] = {"value": 1}
 
+    print(f"update_vfo_params: active_vfos = {active_vfos}")
+
     web_interface.module_signal_processor.dsp_decimation = max(int(kwargs_dict["dsp_decimation"]), 1)
     web_interface.module_signal_processor.active_vfos = active_vfos
     web_interface.module_signal_processor.output_vfo = kwargs_dict["output_vfo"]
+
+    print(
+        f"update_vfo_params: web_interface.module_signal_processor.active_vfos = {web_interface.module_signal_processor.active_vfos}"
+    )
 
     en_optimize_short_bursts = kwargs_dict["en_optimize_short_bursts"]
     if en_optimize_short_bursts is not None and len(en_optimize_short_bursts):

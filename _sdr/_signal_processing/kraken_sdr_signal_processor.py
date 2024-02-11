@@ -245,6 +245,9 @@ class SignalProcessor(threading.Thread):
         self.snrs = []
         self.dropped_frames = 0
 
+    def logg(self, kwargs_dict):
+        print(f"kwargs_dict.keys = {kwargs_dict.keys()}")
+
     @property
     def vfo_mode(self):
         return self._vfo_mode
@@ -267,7 +270,8 @@ class SignalProcessor(threading.Thread):
 
     @active_vfos.setter
     def active_vfos(self, value: int):
-        self._active_vfos = value
+        if value != 0:
+            self._active_vfos = value
 
     @property
     def vfo_demod_modes(self):
@@ -326,6 +330,7 @@ class SignalProcessor(threading.Thread):
                 self.vfo_squelch[i] = measured_spec_mean + self.default_auto_channel_db_offset
 
     def scan_channels(self, sampling_freq, N, measured_spec, real_freqs):
+        active_vfos = self.active_vfos
         try:
             cur_freq_max = None
             mov_avg_noises = []
@@ -340,7 +345,7 @@ class SignalProcessor(threading.Thread):
 
             self.vfo_scan_time += proc_signal_time
             if self.vfo_scan_time < self.vfo_scan_period_time:
-                return self._active_vfos
+                return active_vfos
 
             self.vfo_scan_time = 0
             self.scan_channel_list = list(filter(lambda s: not s.deleted, self.scan_channel_list))
@@ -448,9 +453,9 @@ class SignalProcessor(threading.Thread):
                 _, found_vfo_scan_freq = find_vfo_scan(new_scan_channel_list, scan_channel)
                 if not found_vfo_scan_freq:
                     self.vfo_scan_freq[i] = None
-                    self.vfo_demod_channel[i] = None
+                    self.vfo_demod_channel[i] = np.array([])
                     self.vfo_theta_channel[i] = []
-                    self.vfo_iq_channel[i] = None
+                    self.vfo_iq_channel[i] = np.array([])
                     vfo_scan_freq_ids.append(i)
                 else:
                     self.vfo_scan_freq[i] = found_vfo_scan_freq
@@ -461,6 +466,7 @@ class SignalProcessor(threading.Thread):
                     id = vfo_scan_freq_ids.pop(0)
                     self.vfo_scan_freq[id] = scan_channel
 
+            active_vfos = 0
             for i, scan_channel in enumerate(self.vfo_scan_freq):
                 if scan_channel:
                     self.vfo_freq[i] = scan_channel.center_freq
@@ -468,10 +474,11 @@ class SignalProcessor(threading.Thread):
                     self.vfo_squelch[i] = scan_channel.squelch
                     self.vfo_demod[i] = self.vfo_default_demod
                     self.vfo_iq[i] = self.vfo_default_iq
+                    active_vfos = i + 1
         except Exception:
             print(traceback.format_exc())
 
-        return self.active_vfos
+        return active_vfos
 
     def save_processing_status(self) -> None:
         """This method serializes system status to file."""
@@ -605,12 +612,19 @@ class SignalProcessor(threading.Thread):
 
                     self.data_ready = True
 
+                    if self.vfo_mode == "Standard":
+                        active_vfos = self.active_vfos
+                    elif self.vfo_mode == "VFO-0 Auto Max":
+                        active_vfos = 1
+                    else:
+                        active_vfos = self.max_vfos
+
                     if self.spectrum_fig_type == "Single":
                         m = 0
                         N = self.spectrum_window_size
                         self.spectrum = (
                             np.ones(
-                                (self.channel_number + (self.active_vfos * 2 + 1), N),
+                                (self.channel_number + (active_vfos * 2 + 1), N),
                                 dtype=np.float32,
                             )
                             * -200
@@ -645,7 +659,7 @@ class SignalProcessor(threading.Thread):
                     else:
                         N = 32768
                         self.spectrum = np.ones(
-                            (self.channel_number + (self.active_vfos * 2 + 1), N),
+                            (self.channel_number + (active_vfos * 2 + 1), N),
                             dtype=np.float32,
                         )
                         for m in range(self.channel_number):  # range(1): #range(self.channel_number):
@@ -668,7 +682,6 @@ class SignalProcessor(threading.Thread):
                     try:
                         if self.data_ready:
                             spectrum_window_size = len(self.spectrum[0, :])
-                            active_vfos = self.active_vfos if self.vfo_mode == "Standard" else 1
                             write_freq = 0
                             update_list = [False] * self.max_vfos
                             conf_val = 0
@@ -691,10 +704,11 @@ class SignalProcessor(threading.Thread):
                             real_freqs = self.module_receiver.daq_center_freq - relative_freqs
                             measured_spec = self.spectrum[1, :]
 
-                            self.calculate_squelch(sampling_freq, N, measured_spec, real_freqs)
-
                             if self.vfo_mode == "Scan":
                                 active_vfos = self.scan_channels(sampling_freq, N, measured_spec, real_freqs)
+                                print(f"Number of scanned active_vfos {active_vfos}")
+                            else:
+                                self.calculate_squelch(sampling_freq, N, measured_spec, real_freqs)
 
                             for i in range(active_vfos):
                                 # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq

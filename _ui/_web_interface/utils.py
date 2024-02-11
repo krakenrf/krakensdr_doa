@@ -104,7 +104,8 @@ def fetch_dsp_data(app, web_interface, spectrum_fig, waterfall_fig):
                 daq_status_update_flag = 1
     except queue.Empty:
         # Handle empty queue here
-        web_interface.logger.debug("Receiver module que is empty")
+        pass
+        # web_interface.logger.debug("Receiver module que is empty")
     else:
         pass
         # Handle task here and call q.task_done()
@@ -157,14 +158,6 @@ def fetch_dsp_data(app, web_interface, spectrum_fig, waterfall_fig):
                 web_interface.daq_dsp_latency = data_entry[1] + web_interface.daq_cpi
             elif data_entry[0] == "max_amplitude":
                 web_interface.max_amplitude = data_entry[1]
-            # elif data_entry[0] == "active_vfos":
-            #     web_interface.active_vfos = data_entry[1]
-            # elif data_entry[0] == "vfo_freq":
-            #     web_interface.vfo_freq = data_entry[1]
-            # elif data_entry[0] == "vfo_bw":
-            #     web_interface.vfo_bw = data_entry[1]
-            # elif data_entry[0] == "vfo_squelch":
-            #     web_interface.vfo_squelch = data_entry[1]
             elif data_entry[0] == "avg_powers":
                 avg_powers_str = ""
                 for avg_power in data_entry[1]:
@@ -205,7 +198,8 @@ def fetch_dsp_data(app, web_interface, spectrum_fig, waterfall_fig):
                 web_interface.logger.warning("Unknown data entry: {:s}".format(data_entry[0]))
     except queue.Empty:
         # Handle empty queue here
-        web_interface.logger.debug("Signal processing que is empty")
+        pass
+        # web_interface.logger.debug("Signal processing que is empty")
     else:
         pass
         # Handle task here and call q.task_done()
@@ -322,7 +316,7 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
                 web_interface.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
                 web_interface.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
                 web_interface.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 0))
-                web_interface.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 0))
+                web_interface.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 1))
                 web_interface.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
                 web_interface.compass_offset = dsp_settings.get("compass_offset", 0)
                 web_interface.module_signal_processor.compass_offset = web_interface.compass_offset
