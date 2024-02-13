@@ -88,22 +88,26 @@ def send_recorded_file(n_clicks):
 @app.callback_shared(None, [Input(component_id="doa_format_type", component_property="value")])
 def set_doa_format(doa_format):
     web_interface.module_signal_processor.DOA_data_format = doa_format
+    web_interface.save_configuration()
 
 
 # Update Station ID
 @app.callback_shared(None, [Input(component_id="station_id_input", component_property="value")])
 def set_station_id(station_id):
     web_interface.module_signal_processor.station_id = station_id
+    web_interface.save_configuration()
 
 
 @app.callback_shared(None, [Input(component_id="krakenpro_key", component_property="value")])
 def set_kraken_pro_key(key):
     web_interface.module_signal_processor.krakenpro_key = key
+    web_interface.save_configuration()
 
 
 @app.callback_shared(None, [Input(component_id="rdf_mapper_server_address", component_property="value")])
 def set_rdf_mapper_server(url):
     web_interface.module_signal_processor.RDF_mapper_server = url
+    web_interface.save_configuration()
 
 
 # Enable GPS Relevant fields
@@ -165,6 +169,7 @@ def toggle_heading_info(static_loc, fixed_heading, heading):
 @app.callback(Output("location_fields", "style"), [Input("loc_src_dropdown", "value")])
 def toggle_location_info(toggle_value):
     web_interface.location_source = toggle_value
+    web_interface.save_configuration()
     if toggle_value == "Static":
         return {"display": "block"}
     else:
@@ -178,6 +183,7 @@ def toggle_location_info(toggle_value):
 )
 def toggle_min_speed_heading_filter(toggle_value, fixed_heading):
     web_interface.location_source = toggle_value
+    web_interface.save_configuration()
     if toggle_value == "gpsd" and not fixed_heading:
         return {"display": "block"}
     else:
@@ -199,6 +205,7 @@ def set_static_location(lat, lon, toggle_value):
     if toggle_value == "Static":
         web_interface.module_signal_processor.latitude = lat
         web_interface.module_signal_processor.longitude = lon
+        web_interface.save_configuration()
 
 
 # Enable Fixed Heading
@@ -208,24 +215,28 @@ def set_fixed_heading(fixed):
         web_interface.module_signal_processor.fixed_heading = True
     else:
         web_interface.module_signal_processor.fixed_heading = False
+    web_interface.save_configuration()
 
 
 # Set heading data
 @app.callback_shared(None, [Input(component_id="heading_input", component_property="value")])
 def set_static_heading(heading):
     web_interface.module_signal_processor.heading = heading
+    web_interface.save_configuration()
 
 
 # Set minimum speed for trustworthy GPS heading
 @app.callback_shared(None, [Input(component_id="min_speed_input", component_property="value")])
 def set_min_speed_for_valid_gps_heading(min_speed):
     web_interface.module_signal_processor.gps_min_speed_for_valid_heading = min_speed
+    web_interface.save_configuration()
 
 
 # Set minimum speed duration for trustworthy GPS heading
 @app.callback_shared(None, [Input(component_id="min_speed_duration_input", component_property="value")])
 def set_min_speed_duration_for_valid_gps_heading(min_speed_duration):
     web_interface.module_signal_processor.gps_min_duration_for_valid_heading = min_speed_duration
+    web_interface.save_configuration()
 
 
 # Enable GPS (note that we need this to fire on load, so we cannot use callback_shared!)
@@ -238,11 +249,13 @@ def enable_gps(toggle_value):
         status = web_interface.module_signal_processor.enable_gps()
         if status:
             web_interface.module_signal_processor.usegps = True
+            web_interface.save_configuration()
             return ["Connected", {"color": "#7ccc63"}]
         else:
             return ["Error", {"color": "#e74c3c"}]
     else:
         web_interface.module_signal_processor.usegps = False
+        web_interface.save_configuration()
         return ["-", {"color": "white"}]
 
 
@@ -324,6 +337,8 @@ def update_vfo_params(*args):
     if app_updates:
         app.push_mods(app_updates)
 
+    web_interface.save_configuration()
+
 
 @app.callback_shared(
     None,
@@ -348,8 +363,8 @@ def stop_proc_btn(input_value):
     [Input(component_id="btn-save_cfg", component_property="n_clicks")],
 )
 def save_config_btn(input_value):
-    web_interface.logger.info("Saving DAQ and DSP Configuration")
-    web_interface.save_configuration()
+    web_interface.logger.info("Loading Default DSP Configuration")
+    web_interface.load_default_configuration()
 
 
 @app.callback_shared(
@@ -626,6 +641,8 @@ def update_dsp_params(
 
     num_of_sources_state = False if "MUSIC" in doa_method else True
 
+    web_interface.save_configuration()
+
     return [
         str(ant_spacing_wavelength),
         spacing_label,
@@ -860,9 +877,76 @@ def toggle_beta_features(toggle_value):
     [State("url", "pathname")],
 )
 def settings_change_refresh(toggle_value, pathname):
+    # if web_interface.needs_refresh:
+    #    if pathname == "/" or pathname == "/init" or pathname == "/config":
+    #        return ["upd"]
+
     if web_interface.needs_refresh:
-        if pathname == "/" or pathname == "/init" or pathname == "/config":
-            return ["upd"]
+        app.push_mods(
+            {
+                "daq_center_freq": {"value": web_interface.module_receiver.daq_center_freq / 10**6},
+                "daq_rx_gain": {"value": web_interface.module_receiver.daq_rx_gain},
+                "ant_spacing_meter": {"value": web_interface.ant_spacing_meters},
+                "array_offset": {"value": web_interface.module_signal_processor.array_offset},
+                "en_system_control": {"value": web_interface.en_system_control},
+                "en_beta_features": {"value": web_interface.en_beta_features},
+                "en_doa_check": {"value": [1] if web_interface.module_signal_processor.en_DOA_estimation else []},
+                "doa_decorrelation_method": {"value": web_interface.module_signal_processor.DOA_decorrelation_method},
+                "radio_ant_arrangement": {"value": web_interface.module_signal_processor.DOA_ant_alignment},
+                "custom_array_x_meters": {
+                    "value": ",".join(["%.2f" % num for num in web_interface.custom_array_x_meters])
+                },
+                "custom_array_y_meters": {
+                    "value": ",".join(["%.2f" % num for num in web_interface.custom_array_y_meters])
+                },
+                "station_id_input": {"value": web_interface.module_signal_processor.station_id},
+                "loc_src_dropdown": {"value": web_interface.location_source},
+                "latitude_input": {"value": web_interface.module_signal_processor.latitude},
+                "longitude_input": {"value": web_interface.module_signal_processor.longitude},
+                "heading_input": {"value": web_interface.module_signal_processor.heading},
+                "krakenpro_key": {"value": web_interface.module_signal_processor.krakenpro_key},
+                "rdf_mapper_server_address": {"value": web_interface.module_signal_processor.RDF_mapper_server},
+                "doa_format_type": {"value": web_interface.module_signal_processor.DOA_data_format},
+                "spectrum_fig_type": {"value": web_interface.module_signal_processor.spectrum_fig_type},
+                "vfo_mode": {"value": web_interface.module_signal_processor.vfo_mode},
+                "vfo_default_squelch_mode": {"value": web_interface.module_signal_processor.vfo_default_squelch_mode},
+                "vfo_default_demod": {"value": web_interface.module_signal_processor.vfo_default_demod},
+                "vfo_default_iq": {"value": web_interface.module_signal_processor.vfo_default_iq},
+                "max_demod_timeout": {"value": web_interface.module_signal_processor.max_demod_timeout},
+                "dsp_decimation": {"value": web_interface.module_signal_processor.dsp_decimation},
+                "active_vfos": {"value": web_interface.module_signal_processor.active_vfos},
+                "output_vfo": {"value": web_interface.module_signal_processor.output_vfo},
+                "compass_offset": {"value": web_interface.compass_offset},
+                "en_optimize_short_bursts": {
+                    "value": [1] if web_interface.module_signal_processor.optimize_short_bursts else []
+                },
+                "en_peak_hold": {"value": [1] if web_interface.module_signal_processor.en_peak_hold else []},
+                "doa_method": {"value": web_interface.module_signal_processor.DOA_algorithm},
+                "expected_num_of_sources": {"value": web_interface.module_signal_processor.DOA_expected_num_of_sources},
+                "doa_fig_type": {"value": web_interface._doa_fig_type},
+                "ula_direction": {"value": web_interface.module_signal_processor.ula_direction},
+                "body_ant_spacing_wavelength": {
+                    "children": str(round(web_interface.module_signal_processor.DOA_inter_elem_space, 3))
+                },
+            }
+        )
+
+        for i in range(web_interface.module_signal_processor.max_vfos):
+            app.push_mods(
+                {
+                    "vfo_" + str(i) + "_bw": {"value": web_interface.module_signal_processor.vfo_bw[i]},
+                    "vfo_"
+                    + str(i)
+                    + "_fir_order_factor": {"value": web_interface.module_signal_processor.vfo_fir_order_factor[i]},
+                    "vfo_" + str(i) + "_freq": {"value": web_interface.module_signal_processor.vfo_freq[i] / 10**6},
+                    f"vfo_squelch_mode_{i}": {"value": web_interface.module_signal_processor.vfo_squelch_mode[i]},
+                    "vfo_" + str(i) + "_squelch": {"value": web_interface.module_signal_processor.vfo_squelch[i]},
+                    f"vfo_{i}_demod": {"value": web_interface.module_signal_processor.vfo_demod[i]},
+                    f"vfo_{i}_iq": {"value": web_interface.module_signal_processor.vfo_iq[i]},
+                }
+            )
+
+        web_interface.needs_refresh = False
 
     return Output("dummy_output", "children", "")
 

@@ -268,7 +268,6 @@ class WebInterface:
             self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_iq", component_property="value"))
 
         self.save_configuration()
-
         settings_change_watcher(self, settings_file_path)
 
     def save_configuration(self):
@@ -348,6 +347,89 @@ class WebInterface:
             data["vfo_squelch_" + str(i)] = self.module_signal_processor.vfo_squelch[i]
             data["vfo_demod_" + str(i)] = self.module_signal_processor.vfo_demod[i]
             data["vfo_iq_" + str(i)] = self.module_signal_processor.vfo_iq[i]
+
+        data["ext_upd_flag"] = False
+
+        with open(settings_file_path, "w") as outfile:
+            json.dump(data, outfile, indent=2)
+
+    def load_default_configuration(self):
+        data = {}
+
+        # DAQ Configurations
+        data["center_freq"] = 416.588
+        data["uniform_gain"] = 15.7
+        data["data_interface"] = dsp_settings.get("data_interface", "shmem")
+        data["default_ip"] = dsp_settings.get("default_ip", "0.0.0.0")
+
+        # Remote Control
+        data["en_remote_control"] = False
+
+        # DOA Estimation
+        data["en_doa"] = True
+        data["ant_arrangement"] = "UCA"
+        data["ula_direction"] = "Both"
+        # self.module_signal_processor.DOA_inter_elem_space
+        data["ant_spacing_meters"] = 0.21
+        data["custom_array_x_meters"] = "0.21,0.06,-0.17,-0.17,0.07"
+        data["custom_array_y_meters"] = "0.00,-0.20,-0.12,0.12,0.20"
+        data["array_offset"] = 0
+
+        data["doa_method"] = "MUSIC"
+        data["doa_decorrelation_method"] = "Off"
+        data["compass_offset"] = 0
+        data["doa_fig_type"] = "Linear"
+        data["en_peak_hold"] = False
+        data["expected_num_of_sources"] = 1
+
+        # Open System Control
+        data["en_system_control"] = False
+        data["en_beta_features"] = False
+
+        # Web Interface
+        data["en_hw_check"] = 0
+        data["logging_level"] = 5
+        data["disable_tooltips"] = 0
+
+        # Output Data format. XML for Kerberos, CSV for Kracken, JSON future
+        # XML, CSV, or JSON
+        data["doa_data_format"] = "Kraken App"
+
+        # Station Information
+        data["station_id"] = "NOCALL"
+        data["location_source"] = "None"
+        data["latitude"] = 0
+        data["longitude"] = 0
+        data["heading"] = 0
+        data["krakenpro_key"] = "cb97235a"
+        data["mapping_server_url"] = "wss://map.krakenrf.com:2096"
+        data["rdf_mapper_server"] = "http://MY_RDF_MAPPER_SERVER.com/save.php"
+        data["gps_fixed_heading"] = False
+        data["gps_min_speed"] = 2
+        data["gps_min_speed_duration"] = 3
+
+        # VFO Information
+        data["spectrum_calculation"] = "Single"
+        data["vfo_mode"] = "Standard"
+        data["vfo_default_squelch_mode"] = "Auto"
+        data["vfo_default_demod"] = "None"
+        data["vfo_default_iq"] = "False"
+        data["max_demod_timeout"] = 60
+        data["dsp_decimation"] = 1
+        data["active_vfos"] = 1
+        data["output_vfo"] = 0
+        data["en_optimize_short_bursts"] = False
+
+        for i in range(self.module_signal_processor.max_vfos):
+            data["vfo_bw_" + str(i)] = 12500
+            data["vfo_fir_order_factor_" + str(i)] = 2
+            data["vfo_freq_" + str(i)] = 416588000
+            data["vfo_squelch_mode_" + str(i)] = "Default"
+            data["vfo_squelch_" + str(i)] = -80
+            data["vfo_demod_" + str(i)] = "Default"
+            data["vfo_iq_" + str(i)] = "Default"
+
+        data["ext_upd_flag"] = True
 
         with open(settings_file_path, "w") as outfile:
             json.dump(data, outfile, indent=2)

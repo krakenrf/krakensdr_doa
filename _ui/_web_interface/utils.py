@@ -268,6 +268,22 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
                 web_interface.module_signal_processor.DOA_ant_alignment = dsp_settings.get("ant_arrangement", "ULA")
                 web_interface.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
+                wavelength = 300 / web_interface.daq_center_freq
+                if web_interface.module_signal_processor.DOA_ant_alignment == "UCA":
+                    web_interface.module_signal_processor.DOA_UCA_radius_m = web_interface.ant_spacing_meters
+                    # Convert RADIUS to INTERELEMENT SPACING
+                    inter_elem_spacing = (
+                        np.sqrt(2)
+                        * web_interface.ant_spacing_meters
+                        * np.sqrt(1 - np.cos(np.deg2rad(360 / web_interface.module_signal_processor.channel_number)))
+                    )
+                    web_interface.module_signal_processor.DOA_inter_elem_space = inter_elem_spacing / wavelength
+                else:
+                    web_interface.module_signal_processor.DOA_UCA_radius_m = np.Infinity
+                    web_interface.module_signal_processor.DOA_inter_elem_space = (
+                        web_interface.ant_spacing_meters / wavelength
+                    )
+
                 web_interface.custom_array_x_meters = np.float_(
                     dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(",")
                 )
@@ -351,8 +367,37 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
                 if abs(freq_delta) > 0.001 or abs(gain_delta) > 0.001:
                     web_interface.daq_center_freq = center_freq
                     web_interface.config_daq_rf(center_freq, gain)
+                    for i in range(web_interface.module_signal_processor.max_vfos):
+                        half_band_width = (web_interface.module_signal_processor.vfo_bw[i] / 10**6) / 2
+                        min_freq = web_interface.daq_center_freq - web_interface.daq_fs / 2 + half_band_width
+                        max_freq = web_interface.daq_center_freq + web_interface.daq_fs / 2 - half_band_width
+                        if min_freq > (web_interface.module_signal_processor.vfo_freq[i] / 10**6) or max_freq < (
+                            web_interface.module_signal_processor.vfo_freq[i] / 10**6
+                        ):
+                            web_interface.module_signal_processor.vfo_freq[i] = (
+                                web_interface.module_receiver.daq_center_freq
+                            )
 
-                web_interface.needs_refresh = True
+                    wavelength = 300 / web_interface.daq_center_freq
+
+                    if web_interface.module_signal_processor.DOA_ant_alignment == "UCA":
+                        # Convert RADIUS to INTERELEMENT SPACING
+                        inter_elem_spacing = (
+                            np.sqrt(2)
+                            * web_interface.ant_spacing_meters
+                            * np.sqrt(
+                                1 - np.cos(np.deg2rad(360 / web_interface.module_signal_processor.channel_number))
+                            )
+                        )
+                        web_interface.module_signal_processor.DOA_inter_elem_space = inter_elem_spacing / wavelength
+                    else:
+                        web_interface.module_signal_processor.DOA_inter_elem_space = (
+                            web_interface.ant_spacing_meters / wavelength
+                        )
+
+                if dsp_settings.get("ext_upd_flag", False):
+                    web_interface.needs_refresh = True
+                    web_interface.save_configuration()
 
     web_interface.settings_change_timer = Timer(
         0.5, settings_change_watcher, args=(web_interface, settings_file_path, last_attempt_failed)
