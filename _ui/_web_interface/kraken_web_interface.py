@@ -62,14 +62,18 @@ class WebInterface:
             data_que=self.rx_data_que, data_interface=self.data_interface, logging_level=self.logging_level
         )
         self.module_receiver.daq_center_freq = (
-            float(dsp_settings.get("center_freq", default_center_frequency_mhz)) * 10**6
+            float(
+                dsp_settings.get(
+                    "center_freq",
+                    default_center_frequency_mhz)) * 10**6
         )
         self.module_receiver.daq_rx_gain = (
             float(dsp_settings.get("uniform_gain", 15.7))
             if dsp_settings.get("uniform_gain", 15.7) != "Auto"
             else AUTO_GAIN_VALUE
         )
-        self.module_receiver.rec_ip_addr = dsp_settings.get("default_ip", "0.0.0.0")
+        self.module_receiver.rec_ip_addr = dsp_settings.get(
+            "default_ip", "0.0.0.0")
 
         # Remote Control
         self.remote_control = dsp_settings.get("en_remote_control", False)
@@ -77,9 +81,11 @@ class WebInterface:
         self.module_signal_processor = SignalProcessor(
             data_que=self.sp_data_que, module_receiver=self.module_receiver, logging_level=self.logging_level
         )
-        self.module_signal_processor.DOA_ant_alignment = dsp_settings.get("ant_arrangement", "UCA")
+        self.module_signal_processor.DOA_ant_alignment = dsp_settings.get(
+            "ant_arrangement", "UCA")
         self.module_signal_processor.doa_measure = self._doa_fig_type
-        self.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.21))
+        self.ant_spacing_meters = float(
+            dsp_settings.get("ant_spacing_meters", 0.21))
 
         if self.module_signal_processor.DOA_ant_alignment == "UCA":
             self.module_signal_processor.DOA_UCA_radius_m = self.ant_spacing_meters
@@ -98,15 +104,22 @@ class WebInterface:
                 300 / float(dsp_settings.get("center_freq", 100.0))
             )
 
-        self.module_signal_processor.ula_direction = dsp_settings.get("ula_direction", "Both")
-        self.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
-        self.module_signal_processor.DOA_expected_num_of_sources = dsp_settings.get("expected_num_of_sources", 1)
+        self.module_signal_processor.ula_direction = dsp_settings.get(
+            "ula_direction", "Both")
+        self.module_signal_processor.DOA_algorithm = dsp_settings.get(
+            "doa_method", "MUSIC")
+        self.module_signal_processor.DOA_expected_num_of_sources = dsp_settings.get(
+            "expected_num_of_sources", 1)
 
         self.custom_array_x_meters = np.float_(
-            dsp_settings.get("custom_array_x_meters", "0.21,0.06,-0.17,-0.17,0.07").split(",")
+            dsp_settings.get(
+                "custom_array_x_meters",
+                "0.21,0.06,-0.17,-0.17,0.07").split(",")
         )
         self.custom_array_y_meters = np.float_(
-            dsp_settings.get("custom_array_y_meters", "0.00,-0.20,-0.12,0.12,0.20").split(",")
+            dsp_settings.get(
+                "custom_array_y_meters",
+                "0.00,-0.20,-0.12,0.12,0.20").split(",")
         )
         self.module_signal_processor.custom_array_x = self.custom_array_x_meters / (
             300 / float(dsp_settings.get("center_freq", 100.0))
@@ -114,61 +127,96 @@ class WebInterface:
         self.module_signal_processor.custom_array_y = self.custom_array_y_meters / (
             300 / float(dsp_settings.get("center_freq", 100.0))
         )
-        self.module_signal_processor.array_offset = int(dsp_settings.get("array_offset", 0))
+        self.module_signal_processor.array_offset = int(
+            dsp_settings.get("array_offset", 0))
 
-        self.module_signal_processor.en_DOA_estimation = dsp_settings.get("en_doa", True)
-        self.module_signal_processor.DOA_decorrelation_method = dsp_settings.get("doa_decorrelation_method", "Off")
+        self.module_signal_processor.en_DOA_estimation = dsp_settings.get(
+            "en_doa", True)
+        self.module_signal_processor.DOA_decorrelation_method = dsp_settings.get(
+            "doa_decorrelation_method", "Off")
 
         # Output Data format.
-        self.module_signal_processor.DOA_data_format = dsp_settings.get("doa_data_format", "Kraken App")
+        self.module_signal_processor.DOA_data_format = dsp_settings.get(
+            "doa_data_format", "Kraken App")
 
         # Station Information
-        self.module_signal_processor.station_id = dsp_settings.get("station_id", "NOCALL")
+        self.module_signal_processor.station_id = dsp_settings.get(
+            "station_id", "NOCALL")
         self.location_source = dsp_settings.get("location_source", "None")
-        self.module_signal_processor.latitude = dsp_settings.get("latitude", 0.0)
-        self.module_signal_processor.longitude = dsp_settings.get("longitude", 0.0)
+        self.module_signal_processor.latitude = dsp_settings.get(
+            "latitude", 0.0)
+        self.module_signal_processor.longitude = dsp_settings.get(
+            "longitude", 0.0)
         self.module_signal_processor.heading = dsp_settings.get("heading", 0.0)
-        self.module_signal_processor.fixed_heading = dsp_settings.get("gps_fixed_heading", False)
-        self.module_signal_processor.gps_min_speed_for_valid_heading = dsp_settings.get("gps_min_speed", 2)
-        self.module_signal_processor.gps_min_duration_for_valid_heading = dsp_settings.get("gps_min_speed_duration", 3)
+        self.module_signal_processor.fixed_heading = dsp_settings.get(
+            "gps_fixed_heading", False)
+        self.module_signal_processor.gps_min_speed_for_valid_heading = dsp_settings.get(
+            "gps_min_speed", 2)
+        self.module_signal_processor.gps_min_duration_for_valid_heading = dsp_settings.get(
+            "gps_min_speed_duration", 3)
 
         # Kraken Pro Remote Key
-        self.module_signal_processor.krakenpro_key = dsp_settings.get("krakenpro_key", "0ae4ca6b3")
+        self.module_signal_processor.krakenpro_key = dsp_settings.get(
+            "krakenpro_key", "0ae4ca6b3")
 
         # Mapping Server URL
-        self.mapping_server_url = dsp_settings.get("mapping_server_url", DEFAULT_MAPPING_SERVER_ENDPOINT)
+        self.mapping_server_url = dsp_settings.get(
+            "mapping_server_url", DEFAULT_MAPPING_SERVER_ENDPOINT)
 
         # VFO Configuration
-        self.module_signal_processor.spectrum_fig_type = dsp_settings.get("spectrum_calculation", "Single")
-        self.module_signal_processor.vfo_mode = dsp_settings.get("vfo_mode", "Standard")
-        self.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get("vfo_default_squelch_mode", "Auto")
-        self.module_signal_processor.vfo_default_demod = dsp_settings.get("vfo_default_demod", "None")
-        self.module_signal_processor.vfo_default_iq = dsp_settings.get("vfo_default_iq", "False")
-        self.module_signal_processor.max_demod_timeout = int(dsp_settings.get("max_demod_timeout", 60))
-        self.module_signal_processor.dsp_decimation = int(dsp_settings.get("dsp_decimation", 1))
-        self.module_signal_processor.active_vfos = int(dsp_settings.get("active_vfos", 1))
-        self.module_signal_processor.output_vfo = int(dsp_settings.get("output_vfo", 0))
-        self.module_signal_processor.optimize_short_bursts = dsp_settings.get("en_optimize_short_bursts", False)
-        self.module_signal_processor.en_peak_hold = dsp_settings.get("en_peak_hold", False)
+        self.module_signal_processor.spectrum_fig_type = dsp_settings.get(
+            "spectrum_calculation", "Single")
+        self.module_signal_processor.vfo_mode = dsp_settings.get(
+            "vfo_mode", "Standard")
+        self.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get(
+            "vfo_default_squelch_mode", "Auto")
+        self.module_signal_processor.vfo_default_demod = dsp_settings.get(
+            "vfo_default_demod", "None")
+        self.module_signal_processor.vfo_default_iq = dsp_settings.get(
+            "vfo_default_iq", "False")
+        self.module_signal_processor.max_demod_timeout = int(
+            dsp_settings.get("max_demod_timeout", 60))
+        self.module_signal_processor.dsp_decimation = int(
+            dsp_settings.get("dsp_decimation", 1))
+        self.module_signal_processor.active_vfos = int(
+            dsp_settings.get("active_vfos", 1))
+        self.module_signal_processor.output_vfo = int(
+            dsp_settings.get("output_vfo", 0))
+        self.module_signal_processor.optimize_short_bursts = dsp_settings.get(
+            "en_optimize_short_bursts", False)
+        self.module_signal_processor.en_peak_hold = dsp_settings.get(
+            "en_peak_hold", False)
         self.selected_vfo = 0
-        self.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get("vfo_default_squelch_mode", "Auto")
+        self.module_signal_processor.vfo_default_squelch_mode = dsp_settings.get(
+            "vfo_default_squelch_mode", "Auto")
 
         for i in range(self.module_signal_processor.max_vfos):
             self.module_signal_processor.vfo_bw[i] = int(
-                dsp_settings.get("vfo_bw_" + str(i), self.module_signal_processor.vfo_bw[i])
+                dsp_settings.get(
+                    "vfo_bw_" + str(i),
+                    self.module_signal_processor.vfo_bw[i])
             )
             self.module_signal_processor.vfo_fir_order_factor[i] = int(
-                dsp_settings.get("vfo_fir_order_factor_" + str(i), self.module_signal_processor.vfo_fir_order_factor[i])
+                dsp_settings.get(
+                    "vfo_fir_order_factor_" + str(i),
+                    self.module_signal_processor.vfo_fir_order_factor[i])
             )
             self.module_signal_processor.vfo_freq[i] = float(
-                dsp_settings.get("vfo_freq_" + str(i), self.module_receiver.daq_center_freq)
+                dsp_settings.get(
+                    "vfo_freq_" + str(i),
+                    self.module_receiver.daq_center_freq)
             )
-            self.module_signal_processor.vfo_squelch_mode[i] = dsp_settings.get("vfo_squelch_mode_" + str(i), "Default")
+            self.module_signal_processor.vfo_squelch_mode[i] = dsp_settings.get(
+                "vfo_squelch_mode_" + str(i), "Default")
             self.module_signal_processor.vfo_squelch[i] = int(
-                dsp_settings.get("vfo_squelch_" + str(i), self.module_signal_processor.vfo_squelch[i])
+                dsp_settings.get(
+                    "vfo_squelch_" + str(i),
+                    self.module_signal_processor.vfo_squelch[i])
             )
-            self.module_signal_processor.vfo_demod[i] = dsp_settings.get("vfo_demod_" + str(i), "Default")
-            self.module_signal_processor.vfo_iq[i] = dsp_settings.get("vfo_iq_" + str(i), "Default")
+            self.module_signal_processor.vfo_demod[i] = dsp_settings.get(
+                "vfo_demod_" + str(i), "Default")
+            self.module_signal_processor.vfo_iq[i] = dsp_settings.get(
+                "vfo_iq_" + str(i), "Default")
 
         self.module_signal_processor.start()
 
@@ -195,8 +243,10 @@ class WebInterface:
         self.daq_if_gains = "[,,,,]"
         self.en_advanced_daq_cfg = False
         self.en_basic_daq_cfg = False
-        self.en_system_control = [1] if dsp_settings.get("en_system_control", False) else []
-        self.en_beta_features = [1] if dsp_settings.get("en_beta_features", False) else []
+        self.en_system_control = [1] if dsp_settings.get(
+            "en_system_control", False) else []
+        self.en_beta_features = [1] if dsp_settings.get(
+            "en_beta_features", False) else []
 
         self.daq_ini_cfg_dict = read_config_file_dict()
         # "Default" # Holds the string identifier of the actively loaded DAQ ini configuration
@@ -245,27 +295,89 @@ class WebInterface:
 
         # Populate vfo_cfg_inputs array for VFO setting callback
         self.vfo_cfg_inputs = []
-        self.vfo_cfg_inputs.append(Input(component_id="spectrum_fig_type", component_property="value"))
-        self.vfo_cfg_inputs.append(Input(component_id="vfo_mode", component_property="value"))
-        self.vfo_cfg_inputs.append(Input(component_id="vfo_default_squelch_mode", component_property="value"))
-        self.vfo_cfg_inputs.append(Input(component_id="vfo_default_demod", component_property="value"))
-        self.vfo_cfg_inputs.append(Input(component_id="vfo_default_iq", component_property="value"))
-        self.vfo_cfg_inputs.append(Input(component_id="max_demod_timeout", component_property="value"))
-        self.vfo_cfg_inputs.append(Input(component_id="dsp_decimation", component_property="value"))
-        self.vfo_cfg_inputs.append(Input(component_id="active_vfos", component_property="value"))
-        self.vfo_cfg_inputs.append(Input(component_id="output_vfo", component_property="value"))
-        self.vfo_cfg_inputs.append(Input(component_id="en_optimize_short_bursts", component_property="value"))
+        self.vfo_cfg_inputs.append(
+            Input(
+                component_id="spectrum_fig_type",
+                component_property="value"))
+        self.vfo_cfg_inputs.append(
+            Input(
+                component_id="vfo_mode",
+                component_property="value"))
+        self.vfo_cfg_inputs.append(
+            Input(
+                component_id="vfo_default_squelch_mode",
+                component_property="value"))
+        self.vfo_cfg_inputs.append(
+            Input(
+                component_id="vfo_default_demod",
+                component_property="value"))
+        self.vfo_cfg_inputs.append(
+            Input(
+                component_id="vfo_default_iq",
+                component_property="value"))
+        self.vfo_cfg_inputs.append(
+            Input(
+                component_id="max_demod_timeout",
+                component_property="value"))
+        self.vfo_cfg_inputs.append(
+            Input(
+                component_id="dsp_decimation",
+                component_property="value"))
+        self.vfo_cfg_inputs.append(
+            Input(
+                component_id="active_vfos",
+                component_property="value"))
+        self.vfo_cfg_inputs.append(
+            Input(
+                component_id="output_vfo",
+                component_property="value"))
+        self.vfo_cfg_inputs.append(
+            Input(
+                component_id="en_optimize_short_bursts",
+                component_property="value"))
 
         for i in range(self.module_signal_processor.max_vfos):
-            self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_bw", component_property="value"))
             self.vfo_cfg_inputs.append(
-                Input(component_id="vfo_" + str(i) + "_fir_order_factor", component_property="value")
+                Input(
+                    component_id="vfo_" +
+                    str(i) +
+                    "_bw",
+                    component_property="value"))
+            self.vfo_cfg_inputs.append(
+                Input(
+                    component_id="vfo_" +
+                    str(i) +
+                    "_fir_order_factor",
+                    component_property="value")
             )
-            self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_freq", component_property="value"))
-            self.vfo_cfg_inputs.append(Input(component_id=f"vfo_squelch_mode_{i}", component_property="value"))
-            self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_squelch", component_property="value"))
-            self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_demod", component_property="value"))
-            self.vfo_cfg_inputs.append(Input(component_id="vfo_" + str(i) + "_iq", component_property="value"))
+            self.vfo_cfg_inputs.append(
+                Input(
+                    component_id="vfo_" +
+                    str(i) +
+                    "_freq",
+                    component_property="value"))
+            self.vfo_cfg_inputs.append(
+                Input(
+                    component_id=f"vfo_squelch_mode_{i}",
+                    component_property="value"))
+            self.vfo_cfg_inputs.append(
+                Input(
+                    component_id="vfo_" +
+                    str(i) +
+                    "_squelch",
+                    component_property="value"))
+            self.vfo_cfg_inputs.append(
+                Input(
+                    component_id="vfo_" +
+                    str(i) +
+                    "_demod",
+                    component_property="value"))
+            self.vfo_cfg_inputs.append(
+                Input(
+                    component_id="vfo_" +
+                    str(i) +
+                    "_iq",
+                    component_property="value"))
 
         self.save_configuration()
         settings_change_watcher(self, settings_file_path)
@@ -290,8 +402,10 @@ class WebInterface:
         data["ula_direction"] = self.module_signal_processor.ula_direction
         # self.module_signal_processor.DOA_inter_elem_space
         data["ant_spacing_meters"] = self.ant_spacing_meters
-        data["custom_array_x_meters"] = ",".join(["%.2f" % num for num in self.custom_array_x_meters])
-        data["custom_array_y_meters"] = ",".join(["%.2f" % num for num in self.custom_array_y_meters])
+        data["custom_array_x_meters"] = ",".join(
+            ["%.2f" % num for num in self.custom_array_x_meters])
+        data["custom_array_y_meters"] = ",".join(
+            ["%.2f" % num for num in self.custom_array_y_meters])
         data["array_offset"] = int(self.module_signal_processor.array_offset)
 
         data["doa_method"] = self.module_signal_processor.DOA_algorithm
@@ -341,18 +455,22 @@ class WebInterface:
 
         for i in range(self.module_signal_processor.max_vfos):
             data["vfo_bw_" + str(i)] = self.module_signal_processor.vfo_bw[i]
-            data["vfo_fir_order_factor_" + str(i)] = self.module_signal_processor.vfo_fir_order_factor[i]
-            data["vfo_freq_" + str(i)] = self.module_signal_processor.vfo_freq[i]
-            data["vfo_squelch_mode_" + str(i)] = self.module_signal_processor.vfo_squelch_mode[i]
-            data["vfo_squelch_" + str(i)] = self.module_signal_processor.vfo_squelch[i]
-            data["vfo_demod_" + str(i)] = self.module_signal_processor.vfo_demod[i]
+            data["vfo_fir_order_factor_" +
+                 str(i)] = self.module_signal_processor.vfo_fir_order_factor[i]
+            data["vfo_freq_" +
+                 str(i)] = self.module_signal_processor.vfo_freq[i]
+            data["vfo_squelch_mode_" +
+                 str(i)] = self.module_signal_processor.vfo_squelch_mode[i]
+            data["vfo_squelch_" +
+                 str(i)] = self.module_signal_processor.vfo_squelch[i]
+            data["vfo_demod_" +
+                 str(i)] = self.module_signal_processor.vfo_demod[i]
             data["vfo_iq_" + str(i)] = self.module_signal_processor.vfo_iq[i]
 
         data["ext_upd_flag"] = False
 
         with open(settings_file_path, "w") as outfile:
             json.dump(data, outfile, indent=2)
-
 
     def load_default_configuration(self):
         data = {}
@@ -434,7 +552,6 @@ class WebInterface:
 
         with open(settings_file_path, "w") as outfile:
             json.dump(data, outfile, indent=2)
-
 
     def start_processing(self):
         """
