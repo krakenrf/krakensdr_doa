@@ -353,7 +353,6 @@ class WebInterface:
         with open(settings_file_path, "w") as outfile:
             json.dump(data, outfile, indent=2)
 
-
     def load_default_configuration(self):
         data = {}
 
@@ -434,7 +433,6 @@ class WebInterface:
 
         with open(settings_file_path, "w") as outfile:
             json.dump(data, outfile, indent=2)
-
 
     def start_processing(self):
         """

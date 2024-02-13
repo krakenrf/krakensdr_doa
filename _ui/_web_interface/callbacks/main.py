@@ -90,21 +90,25 @@ def set_doa_format(doa_format):
     web_interface.module_signal_processor.DOA_data_format = doa_format
     web_interface.save_configuration()
 
+
 # Update Station ID
 @app.callback_shared(None, [Input(component_id="station_id_input", component_property="value")])
 def set_station_id(station_id):
     web_interface.module_signal_processor.station_id = station_id
     web_interface.save_configuration()
 
+
 @app.callback_shared(None, [Input(component_id="krakenpro_key", component_property="value")])
 def set_kraken_pro_key(key):
     web_interface.module_signal_processor.krakenpro_key = key
     web_interface.save_configuration()
 
+
 @app.callback_shared(None, [Input(component_id="rdf_mapper_server_address", component_property="value")])
 def set_rdf_mapper_server(url):
     web_interface.module_signal_processor.RDF_mapper_server = url
     web_interface.save_configuration()
+
 
 # Enable GPS Relevant fields
 
@@ -202,7 +206,6 @@ def set_static_location(lat, lon, toggle_value):
         web_interface.module_signal_processor.latitude = lat
         web_interface.module_signal_processor.longitude = lon
         web_interface.save_configuration()
-
 
 
 # Enable Fixed Heading
@@ -874,7 +877,7 @@ def toggle_beta_features(toggle_value):
     [State("url", "pathname")],
 )
 def settings_change_refresh(toggle_value, pathname):
-    #if web_interface.needs_refresh:
+    # if web_interface.needs_refresh:
     #    if pathname == "/" or pathname == "/init" or pathname == "/config":
     #        return ["upd"]
 
@@ -890,8 +893,12 @@ def settings_change_refresh(toggle_value, pathname):
                 "en_doa_check": {"value": [1] if web_interface.module_signal_processor.en_DOA_estimation else []},
                 "doa_decorrelation_method": {"value": web_interface.module_signal_processor.DOA_decorrelation_method},
                 "radio_ant_arrangement": {"value": web_interface.module_signal_processor.DOA_ant_alignment},
-                "custom_array_x_meters": {"value": ",".join(["%.2f" % num for num in web_interface.custom_array_x_meters])},
-                "custom_array_y_meters": {"value": ",".join(["%.2f" % num for num in web_interface.custom_array_y_meters])},
+                "custom_array_x_meters": {
+                    "value": ",".join(["%.2f" % num for num in web_interface.custom_array_x_meters])
+                },
+                "custom_array_y_meters": {
+                    "value": ",".join(["%.2f" % num for num in web_interface.custom_array_y_meters])
+                },
                 "station_id_input": {"value": web_interface.module_signal_processor.station_id},
                 "loc_src_dropdown": {"value": web_interface.location_source},
                 "latitude_input": {"value": web_interface.module_signal_processor.latitude},
@@ -910,32 +917,39 @@ def settings_change_refresh(toggle_value, pathname):
                 "active_vfos": {"value": web_interface.module_signal_processor.active_vfos},
                 "output_vfo": {"value": web_interface.module_signal_processor.output_vfo},
                 "compass_offset": {"value": web_interface.compass_offset},
-                "en_optimize_short_bursts": {"value": [1] if web_interface.module_signal_processor.optimize_short_bursts else []},
+                "en_optimize_short_bursts": {
+                    "value": [1] if web_interface.module_signal_processor.optimize_short_bursts else []
+                },
                 "en_peak_hold": {"value": [1] if web_interface.module_signal_processor.en_peak_hold else []},
                 "doa_method": {"value": web_interface.module_signal_processor.DOA_algorithm},
                 "expected_num_of_sources": {"value": web_interface.module_signal_processor.DOA_expected_num_of_sources},
                 "doa_fig_type": {"value": web_interface._doa_fig_type},
                 "ula_direction": {"value": web_interface.module_signal_processor.ula_direction},
-                "body_ant_spacing_wavelength": {"children": str(round(web_interface.module_signal_processor.DOA_inter_elem_space, 3))},
+                "body_ant_spacing_wavelength": {
+                    "children": str(round(web_interface.module_signal_processor.DOA_inter_elem_space, 3))
+                },
             }
         )
 
         for i in range(web_interface.module_signal_processor.max_vfos):
             app.push_mods(
                 {
-                "vfo_" + str(i) + "_bw": {"value": web_interface.module_signal_processor.vfo_bw[i]},
-                "vfo_" + str(i) + "_fir_order_factor": {"value": web_interface.module_signal_processor.vfo_fir_order_factor[i]},
-                "vfo_" + str(i) + "_freq": {"value": web_interface.module_signal_processor.vfo_freq[i] / 10**6},
-                 f"vfo_squelch_mode_{i}": {"value": web_interface.module_signal_processor.vfo_squelch_mode[i]},
-                 "vfo_" + str(i) + "_squelch": {"value": web_interface.module_signal_processor.vfo_squelch[i]},
-                 f"vfo_{i}_demod": {"value": web_interface.module_signal_processor.vfo_demod[i]},
-                 f"vfo_{i}_iq": {"value": web_interface.module_signal_processor.vfo_iq[i]},
+                    "vfo_" + str(i) + "_bw": {"value": web_interface.module_signal_processor.vfo_bw[i]},
+                    "vfo_"
+                    + str(i)
+                    + "_fir_order_factor": {"value": web_interface.module_signal_processor.vfo_fir_order_factor[i]},
+                    "vfo_" + str(i) + "_freq": {"value": web_interface.module_signal_processor.vfo_freq[i] / 10**6},
+                    f"vfo_squelch_mode_{i}": {"value": web_interface.module_signal_processor.vfo_squelch_mode[i]},
+                    "vfo_" + str(i) + "_squelch": {"value": web_interface.module_signal_processor.vfo_squelch[i]},
+                    f"vfo_{i}_demod": {"value": web_interface.module_signal_processor.vfo_demod[i]},
+                    f"vfo_{i}_iq": {"value": web_interface.module_signal_processor.vfo_iq[i]},
                 }
             )
 
         web_interface.needs_refresh = False
 
     return Output("dummy_output", "children", "")
+
 
 @app.callback(
     None,
