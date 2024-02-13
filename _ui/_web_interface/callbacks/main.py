@@ -916,7 +916,6 @@ def settings_change_refresh(toggle_value, pathname):
                 "expected_num_of_sources": {"value": web_interface.module_signal_processor.DOA_expected_num_of_sources},
                 "doa_fig_type": {"value": web_interface._doa_fig_type},
                 "ula_direction": {"value": web_interface.module_signal_processor.ula_direction},
-                "array_offset": {"value": web_interface.module_signal_processor.array_offset},
                 "body_ant_spacing_wavelength": {"children": str(round(web_interface.module_signal_processor.DOA_inter_elem_space, 3))},
             }
         )
