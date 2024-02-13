@@ -32,8 +32,7 @@ def get_preconfigs(config_files_path):
             config_file_path = os.path.join(root, files[0])
             parser.read([config_file_path])
             parameters = parser._sections
-            preconfigs.append(
-                [config_file_path, parameters["meta"]["config_name"]])
+            preconfigs.append([config_file_path, parameters["meta"]["config_name"]])
     return preconfigs
 
 
@@ -42,12 +41,10 @@ def get_daq_config_card_layout():
     daq_cfg_dict = web_interface.daq_ini_cfg_dict
 
     if daq_cfg_dict is not None:
-        en_noise_src_values = [
-            1] if daq_cfg_dict["en_noise_source_ctr"] else []
+        en_noise_src_values = [1] if daq_cfg_dict["en_noise_source_ctr"] else []
         en_filter_rst_values = [1] if daq_cfg_dict["en_filter_reset"] else []
         en_iq_cal_values = [1] if daq_cfg_dict["en_iq_cal"] else []
-        en_req_track_lock_values = [
-            1] if daq_cfg_dict["require_track_lock_intervention"] else []
+        en_req_track_lock_values = [1] if daq_cfg_dict["require_track_lock_intervention"] else []
 
         # Read available preconfig files
         preconfigs = get_preconfigs(daq_preconfigs_path)
@@ -55,11 +52,9 @@ def get_daq_config_card_layout():
     en_advanced_daq_cfg = [1] if web_interface.en_advanced_daq_cfg else []
     en_basic_daq_cfg = [1] if web_interface.en_basic_daq_cfg else []
 
-    decimated_bw = ((daq_cfg_dict["sample_rate"]) /
-                    daq_cfg_dict["decimation_ratio"]) / 10**3
+    decimated_bw = ((daq_cfg_dict["sample_rate"]) / daq_cfg_dict["decimation_ratio"]) / 10**3
     cfg_data_block_len = daq_cfg_dict["cpi_size"] / (decimated_bw)
-    cfg_recal_interval = (
-        daq_cfg_dict["cal_frame_interval"] * (cfg_data_block_len / 10**3)) / 60
+    cfg_recal_interval = (daq_cfg_dict["cal_frame_interval"] * (cfg_data_block_len / 10**3)) / 60
 
     if daq_cfg_dict["cal_track_mode"] == 0:  # If set to no tracking
         cfg_recal_interval = 1
@@ -131,10 +126,7 @@ def get_daq_config_card_layout():
         ),
         html.Div(
             [
-                html.Button(
-                    "Update Receiver Parameters",
-                    id="btn-update_rx_param",
-                    className="btn"),
+                html.Button("Update Receiver Parameters", id="btn-update_rx_param", className="btn"),
             ],
             className="field",
         ),
@@ -144,22 +136,14 @@ def get_daq_config_card_layout():
                     AGC_WARNING,
                     id="agc_warning",
                     className="field",
-                    style=get_agc_warning_style_from_gain(
-                        web_interface.module_receiver.daq_rx_gain),
+                    style=get_agc_warning_style_from_gain(web_interface.module_receiver.daq_rx_gain),
                 )
             ]
         ),
         html.Div(
             [
-                html.Div(
-                    "Basic DAQ Configuration",
-                    id="label_en_basic_daq_cfg",
-                    className="field-label"),
-                dcc.Checklist(
-                    options=option,
-                    id="en_basic_daq_cfg",
-                    className="field-body",
-                    value=en_basic_daq_cfg),
+                html.Div("Basic DAQ Configuration", id="label_en_basic_daq_cfg", className="field-label"),
+                dcc.Checklist(options=option, id="en_basic_daq_cfg", className="field-body", value=en_basic_daq_cfg),
             ],
             className="field",
         ),
@@ -167,13 +151,10 @@ def get_daq_config_card_layout():
             [
                 html.Div(
                     [
-                        html.Div(
-                            "Preconfigured DAQ Files",
-                            className="field-label"),
+                        html.Div("Preconfigured DAQ Files", className="field-label"),
                         dcc.Dropdown(
                             id="daq_cfg_files",
-                            options=[{"label": str(i[1]), "value": i[0]}
-                                     for i in preconfigs],
+                            options=[{"label": str(i[1]), "value": i[0]} for i in preconfigs],
                             clearable=False,
                             value=preconfigs[0][0],
                             placeholder="Select Configuration File",
@@ -205,9 +186,7 @@ def get_daq_config_card_layout():
                     className="field",
                 ),
                 html.Div(
-                    [html.Div("Basic Custom DAQ Configuration",
-                              id="label_en_basic_daq_cfg",
-                              className="field-label")]
+                    [html.Div("Basic Custom DAQ Configuration", id="label_en_basic_daq_cfg", className="field-label")]
                 ),
                 html.Div(
                     [
@@ -226,10 +205,7 @@ def get_daq_config_card_layout():
                 ),
                 html.Div(
                     [
-                        html.Div(
-                            "Recalibration Interval [mins]:",
-                            id="label_recal_interval",
-                            className="field-label"),
+                        html.Div("Recalibration Interval [mins]:", id="label_recal_interval", className="field-label"),
                         dcc.Input(
                             id="cfg_recal_interval",
                             value=cfg_recal_interval,
@@ -255,14 +231,11 @@ def get_daq_config_card_layout():
                 # daq_subsystem_reconfiguration_options = [ \
                 html.Div(
                     [
-                        html.H2(
-                            "DAQ Subsystem Reconfiguration",
-                            id="init_title_reconfig"),
+                        html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"),
                         html.H3("HW", id="cfg_group_hw"),
                         html.Div(
                             [
-                                html.Div(
-                                    "# RX Channels:", className="field-label"),
+                                html.Div("# RX Channels:", className="field-label"),
                                 dcc.Input(
                                     id="cfg_rx_channels",
                                     value=daq_cfg_dict["num_ch"],
@@ -275,8 +248,7 @@ def get_daq_config_card_layout():
                         ),
                         html.Div(
                             [
-                                html.Div(
-                                    "Bias Tee Control:", className="field-label"),
+                                html.Div("Bias Tee Control:", className="field-label"),
                                 dcc.Input(
                                     id="cfg_en_bias_tee",
                                     value=daq_cfg_dict["en_bias_tee"],
@@ -290,14 +262,10 @@ def get_daq_config_card_layout():
                         html.H3("DAQ", id="cfg_group_daq"),
                         html.Div(
                             [
-                                html.Div(
-                                    "DAQ Buffer Size:",
-                                    className="field-label",
-                                    id="label_daq_buffer_size"),
+                                html.Div("DAQ Buffer Size:", className="field-label", id="label_daq_buffer_size"),
                                 dcc.Dropdown(
                                     id="cfg_daq_buffer_size",
-                                    options=[{"label": i, "value": i}
-                                             for i in valid_daq_buffer_sizes],
+                                    options=[{"label": i, "value": i} for i in valid_daq_buffer_sizes],
                                     value=daq_cfg_dict["daq_buffer_size"],
                                     style={"display": "inline-block"},
                                     className="field-body",
@@ -307,14 +275,10 @@ def get_daq_config_card_layout():
                         ),
                         html.Div(
                             [
-                                html.Div(
-                                    "Sample Rate [MHz]:",
-                                    className="field-label",
-                                    id="label_sample_rate"),
+                                html.Div("Sample Rate [MHz]:", className="field-label", id="label_sample_rate"),
                                 dcc.Dropdown(
                                     id="cfg_sample_rate",
-                                    options=[{"label": i, "value": i}
-                                             for i in valid_sample_rates],
+                                    options=[{"label": i, "value": i} for i in valid_sample_rates],
                                     value=daq_cfg_dict["sample_rate"] / 10**6,
                                     style={"display": "inline-block"},
                                     className="field-body",
@@ -341,10 +305,7 @@ def get_daq_config_card_layout():
                         html.H3("Pre Processing"),
                         html.Div(
                             [
-                                html.Div(
-                                    "CPI Size [sample]:",
-                                    className="field-label",
-                                    id="label_cpi_size"),
+                                html.Div("CPI Size [sample]:", className="field-label", id="label_cpi_size"),
                                 dcc.Input(
                                     id="cfg_cpi_size",
                                     value=daq_cfg_dict["cpi_size"],
@@ -357,10 +318,7 @@ def get_daq_config_card_layout():
                         ),
                         html.Div(
                             [
-                                html.Div(
-                                    "Decimation Ratio:",
-                                    className="field-label",
-                                    id="label_decimation_ratio"),
+                                html.Div("Decimation Ratio:", className="field-label", id="label_decimation_ratio"),
                                 dcc.Input(
                                     id="cfg_decimation_ratio",
                                     value=daq_cfg_dict["decimation_ratio"],
@@ -388,10 +346,7 @@ def get_daq_config_card_layout():
                         ),
                         html.Div(
                             [
-                                html.Div(
-                                    "FIR Tap Size:",
-                                    className="field-label",
-                                    id="label_fir_tap_size"),
+                                html.Div("FIR Tap Size:", className="field-label", id="label_fir_tap_size"),
                                 dcc.Input(
                                     id="cfg_fir_tap_size",
                                     value=daq_cfg_dict["fir_tap_size"],
@@ -404,14 +359,10 @@ def get_daq_config_card_layout():
                         ),
                         html.Div(
                             [
-                                html.Div(
-                                    "FIR Window:",
-                                    className="field-label",
-                                    id="label_fir_window"),
+                                html.Div("FIR Window:", className="field-label", id="label_fir_window"),
                                 dcc.Dropdown(
                                     id="cfg_fir_window",
-                                    options=[{"label": i, "value": i}
-                                             for i in valid_fir_windows],
+                                    options=[{"label": i, "value": i} for i in valid_fir_windows],
                                     value=daq_cfg_dict["fir_window"],
                                     style={"display": "inline-block"},
                                     className="field-body",
@@ -421,10 +372,7 @@ def get_daq_config_card_layout():
                         ),
                         html.Div(
                             [
-                                html.Div(
-                                    "Enable Filter Reset:",
-                                    className="field-label",
-                                    id="label_en_filter_reset"),
+                                html.Div("Enable Filter Reset:", className="field-label", id="label_en_filter_reset"),
                                 dcc.Checklist(
                                     options=option,
                                     id="en_filter_reset",
@@ -452,10 +400,7 @@ def get_daq_config_card_layout():
                         ),
                         html.Div(
                             [
-                                html.Div(
-                                    "Standard Channel Index:",
-                                    className="field-label",
-                                    id="label_std_ch_index"),
+                                html.Div("Standard Channel Index:", className="field-label", id="label_std_ch_index"),
                                 dcc.Input(
                                     id="cfg_std_ch_ind",
                                     value=daq_cfg_dict["std_ch_ind"],
@@ -519,8 +464,7 @@ def get_daq_config_card_layout():
                                 ),
                                 dcc.Dropdown(
                                     id="cfg_cal_track_mode",
-                                    options=[{"label": i[0], "value": i[1]}
-                                             for i in calibration_tack_modes],
+                                    options=[{"label": i[0], "value": i[1]} for i in calibration_tack_modes],
                                     value=daq_cfg_dict["cal_track_mode"],
                                     style={"display": "inline-block"},
                                     className="field-body",
@@ -540,8 +484,7 @@ def get_daq_config_card_layout():
                                     options=[
                                         {"label": "default", "value": "default"},
                                         {"label": "disabled", "value": "disabled"},
-                                        {"label": "channel_power",
-                                            "value": "channel_power"},
+                                        {"label": "channel_power", "value": "channel_power"},
                                     ],
                                     value=daq_cfg_dict["amplitude_cal_mode"],
                                     style={"display": "inline-block"},
@@ -601,10 +544,7 @@ def get_daq_config_card_layout():
                         ),
                         html.Div(
                             [
-                                html.Div(
-                                    "Phase Tolerance [deg]:",
-                                    className="field-label",
-                                    id="label_phase_tolerance"),
+                                html.Div("Phase Tolerance [deg]:", className="field-label", id="label_phase_tolerance"),
                                 dcc.Input(
                                     id="cfg_phase_tolerance",
                                     value=daq_cfg_dict["phase_tolerance"],
@@ -617,10 +557,7 @@ def get_daq_config_card_layout():
                         ),
                         html.Div(
                             [
-                                html.Div(
-                                    "Maximum Sync Fails:",
-                                    className="field-label",
-                                    id="label_max_sync_fails"),
+                                html.Div("Maximum Sync Fails:", className="field-label", id="label_max_sync_fails"),
                                 dcc.Input(
                                     id="cfg_max_sync_fails",
                                     value=daq_cfg_dict["maximum_sync_fails"],
@@ -639,10 +576,8 @@ def get_daq_config_card_layout():
                                 dcc.Dropdown(
                                     id="cfg_iq_adjust_source",
                                     options=[
-                                        {"label": "touchstone",
-                                            "value": "touchstone"},
-                                        {"label": "explicit-time-delay",
-                                            "value": "explicit-time-delay"},
+                                        {"label": "touchstone", "value": "touchstone"},
+                                        {"label": "explicit-time-delay", "value": "explicit-time-delay"},
                                     ],
                                     value=daq_cfg_dict["iq_adjust_source"],
                                     style={"display": "inline-block"},
@@ -690,10 +625,7 @@ def get_daq_config_card_layout():
                 # Reconfigure Button
                 html.Div(
                     [
-                        html.Button(
-                            "Reconfigure & Restart DAQ chain",
-                            id="btn_reconfig_daq_chain",
-                            className="btn"),
+                        html.Button("Reconfigure & Restart DAQ chain", id="btn_reconfig_daq_chain", className="btn"),
                     ],
                     className="field",
                 ),
