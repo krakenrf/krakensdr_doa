@@ -268,6 +268,20 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
                 web_interface.module_signal_processor.DOA_ant_alignment = dsp_settings.get("ant_arrangement", "ULA")
                 web_interface.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
+                wavelength = 300 / web_interface.daq_center_freq
+                if web_interface.module_signal_processor.DOA_ant_alignment == "UCA":
+                    web_interface.module_signal_processor.DOA_UCA_radius_m = web_interface.ant_spacing_meters
+                    # Convert RADIUS to INTERELEMENT SPACING
+                    inter_elem_spacing = (
+                        np.sqrt(2)
+                        * web_interface.ant_spacing_meters
+                        * np.sqrt(1 - np.cos(np.deg2rad(360 / web_interface.module_signal_processor.channel_number)))
+                    )
+                    web_interface.module_signal_processor.DOA_inter_elem_space = inter_elem_spacing / wavelength
+                else:
+                    web_interface.module_signal_processor.DOA_UCA_radius_m = np.Infinity
+                    web_interface.module_signal_processor.DOA_inter_elem_space = web_interface.ant_spacing_meters / wavelength
+
                 web_interface.custom_array_x_meters = np.float_(
                     dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(",")
                 )
