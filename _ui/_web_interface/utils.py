@@ -385,10 +385,9 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
                     else:
                         web_interface.module_signal_processor.DOA_inter_elem_space = web_interface.ant_spacing_meters / wavelength
 
-
-
                 if dsp_settings.get("ext_upd_flag", False):
                     web_interface.needs_refresh = True
+                    web_interface.save_configuration()
 
     web_interface.settings_change_timer = Timer(
         0.5, settings_change_watcher, args=(web_interface, settings_file_path, last_attempt_failed)
