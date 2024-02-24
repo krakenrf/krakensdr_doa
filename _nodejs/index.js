@@ -1,9 +1,7 @@
 // This is a Websocket server that is a middleware to interface wth the new Krakensdr app and future things
 require('log-timestamp');
 const express = require('express')
-const { WsReconnect } = require('websocket-reconnect')
-//const ws = require('ws');
-//const ws = new WsReconnect({ reconnectDelay: 5000 });
+const ws = require('ws');
 const fs = require('fs');
 const crypto = require('crypto');
 
@@ -12,7 +10,7 @@ const port = 8042
 const wsport = 8021
 const doaInterval = 250    // Interval the clients should get new doa data in ms
 
-//const remoteServerDefault = 'wss://testmap.krakenrf.com:2096'
+//const remoteServerDefault = 'testmap.krakenrf.com:2096'
 const remoteServerDefault = 'wss://map.krakenrf.com:2096'
 const settingsJsonPath = '_share/settings.json'
 
@@ -62,51 +60,50 @@ function loadSettingsJson (){
 }
 loadSettingsJson();
 
+function wsTrySend(data){
+  try {
+    wsClient.send(data)
+    return true;
+  } catch (error) {
+    console.error("Sending data over WS failed, catched error")
+    return false;
+  }
+}
+
 // send Keep allive ping and if needed send Settings
 function websocketPing (){
   loadSettingsJson()
   //check if Settings Changed
   if (settingsChanged) {
     console.log("send Settings")
-    wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}", "type": "settings", "data": ${JSON.stringify(settingsJson)}}`)
+    wsTrySend(`{"apikey": "${settingsJson.krakenpro_key}", "type": "settings", "data": ${JSON.stringify(settingsJson)}}`)
     settingsChanged = false
   } else {
     console.log("send Ping")
-    wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}", "type": "ping"}`)
+    wsTrySend(`{"apikey": "${settingsJson.krakenpro_key}", "type": "ping"}`)
   }
 }
 
 function websocketConnect (){
-  wsClient = new WsReconnect({ reconnectDelay: 5000 })
-  wsClient.open(remoteServer);
+  wsClient = new ws(remoteServer);
 
-  //wsClient.onopen = () => {
-  wsClient.on('open', function open() {
+  wsClient.onopen = () => {
     // start ping interval
-    wsPingInterval = setInterval(websocketPing, 10000)
-  })
+    wsPingInterval = setInterval(websocketPing, 10000);
+  }
 
-  //wsClient.onclose = (e) => {
-    ws.on('close', () => {
+  wsClient.onclose = (e) => {
     console.log('Socket is closed. Reconnect will be attempted in 1 second.', e.reason);
     setTimeout(websocketConnect, 1000);
-  })
+  };
    
-  //wsClient.onerror = (error) => {
-    ws.on('error', () => {
+  wsClient.onerror = (error) => {
     console.log('WebSocket error:', error)
-  })
+  }
    
-  //wsClient.onmessage = (e) => {
-  wsClient.on('message', (data) => {
+  wsClient.onmessage = (e) => {
     //check what data we got from Server
-    try {
-      var jsn = JSON.parse(data);
-    } catch (error) {
-      console.error("Got invalid Data from Server");
-      return;
-    }
-    
+    var jsn = JSON.parse(e.data);
     if(jsn.function == 'settings'){
       console.log("Got new Settings: "+jsn);
       // read settings fresh from file and set new Settings
@@ -119,7 +116,7 @@ function websocketConnect (){
     } else {
       console.log(jsn);
     }
-  })
+  }
 }
 
 function checkForRemoteMode (){
@@ -191,7 +188,7 @@ app.post('/doapost', (req, res) => {
       //req.body.gpsBearing = settingsJson.heading;
       //console.log(req.body.latitude);
       //console.log(req.body.longitude);
-      wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}", "data": ${JSON.stringify(req.body)}}`) 
+      wsTrySend(`{"apikey": "${settingsJson.krakenpro_key}", "data": ${JSON.stringify(req.body)}}`) 
     } else {
       // sends data to all websocket clients
       /*
@@ -216,7 +213,7 @@ app.post('/prpost', (req, res) => {
       //req.body.longitude = settingsJson.longitude;
       //req.body.gpsBearing = settingsJson.heading;
       console.log(req.body);
-      wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}", "type": "pr", "data": ${JSON.stringify(req.body)}}`) 
+      wsTrySend(`{"apikey": "${settingsJson.krakenpro_key}", "type": "pr", "data": ${JSON.stringify(req.body)}}`) 
     } else {
       // sends data to all websocket clients
       /*
