@@ -10,7 +10,7 @@ const port = 8042
 const wsport = 8021
 const doaInterval = 250    // Interval the clients should get new doa data in ms
 
-//const remoteServerDefault = 'testmap.krakenrf.com:2096'
+//const remoteServerDefault = 'wss://testmap.krakenrf.com:2096'
 const remoteServerDefault = 'wss://map.krakenrf.com:2096'
 const settingsJsonPath = '_share/settings.json'
 
