@@ -1,7 +1,9 @@
 // This is a Websocket server that is a middleware to interface wth the new Krakensdr app and future things
 require('log-timestamp');
 const express = require('express')
-const ws = require('ws');
+const { WsReconnect } = require('websocket-reconnect')
+//const ws = require('ws');
+const ws = new WsReconnect({ reconnectDelay: 5000 });
 const fs = require('fs');
 const crypto = require('crypto');
 
@@ -10,7 +12,7 @@ const port = 8042
 const wsport = 8021
 const doaInterval = 250    // Interval the clients should get new doa data in ms
 
-//const remoteServer = 'testmap.krakenrf.com:2096'
+//const remoteServerDefault = 'wss://testmap.krakenrf.com:2096'
 const remoteServerDefault = 'wss://map.krakenrf.com:2096'
 const settingsJsonPath = '_share/settings.json'
 
