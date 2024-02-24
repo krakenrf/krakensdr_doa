@@ -3,7 +3,7 @@ require('log-timestamp');
 const express = require('express')
 const { WsReconnect } = require('websocket-reconnect')
 //const ws = require('ws');
-const ws = new WsReconnect({ reconnectDelay: 5000 });
+//const ws = new WsReconnect({ reconnectDelay: 5000 });
 const fs = require('fs');
 const crypto = require('crypto');
 
@@ -77,25 +77,36 @@ function websocketPing (){
 }
 
 function websocketConnect (){
-  wsClient = new ws(remoteServer);
+  wsClient = new WsReconnect({ reconnectDelay: 5000 })
+  wsClient.open(remoteServer);
 
-  wsClient.onopen = () => {
+  //wsClient.onopen = () => {
+  wsClient.on('open', function open() {
     // start ping interval
-    wsPingInterval = setInterval(websocketPing, 10000);
-  }
+    wsPingInterval = setInterval(websocketPing, 10000)
+  })
 
-  wsClient.onclose = (e) => {
+  //wsClient.onclose = (e) => {
+    ws.on('close', () => {
     console.log('Socket is closed. Reconnect will be attempted in 1 second.', e.reason);
     setTimeout(websocketConnect, 1000);
-  };
+  })
    
-  wsClient.onerror = (error) => {
+  //wsClient.onerror = (error) => {
+    ws.on('error', () => {
     console.log('WebSocket error:', error)
-  }
+  })
    
-  wsClient.onmessage = (e) => {
+  //wsClient.onmessage = (e) => {
+  wsClient.on('message', (data) => {
     //check what data we got from Server
-    var jsn = JSON.parse(e.data);
+    try {
+      var jsn = JSON.parse(data);
+    } catch (error) {
+      console.error("Got invalid Data from Server");
+      return;
+    }
+    
     if(jsn.function == 'settings'){
       console.log("Got new Settings: "+jsn);
       // read settings fresh from file and set new Settings
@@ -108,7 +119,7 @@ function websocketConnect (){
     } else {
       console.log(jsn);
     }
-  }
+  })
 }
 
 function checkForRemoteMode (){
