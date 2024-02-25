@@ -18,7 +18,6 @@ from kraken_web_spectrum import init_spectrum_fig
 from utils import (
     fetch_dsp_data,
     fetch_gps_data,
-    read_config_file_dict,
     set_clicked,
     settings_change_watcher,
 )
