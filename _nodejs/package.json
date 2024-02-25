@@ -12,7 +12,6 @@
     "axios": "^0.27.2",
     "express": "^4.17.2",
     "log-timestamp": "^0.3.0",
-    "websocket-reconnect": "^1.0.10",
     "ws": "^8.4.0"
   }
 }
