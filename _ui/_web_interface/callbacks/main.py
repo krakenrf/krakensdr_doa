@@ -15,12 +15,7 @@ from kraken_sdr_receiver import ReceiverRTLSDR
 from kraken_sdr_signal_processor import SignalProcessor, xi
 from kraken_web_config import write_config_file_dict
 from kraken_web_spectrum import init_spectrum_fig
-from utils import (
-    fetch_dsp_data,
-    fetch_gps_data,
-    set_clicked,
-    settings_change_watcher,
-)
+from utils import fetch_dsp_data, fetch_gps_data, set_clicked, settings_change_watcher
 from variables import (
     DECORRELATION_OPTIONS,
     DOA_METHODS,
