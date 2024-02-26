@@ -45,6 +45,7 @@ import requests
 
 # Signal processing support
 import scipy
+from iq_header import IQHeader
 from kraken_sdr_receiver import ReceiverRTLSDR
 from numba import float32, njit, vectorize
 from pyargus import directionEstimation as de
@@ -309,8 +310,9 @@ class SignalProcessor(threading.Thread):
         status["uptime_ms"] = int(time.monotonic() * 1e3)
         status["gps_status"] = self.gps_status
 
-        daq_status["daq_connected"] = self.module_receiver.receiver_connection_status
-        if self.module_receiver.receiver_connection_status:
+        iq_header_emtpy = self.module_receiver.iq_header.frame_type == IQHeader.FRAME_TYPE_EMPTY
+
+        if not iq_header_emtpy:
             status["timestamp_ms"] = self.module_receiver.iq_header.time_stamp
             daq_status["data_frame_index"] = self.module_receiver.iq_header.cpi_index
             daq_status["frame_sync"] = not bool(self.module_receiver.iq_header.check_sync_word())
@@ -322,17 +324,19 @@ class SignalProcessor(threading.Thread):
             daq_status["bandwidth_hz"] = self.module_receiver.iq_header.sampling_freq
             daq_status["decimated_bandwidth_hz"] = self.module_receiver.iq_header.sampling_freq // self.dsp_decimation
             daq_status["buffer_size_ms"] = (
-                self.module_receiver.iq_header.cpi_length / self.module_receiver.iq_header.sampling_freq
-            ) * 1e3
-            daq_status["num_dropped_frames"] = self.dropped_frames
+                (self.module_receiver.iq_header.cpi_length / self.module_receiver.iq_header.sampling_freq) * 1e3
+                if self.module_receiver.iq_header.sampling_freq > 0.0
+                else 0.0
+            )
 
         status["daq_status"] = daq_status
         status["daq_ok"] = (
-            self.module_receiver.receiver_connection_status
+            not iq_header_emtpy
             and daq_status.get("frame_sync", False)
             and daq_status.get("sample_delay_sync", False)
             and daq_status.get("iq_sync", False)
         )
+        status["daq_num_dropped_frames"] = self.dropped_frames
 
         try:
             with open(status_file_path, "w", encoding="utf-8") as file:
@@ -361,50 +365,41 @@ class SignalProcessor(threading.Thread):
                 start_time = time.time()
                 self.save_processing_status()
 
-                if get_iq_failed:
-                    logging.error(
-                        """The data frame was lost while processing was active!\n
-                        This might indicate issues with USB data cable or USB host,\n
-                        inadequate power supply, overloaded CPU, wrong host OS settings, etc."""
-                    )
-                    self.dropped_frames += 1
-                    continue
-
-                self.timestamp = self.module_receiver.iq_header.time_stamp
-                self.adc_overdrive = self.module_receiver.iq_header.adc_overdrive_flags
+                que_data_packet.append(["iq_header", self.module_receiver.iq_header])
+                self.logger.debug("IQ header has been put into the data que entity")
 
                 # Check frame type for processing
+                """
+                    You can enable here to process other frame types (such as call type frames)
+                """
                 en_proc = (
                     self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_DATA
                 )  # or \
                 # (self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_CAL)# For debug purposes
-                """
-                    You can enable here to process other frame types (such as call type frames)
-                """
-
-                que_data_packet.append(["iq_header", self.module_receiver.iq_header])
-                self.logger.debug("IQ header has been put into the data que entity")
-
-                # Configure processing parameteres based on the settings of the DAQ chain
-                if self.first_frame:
-                    self.channel_number = self.module_receiver.iq_header.active_ant_chs
-                    self.spectrum = np.ones(
-                        (self.channel_number + 4, self.spectrum_window_size),
-                        dtype=np.float32,
-                    )
-                    self.first_frame = 0
 
                 self.data_ready = False
 
-                if en_proc and not self.module_receiver.iq_samples.size:
-                    if self.dropped_frames:
+                if not self.module_receiver.iq_samples.size and get_iq_failed:
+                    if not self.dropped_frames:
                         logging.error(
-                            """The data frame was lost while processing was active!\n
-                            This might indicate issues with USB data cable or USB host,\n
+                            """The data frame was lost while processing was active!
+                            This might indicate issues with USB data cable or USB host,
                             inadequate power supply, overloaded CPU, wrong host OS settings, etc."""
                         )
                     self.dropped_frames += 1
                 elif en_proc:
+                    self.timestamp = self.module_receiver.iq_header.time_stamp
+                    self.adc_overdrive = self.module_receiver.iq_header.adc_overdrive_flags
+
+                    # Configure processing parameteres based on the settings of the DAQ chain
+                    if self.first_frame:
+                        self.channel_number = self.module_receiver.iq_header.active_ant_chs
+                        self.spectrum = np.ones(
+                            (self.channel_number + 4, self.spectrum_window_size),
+                            dtype=np.float32,
+                        )
+                        self.first_frame = 0
+
                     self.processed_signal = np.ascontiguousarray(self.module_receiver.iq_samples)
                     sampling_freq = self.module_receiver.iq_header.sampling_freq
 
@@ -945,7 +940,11 @@ class SignalProcessor(threading.Thread):
                 que_data_packet.append(
                     [
                         "latency",
-                        int(stop_time * 10**3) - self.module_receiver.iq_header.time_stamp,
+                        (
+                            (int(stop_time * 10**3) - self.module_receiver.iq_header.time_stamp)
+                            if not get_iq_failed
+                            else 0
+                        ),
                     ]
                 )
 

@@ -26,6 +26,7 @@ class IQHeader:
     FRAME_TYPE_RAMP = 2
     FRAME_TYPE_CAL = 3
     FRAME_TYPE_TRIGW = 4
+    FRAME_TYPE_EMPTY = 5
 
     SYNC_WORD = 0x2BF7B95A
 
@@ -34,8 +35,8 @@ class IQHeader:
         self.header_size = 1024  # size in bytes
         self.reserved_bytes = 192
 
-        self.sync_word = self.SYNC_WORD  # uint32_t
-        self.frame_type = 0  # uint32_t
+        self.sync_word = 0  # uint32_t
+        self.frame_type = self.FRAME_TYPE_EMPTY  # uint32_t
         self.hardware_id = ""  # char [16]
         self.unit_id = 0  # uint32_t
         self.active_ant_chs = 0  # uint32_t
