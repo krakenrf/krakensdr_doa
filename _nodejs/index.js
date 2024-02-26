@@ -10,7 +10,7 @@ const port = 8042
 const wsport = 8021
 const doaInterval = 250    // Interval the clients should get new doa data in ms
 
-//const remoteServer = 'testmap.krakenrf.com:2096'
+//const remoteServerDefault = 'wss://testmap.krakenrf.com:2096'
 const remoteServerDefault = 'wss://map.krakenrf.com:2096'
 const settingsJsonPath = '_share/settings.json'
 
@@ -23,6 +23,14 @@ let wsClient;
 let wsServer;
 let wsPingInterval;
 
+let debugMode = false;
+
+// Check for cmd Parameters, -d = DEBUG mode
+if (process.argv[2] && process.argv[2] === '-d') {
+  console.log('Debug mode enabled');
+  debugMode = true;
+}
+
 //load doa settings file
 function loadSettingsJson (){
   // check if Settings changed via Hash
@@ -34,7 +42,7 @@ function loadSettingsJson (){
         let newSettings = JSON.parse(rawdata);
         const newHash = crypto.createHash('md5').update(JSON.stringify(newSettings)).digest("hex")
         if (newHash != oldHash) {
-          console.log("hashes not the same")
+          console.log("hashes not the same, settings changend locally")
           settingsChanged = true;
         }
         settingsJson = newSettings;
@@ -48,29 +56,40 @@ function loadSettingsJson (){
         remoteServer = settingsJson.mapping_server_url || remoteServerDefault
     } catch (error) {}
   }
-  /*
-  console.log("Loaded Settings from json")
-  console.log("Freq: "+settingsJson.center_freq);
-  console.log("Mode (Data Format): "+settingsJson.doa_data_format);
-  console.log("Name: "+settingsJson.station_id);
-  console.log("KrakenPro Key: "+settingsJson.krakenpro_key);
-  console.log("Lat: "+settingsJson.latitude);
-  console.log("Lon: "+settingsJson.longitude);
-  */
+
+  if(debugMode){
+    console.log("Loaded Settings from json")
+    console.log("Freq: "+settingsJson.center_freq);
+    console.log("Mode (Data Format): "+settingsJson.doa_data_format);
+    console.log("Name: "+settingsJson.station_id);
+    console.log("KrakenPro Key: "+settingsJson.krakenpro_key);
+    console.log("Lat: "+settingsJson.latitude);
+    console.log("Lon: "+settingsJson.longitude);
+  }
 }
 loadSettingsJson();
+
+function wsTrySend(data){
+  try {
+    wsClient.send(data)
+    return true;
+  } catch (error) {
+    console.error("Sending data over WS failed, catched error")
+    return false;
+  }
+}
 
 // send Keep allive ping and if needed send Settings
 function websocketPing (){
   loadSettingsJson()
   //check if Settings Changed
   if (settingsChanged) {
-    console.log("send Settings")
-    wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}", "type": "settings", "data": ${JSON.stringify(settingsJson)}}`)
+    if(debugMode) console.log("sending Settings")
+    wsTrySend(`{"apikey": "${settingsJson.krakenpro_key}", "type": "settings", "data": ${JSON.stringify(settingsJson)}}`)
     settingsChanged = false
   } else {
-    console.log("send Ping")
-    wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}", "type": "ping"}`)
+    if(debugMode) console.log("send Ping")
+    wsTrySend(`{"apikey": "${settingsJson.krakenpro_key}", "type": "ping"}`)
   }
 }
 
@@ -83,34 +102,32 @@ function websocketConnect (){
   }
 
   wsClient.onclose = (e) => {
-    console.log('Socket is closed. Reconnect will be attempted in 1 second.', e.reason);
+    console.error('Socket is closed. Reconnect will be attempted in 1 second.', e.reason);
     setTimeout(websocketConnect, 1000);
   };
    
   wsClient.onerror = (error) => {
-    console.log('WebSocket error:', error)
+    console.error('WebSocket error:', error)
   }
    
   wsClient.onmessage = (e) => {
     //check what data we got from Server
     var jsn = JSON.parse(e.data);
     if(jsn.function == 'settings'){
-      console.log("Got new Settings: "+jsn);
+      if(debugMode) console.log("Got new Settings from Server");
       // read settings fresh from file and set new Settings
       loadSettingsJson();
-      //settingsJson.center_freq = Number.parseFloat(jsn.freq);      
-      //fs.writeFileSync(settingsJsonPath, JSON.stringify(settingsJson, null, 2));
       var newSettings = JSON.parse(jsn.settings);
       newSettings.ext_upd_flag = true;
       fs.writeFileSync(settingsJsonPath, JSON.stringify(newSettings, null, 2));
     } else {
-      console.log(jsn);
+      if(debugMode) console.log(jsn);
     }
   }
 }
 
 function checkForRemoteMode (){
-  console.log("Checking for Remote Mode");
+  if(debugMode) console.log("Checking for Remote Mode");
   loadSettingsJson()
   // if in remote mode connect to server with websocket
   if(settingsJson.doa_data_format == 'Kraken Pro Remote' && settingsJson.krakenpro_key != '0') {
@@ -135,30 +152,6 @@ function checkForRemoteMode (){
 }
 
 checkForRemoteMode()
-/*
-
-if(inRemoteMode){
-  websocketConnect();
-} else {
-  // when not in Remote mode start websocket server for local connections
-  // Websocket that sends incomming Data to App
-  wsServer = new ws.Server({ noServer: true });
-  wsServer.on('connection', socket => {
-    console.log('Got websocket connection!')
-    socket.on('message', message => {
-        console.log("received: %s",message)
-        //socket.send('Connection works to KrakenSDR')
-      });
-  });
-
-  const server = app.listen(wsport);
-  server.on('upgrade', (request, socket, head) => {
-    wsServer.handleUpgrade(request, socket, head, socket => {
-      wsServer.emit('connection', socket, request);
-    });
-  });
-}
-*/
 
 app.use(express.json())
 
@@ -178,7 +171,7 @@ app.post('/doapost', (req, res) => {
       //req.body.gpsBearing = settingsJson.heading;
       //console.log(req.body.latitude);
       //console.log(req.body.longitude);
-      wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}", "data": ${JSON.stringify(req.body)}}`) 
+      wsTrySend(`{"apikey": "${settingsJson.krakenpro_key}", "data": ${JSON.stringify(req.body)}}`) 
     } else {
       // sends data to all websocket clients
       /*
@@ -190,7 +183,7 @@ app.post('/doapost', (req, res) => {
     } 
 
   } else {
-    console.log("...");
+    if(debugMode) console.log("...");
   }
   res.sendStatus(200)
 });
@@ -202,8 +195,8 @@ app.post('/prpost', (req, res) => {
       //req.body.latitude = settingsJson.latitude; 
       //req.body.longitude = settingsJson.longitude;
       //req.body.gpsBearing = settingsJson.heading;
-      console.log(req.body);
-      wsClient.send(`{"apikey": "${settingsJson.krakenpro_key}", "type": "pr", "data": ${JSON.stringify(req.body)}}`) 
+      if(debugMode) console.log(req.body);
+      wsTrySend(`{"apikey": "${settingsJson.krakenpro_key}", "type": "pr", "data": ${JSON.stringify(req.body)}}`) 
     } else {
       // sends data to all websocket clients
       /*
