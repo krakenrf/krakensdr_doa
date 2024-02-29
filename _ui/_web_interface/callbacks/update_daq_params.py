@@ -5,7 +5,9 @@ from utils import get_agc_warning_style_from_gain
 
 
 @app.callback_shared(
-    Output("agc_warning", "style"),
+    # Output("agc_warning", "style"),
+    # Output("vfo_0_freq", "value"),
+    None,
     [Input(component_id="btn-update_rx_param", component_property="n_clicks")],
     [
         State(component_id="daq_center_freq", component_property="value"),
@@ -21,15 +23,14 @@ def update_daq_params(input_value, f0, gain):
 
         for i in range(web_interface.module_signal_processor.max_vfos):
             half_band_width = (web_interface.module_signal_processor.vfo_bw[i] / 10**6) / 2
-            min_freq = web_interface.daq_center_freq - web_interface.daq_fs / 2 + half_band_width
-            max_freq = web_interface.daq_center_freq + web_interface.daq_fs / 2 - half_band_width
+            min_freq = f0 - web_interface.daq_fs / 2 + half_band_width
+            max_freq = f0 + web_interface.daq_fs / 2 - half_band_width
             if min_freq > (web_interface.module_signal_processor.vfo_freq[i] / 10**6) or max_freq < (
                 web_interface.module_signal_processor.vfo_freq[i] / 10**6
             ):
-                web_interface.module_signal_processor.vfo_freq[i] = f0
-                app.push_mods({f"vfo_{i}_freq": {"value": f0}})
+                web_interface.module_signal_processor.vfo_freq[i] = f0 * 10**6
 
-        wavelength = 300 / web_interface.daq_center_freq
+        wavelength = 300 / f0
 
         if web_interface.module_signal_processor.DOA_ant_alignment == "UCA":
             # Convert RADIUS to INTERELEMENT SPACING
@@ -48,5 +49,11 @@ def update_daq_params(input_value, f0, gain):
                 "body_ant_spacing_wavelength": {"children": str(ant_spacing_wavelength)},
             }
         )
+
     web_interface.save_configuration()
-    return agc_warning_style
+
+    output = [Output("agc_warning", "style", agc_warning_style)]
+    for i in range(web_interface.module_signal_processor.max_vfos):
+        output.append(Output(f"vfo_{i}_freq", "value", web_interface.module_signal_processor.vfo_freq[i] / 10**6))
+
+    return output
