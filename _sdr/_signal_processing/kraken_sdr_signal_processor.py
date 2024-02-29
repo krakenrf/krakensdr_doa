@@ -751,15 +751,7 @@ class SignalProcessor(threading.Thread):
 
                     if self.data_ready and self.theta_0_list:
                         # Do Kraken App first as currently its the only one supporting multi-vfo out
-                        if (
-                            self.DOA_data_format == "Kraken App"
-                            or self.en_data_record
-                            or self.DOA_data_format == "Kraken Pro Local"
-                            or self.DOA_data_format == "Kraken Pro Remote"
-                            or self.DOA_data_format == "RDF Mapper"
-                            or self.DOA_data_format == "DF Aggregator"
-                            or self.DOA_data_format == "Full POST"
-                        ):  # and len(freq_list) > 0:
+                        if self.DOA_data_format != "Kerberos App":
                             message = ""
                             for j, freq in enumerate(self.freq_list):
                                 # KrakenSDR Android App Output
@@ -787,17 +779,9 @@ class SignalProcessor(threading.Thread):
 
                                 message += sub_message
 
-                            if (
-                                self.DOA_data_format == "Kraken App"
-                                or self.DOA_data_format == "Kraken Pro Local"
-                                or self.DOA_data_format == "Kraken Pro Remote"
-                                or self.DOA_data_format == "RDF Mapper"
-                                or self.DOA_data_format == "DF Aggregator"
-                                or self.DOA_data_format == "Full POST"
-                            ):
-                                self.DOA_res_fd.seek(0)
-                                self.DOA_res_fd.write(message)
-                                self.DOA_res_fd.truncate()
+                            self.DOA_res_fd.seek(0)
+                            self.DOA_res_fd.write(message)
+                            self.DOA_res_fd.truncate()
 
                         # Now create output for apps that only take one VFO
                         DOA_str = f"{self.theta_0_list[0]}"
@@ -822,17 +806,10 @@ class SignalProcessor(threading.Thread):
                                 self.snrs[0],
                             )
                         elif self.DOA_data_format == "Kerberos App":
-                            self.wr_csv(
-                                self.station_id,
+                            self.wr_kerberos(
                                 DOA_str,
                                 confidence_str,
                                 max_power_level_str,
-                                write_freq,
-                                doa_result_log,
-                                self.latitude,
-                                self.longitude,
-                                self.heading,
-                                "Kerberos",
                             )
                         elif self.DOA_data_format == "Kraken Pro Local":
                             self.wr_json(
@@ -1162,57 +1139,32 @@ class SignalProcessor(threading.Thread):
 
         # create a new XML file with the results
         html_str = ET.tostring(data, encoding="unicode")
-        self.DOA_res_fd.seek(0)
-        self.DOA_res_fd.write(html_str)
-        self.DOA_res_fd.truncate()
-        # print("Wrote XML")
 
-    def wr_csv(
+        with open(os.path.join(shared_path, "doa.xml"), "w+", encoding="utf-8") as file:
+            file.write(html_str)
+
+    def wr_kerberos(
         self,
-        station_id,
         DOA_str,
         confidence_str,
         max_power_level_str,
-        freq,
-        doa_result_log,
-        latitude,
-        longitude,
-        heading,
-        app_type,
     ):
-        if app_type == "Kraken":
-            # KrakenSDR Android App Output
-            message = f"{self.timestamp}, {DOA_str}, {confidence_str}, {max_power_level_str}, "
-            message += f"{freq}, {self.DOA_ant_alignment}, {self.latency}, {station_id}, "
-            message += f"{latitude}, {longitude}, {heading}, {heading}, "
-            message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation
+        confidence_str = "{}".format(np.max(int(float(confidence_str) * 100)))
+        max_power_level_str = "{:.1f}".format((np.maximum(-100, float(max_power_level_str) + 100)))
 
-            doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
-            for i in range(len(doa_result_log)):
-                message += ", " + "{:.2f}".format(doa_result_log[i])
-
-            self.DOA_res_fd.seek(0)
-            self.DOA_res_fd.write(message)
-            self.DOA_res_fd.truncate()
-            self.logger.debug("DoA results writen: {:s}".format(message))
-        else:  # Legacy Kerberos app support
-            confidence_str = "{}".format(np.max(int(float(confidence_str) * 100)))
-            max_power_level_str = "{:.1f}".format((np.maximum(-100, float(max_power_level_str) + 100)))
-
-            message = str(self.timestamp) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
-            html_str = (
-                "<DATA>\n<DOA>"
-                + DOA_str
-                + "</DOA>\n<CONF>"
-                + confidence_str
-                + "</CONF>\n<PWR>"
-                + max_power_level_str
-                + "</PWR>\n</DATA>"
-            )
-            self.DOA_res_fd.seek(0)
-            self.DOA_res_fd.write(html_str)
-            self.DOA_res_fd.truncate()
-            self.logger.debug("DoA results writen: {:s}".format(html_str))
+        html_str = (
+            "<DATA>\n<DOA>"
+            + DOA_str
+            + "</DOA>\n<CONF>"
+            + confidence_str
+            + "</CONF>\n<PWR>"
+            + max_power_level_str
+            + "</PWR>\n</DATA>"
+        )
+        self.DOA_res_fd.seek(0)
+        self.DOA_res_fd.write(html_str)
+        self.DOA_res_fd.truncate()
+        self.logger.debug("DoA results writen: {:s}".format(html_str))
 
     def wr_json(
         self,
