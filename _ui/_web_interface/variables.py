@@ -33,7 +33,7 @@ try:
 except Exception:
     SOFTWARE_GIT_SHORT_HASH = "e5df8c9"
 
-SOFTWARE_VERSION = "1.7.0"
+SOFTWARE_VERSION = "1.8.0"
 SYSTEM_UNAME = platform.uname()
 
 status_file_path = os.path.join(shared_path, "status.json")
