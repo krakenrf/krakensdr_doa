@@ -11,6 +11,7 @@ Please [consult the Wiki on the kraken_docs repo](https://github.com/krakenrf/kr
 ## Raspberry Pi 4/5 and Orange Pi 5B Image QUICKSTART
 
 **Download Latest Images From :** https://mega.nz/folder/8T1jiIzR#_1Ujs4Eoy0wdRib9eHCVSg
+
 **Alternative Download:** https://drive.google.com/drive/folders/14NuCOGM1Fh1QypDNMngXEepKYRBsG--B?usp=sharing
 
 In these image the code will automatically run on boot. Note that it may take 2-3 minutes for the boot process to complete. 
