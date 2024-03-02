@@ -750,6 +750,28 @@ class SignalProcessor(threading.Thread):
                     self.processing_time = int(1000 * (time.time() - start_time))
 
                     if self.data_ready and self.theta_0_list:
+                        DOA_str = f"{self.theta_0_list[0]}"
+                        confidence_str = f"{np.max(self.confidence_list[0]):.2f}"
+                        max_power_level_str = f"{np.maximum(-100, self.max_power_level_list[0]):.1f}"
+                        doa_result_log = self.doa_result_log_list[0]
+                        write_freq = self.freq_list[0]
+
+                        # Save XML unconditionally, e.g., used by DF-Aggregator
+                        self.wr_xml(
+                            self.station_id,
+                            DOA_str,
+                            confidence_str,
+                            max_power_level_str,
+                            write_freq,
+                            self.latitude,
+                            self.longitude,
+                            self.heading,
+                            self.speed,
+                            self.adc_overdrive,
+                            self.number_of_correlated_sources[0],
+                            self.snrs[0],
+                        )
+
                         # Do Kraken App first as currently its the only one supporting multi-vfo out
                         if self.DOA_data_format != "Kerberos App":
                             message = ""
@@ -782,29 +804,6 @@ class SignalProcessor(threading.Thread):
                             self.DOA_res_fd.seek(0)
                             self.DOA_res_fd.write(message)
                             self.DOA_res_fd.truncate()
-
-                        # Now create output for apps that only take one VFO
-                        DOA_str = f"{self.theta_0_list[0]}"
-                        confidence_str = f"{np.max(self.confidence_list[0]):.2f}"
-                        max_power_level_str = f"{np.maximum(-100, self.max_power_level_list[0]):.1f}"
-                        doa_result_log = self.doa_result_log_list[0]
-                        write_freq = self.freq_list[0]
-
-                        if self.DOA_data_format == "DF Aggregator":
-                            self.wr_xml(
-                                self.station_id,
-                                DOA_str,
-                                confidence_str,
-                                max_power_level_str,
-                                write_freq,
-                                self.latitude,
-                                self.longitude,
-                                self.heading,
-                                self.speed,
-                                self.adc_overdrive,
-                                self.number_of_correlated_sources[0],
-                                self.snrs[0],
-                            )
                         elif self.DOA_data_format == "Kerberos App":
                             self.wr_kerberos(
                                 DOA_str,
