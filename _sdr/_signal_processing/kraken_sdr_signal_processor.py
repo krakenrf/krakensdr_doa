@@ -750,28 +750,6 @@ class SignalProcessor(threading.Thread):
                     self.processing_time = int(1000 * (time.time() - start_time))
 
                     if self.data_ready and self.theta_0_list:
-                        DOA_str = f"{self.theta_0_list[0]}"
-                        confidence_str = f"{np.max(self.confidence_list[0]):.2f}"
-                        max_power_level_str = f"{np.maximum(-100, self.max_power_level_list[0]):.1f}"
-                        doa_result_log = self.doa_result_log_list[0]
-                        write_freq = self.freq_list[0]
-
-                        # Save XML unconditionally, e.g., used by DF-Aggregator
-                        self.wr_xml(
-                            self.station_id,
-                            DOA_str,
-                            confidence_str,
-                            max_power_level_str,
-                            write_freq,
-                            self.latitude,
-                            self.longitude,
-                            self.heading,
-                            self.speed,
-                            self.adc_overdrive,
-                            self.number_of_correlated_sources[0],
-                            self.snrs[0],
-                        )
-
                         # Do Kraken App first as currently its the only one supporting multi-vfo out
                         if self.DOA_data_format != "Kerberos App":
                             message = ""
@@ -810,7 +788,30 @@ class SignalProcessor(threading.Thread):
                                 confidence_str,
                                 max_power_level_str,
                             )
-                        elif self.DOA_data_format == "Kraken Pro Local":
+
+                        DOA_str = f"{self.theta_0_list[0]}"
+                        confidence_str = f"{np.max(self.confidence_list[0]):.2f}"
+                        max_power_level_str = f"{np.maximum(-100, self.max_power_level_list[0]):.1f}"
+                        doa_result_log = self.doa_result_log_list[0]
+                        write_freq = self.freq_list[0]
+
+                        # Save XML unconditionally, e.g., used by DF-Aggregator
+                        self.wr_xml(
+                            self.station_id,
+                            DOA_str,
+                            confidence_str,
+                            max_power_level_str,
+                            write_freq,
+                            self.latitude,
+                            self.longitude,
+                            self.heading,
+                            self.speed,
+                            self.adc_overdrive,
+                            self.number_of_correlated_sources[0],
+                            self.snrs[0],
+                        )
+
+                        if self.DOA_data_format == "Kraken Pro Local":
                             self.wr_json(
                                 self.station_id,
                                 DOA_str,
@@ -905,8 +906,8 @@ class SignalProcessor(threading.Thread):
                                     self.pool.apply_async(requests.post, args=[self.RDF_mapper_server, post])
                                 except Exception as e:
                                     print(f"NO CONNECTION: Invalid Server: {e}")
-                        elif self.DOA_data_format == "Kraken App":
-                            pass  # Just do nothing, stop the invalid doa result error from showing
+                        elif self.DOA_data_format in ("Kraken App", "DF Aggregator", "Kerberos App"):
+                            pass
                         else:
                             self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
 
