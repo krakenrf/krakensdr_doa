@@ -69,7 +69,6 @@ def write_config_file_dict(web_interface, param_dict, dsp_settings):
 
 
 def generate_config_page_layout(web_interface):
-    vfo_card = get_vfo_card_layout()
     config_page_component_list = [
         start_stop_card.layout,
         daq_status_card.layout,
@@ -82,6 +81,7 @@ def generate_config_page_layout(web_interface):
         get_system_control_card_layout(),
     ]
 
+    vfo_card = get_vfo_card_layout()
     for i in range(web_interface.module_signal_processor.max_vfos):
         config_page_component_list.append(vfo_card[i])
 

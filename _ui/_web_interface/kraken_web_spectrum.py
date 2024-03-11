@@ -97,8 +97,10 @@ def init_spectrum_fig(web_interface, fig_layout, trace_colors):
 
 
 def plot_spectrum(app, web_interface, spectrum_fig, waterfall_fig):
+    print(f"plot_spectrum: module_signal_processor.active_vfos = {web_interface.module_signal_processor.active_vfos}")
     # if spectrum_fig == None:
     if web_interface.reset_spectrum_graph_flag:
+        print("plot_spectrum: reset_spectrum_graph_flag")
         # Reset the peak hold each time the spectrum page is loaded
         web_interface.module_signal_processor.resetPeakHold()
 

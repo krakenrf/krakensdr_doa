@@ -33,7 +33,7 @@ from datetime import datetime
 from functools import lru_cache
 from multiprocessing.dummy import Pool
 from pathlib import Path
-from typing import Tuple
+from typing import Iterator, List, Optional, Tuple
 
 # Import optimization modules
 import numba as nb
@@ -47,6 +47,7 @@ import requests
 import scipy
 from iq_header import IQHeader
 from kraken_sdr_receiver import ReceiverRTLSDR
+from kraken_sdr_types import ScanFreq
 from numba import float32, njit, vectorize
 from pyargus import directionEstimation as de
 from scipy import fft, signal
@@ -153,6 +154,8 @@ class SignalProcessor(threading.Thread):
         self.vfo_fir_order_factor = [DEFAULT_VFO_FIR_ORDER_FACTOR] * self.max_vfos
         self.vfo_freq = [self.module_receiver.daq_center_freq] * self.max_vfos
         self.vfo_default_squelch_mode = "Auto"
+        self.vfo_scan_time = 0
+        self.vfo_scan_period_time = 30
         self.vfo_squelch_mode = ["Auto"] * self.max_vfos
         self.vfo_squelch = [-120] * self.max_vfos
         self.vfo_default_demod = "None"
@@ -165,10 +168,15 @@ class SignalProcessor(threading.Thread):
         self.vfo_blocked = [False] * self.max_vfos
         self.vfo_time = [0] * self.max_vfos
         self.max_demod_timeout = 60
+        self.vfo_scan_freq: List[Optional[ScanFreq]] = [None] * self.max_vfos
+        self.scan_id = 0
         self.default_auto_db_offset = 5  # 5dB for Auto Squelch
         self.default_auto_channel_db_offset = 3  # 3dB for Auto Channel Squelch and Scan modes
         # Ratio of Auto Channel, mean that how big should be measurement of spectrum outside of vfo_bw
         self.ratio_auto_channel = 3
+        self.max_freq_diff = 4000  # 4kHz
+        self.moving_avg_freq_window = 100_000  # 100kHz
+        self.scan_blocked_time = 60  # 60s
 
         self.en_fm_demod = False
         self.vfo_fm_demod = [False] * self.max_vfos
@@ -176,9 +184,9 @@ class SignalProcessor(threading.Thread):
         self.fm_demod_channels_thetas = [[]] * self.max_vfos
         self.iq_channels = [None] * self.max_vfos
 
-        self.active_vfos = 1
+        self._active_vfos = 1
         self.output_vfo = 0
-        self.vfo_mode = "Standard"
+        self._vfo_mode = "Standard"
         self.optimize_short_bursts = False
 
         # self.DOA_theta =  np.linspace(0,359,360)
@@ -222,6 +230,8 @@ class SignalProcessor(threading.Thread):
         self.confidence_list = []
         self.max_power_level_list = []
         self.fm_demod_channel_list = []
+        self.scan_channel_list = []
+        self.scan_iq_channel_list = []
 
         # TODO: NEED to have a funtion to update the file name if changed in the web ui
         self.data_recording_file_name = "mydata.csv"
@@ -235,6 +245,34 @@ class SignalProcessor(threading.Thread):
         self.number_of_correlated_sources = []
         self.snrs = []
         self.dropped_frames = 0
+
+    def logg(self, kwargs_dict):
+        print(f"kwargs_dict.keys = {kwargs_dict.keys()}")
+
+    @property
+    def vfo_mode(self):
+        return self._vfo_mode
+
+    @vfo_mode.setter
+    def vfo_mode(self, value: str):
+        self._vfo_mode = value
+        if value == "Scan":
+            pass
+
+    @property
+    def active_vfos(self):
+        if self._vfo_mode == "Scan":
+            active_vfos = 0
+            for i, scan_channel in enumerate(self.vfo_scan_freq):
+                if scan_channel:
+                    active_vfos = i + 1
+            return active_vfos
+        return self._active_vfos
+
+    @active_vfos.setter
+    def active_vfos(self, value: int):
+        if value != 0:
+            self._active_vfos = value
 
     @property
     def vfo_demod_modes(self):
@@ -291,6 +329,157 @@ class SignalProcessor(threading.Thread):
                 vfo_end_measure_spec = freq_idx + min(abs(N - freq_idx), vfo_freq_window)
                 measured_spec_mean = np.mean(measured_spec[vfo_start_measure_spec:vfo_end_measure_spec])
                 self.vfo_squelch[i] = measured_spec_mean + self.default_auto_channel_db_offset
+
+    def scan_channels(self, sampling_freq, N, measured_spec, real_freqs):
+        active_vfos = self.active_vfos
+        try:
+            cur_freq_max = None
+            mov_avg_noises = []
+            freq_window = int(self.moving_avg_freq_window / (sampling_freq / N))
+
+            proc_signal_size = self.processed_signal[1].size
+            proc_signal_time = proc_signal_size / sampling_freq
+
+            for i in range(len(self.scan_channel_list)):
+                self.scan_channel_list[i].detected = False
+                self.scan_channel_list[i].time += proc_signal_time
+
+            self.vfo_scan_time += proc_signal_time
+            if self.vfo_scan_time < self.vfo_scan_period_time:
+                return active_vfos
+
+            self.vfo_scan_time = 0
+            self.scan_channel_list = list(filter(lambda s: not s.deleted, self.scan_channel_list))
+
+            for real_freq, spec in zip(real_freqs, measured_spec):
+                if self.vfo_default_squelch_mode == "Auto Channel":
+                    if len(mov_avg_noises) < freq_window:
+                        mov_avg_noises.append(spec)
+                        continue
+                    mov_avg_noise = sum(mov_avg_noises) / len(mov_avg_noises) + self.default_auto_channel_db_offset
+                    if len(mov_avg_noises) > 0:
+                        mov_avg_noises.pop(0)
+                        mov_avg_noises.append(spec)
+                else:
+                    mov_avg_noise = self.vfo_squelch[0]
+
+                if spec > mov_avg_noise:
+                    if cur_freq_max is None:
+                        cur_freq_max = ScanFreq(
+                            id=self.scan_id,
+                            pick_freq=real_freq,
+                            start_freq=real_freq,
+                            end_freq=real_freq,
+                            squelch=mov_avg_noise + self.default_auto_channel_db_offset,
+                            spec=spec,
+                        )
+                        self.scan_id += 1
+                    else:
+                        cur_freq_max.end_freq = real_freq
+                    if spec > cur_freq_max.spec:
+                        cur_freq_max.pick_freq = real_freq
+                        cur_freq_max.spec = spec
+                else:
+                    if cur_freq_max is not None:
+                        cur_freq_max.end_freq = real_freq
+                        if cur_freq_max.band_width < 0:
+                            cur_freq_max.start_freq, cur_freq_max.end_freq = (
+                                cur_freq_max.end_freq,
+                                cur_freq_max.start_freq,
+                            )
+                        if cur_freq_max.band_width > self.max_freq_diff:
+                            found_freq = False
+                            for scan_channel in self.scan_channel_list:
+                                if scan_channel.distance(cur_freq_max) < self.max_freq_diff:
+                                    if cur_freq_max.spec > spec:
+                                        if scan_channel.pick_freq != cur_freq_max.pick_freq:
+                                            self.logger.debug(
+                                                f"Update pick freq: {scan_channel.pick_freq / 10 ** 6:.3f}MHz -> {cur_freq_max.pick_freq / 10 ** 6:.3f}MHz"
+                                            )
+                                        scan_channel.pick_freq = cur_freq_max.pick_freq
+                                        scan_channel.spec = cur_freq_max.spec
+                                    if cur_freq_max.start_freq < scan_channel.start_freq:
+                                        scan_channel.start_freq = cur_freq_max.start_freq
+                                    if cur_freq_max.end_freq < scan_channel.end_freq:
+                                        scan_channel.end_freq = cur_freq_max.end_freq
+                                    found_freq = True
+                                    if scan_channel.time > self.scan_blocked_time:
+                                        scan_channel.blocked = True
+                                    scan_channel.detected = True
+                                    self.scan_id -= 1
+                                    break
+
+                            if not found_freq:
+                                self.scan_channel_list.append(cur_freq_max)
+                                self.logger.debug("Detected start:")
+                                self.logger.debug(f"    band-width: {cur_freq_max.band_width}")
+                                self.logger.debug(
+                                    f"    dBm: {cur_freq_max.spec}dBm, spec = {spec}dBm, mov_avg = {mov_avg_noise}dBm"
+                                )
+                                self.logger.debug(
+                                    f"    pick freq: {cur_freq_max.pick_freq / 10 ** 6:.3f}MHz, start freq: {cur_freq_max.start_freq / 10 ** 6:.3f}MHz, end freq: {cur_freq_max.end_freq / 10 ** 6:.3f}MHz"
+                                )
+                        cur_freq_max = None
+
+            new_scan_channel_list: List[ScanFreq] = []
+            for scan_channel in self.scan_channel_list:
+                if not scan_channel.detected:
+                    self.logger.debug("Detected end:")
+                    self.logger.debug(f"    band-width: {scan_channel.band_width}")
+                    self.logger.debug(f"    dBm: {scan_channel.spec}dBm")
+                    self.logger.debug(
+                        f"    pick freq: {scan_channel.pick_freq / 10 ** 6:.3f}MHz, start freq: {scan_channel.start_freq / 10 ** 6:.3f}MHz, end freq: {scan_channel.end_freq / 10 ** 6:.3f}MHz"
+                    )
+                    scan_channel.deleted = True
+                new_scan_channel_list.append(scan_channel)
+            self.scan_channel_list = new_scan_channel_list
+            new_scan_channel_list: Iterator[ScanFreq] = filter(lambda s: not s.blocked, new_scan_channel_list)
+            new_scan_channel_list: List[ScanFreq] = sorted(
+                new_scan_channel_list, key=lambda s: s.squelch, reverse=True
+            )[: self.max_vfos]
+            new_scan_channel_list = sorted(new_scan_channel_list, key=lambda s: s.pick_freq)
+
+            def find_vfo_scan(scan_channel_list: List[ScanFreq], scan_channel: ScanFreq):
+                i = 0
+                found_vfo_scan_freq = None
+                for scan_freq in scan_channel_list:
+                    if scan_freq and scan_channel and scan_freq.id == scan_channel.id:
+                        found_vfo_scan_freq = scan_channel
+                        break
+                    i += 1
+                return i, found_vfo_scan_freq
+
+            vfo_scan_freq_ids = []
+            for i, scan_channel in enumerate(self.vfo_scan_freq):
+                _, found_vfo_scan_freq = find_vfo_scan(new_scan_channel_list, scan_channel)
+                if not found_vfo_scan_freq:
+                    self.vfo_scan_freq[i] = None
+                    self.vfo_demod_channel[i] = np.array([])
+                    self.vfo_theta_channel[i] = []
+                    self.vfo_iq_channel[i] = np.array([])
+                    vfo_scan_freq_ids.append(i)
+                else:
+                    self.vfo_scan_freq[i] = found_vfo_scan_freq
+
+            for scan_channel in new_scan_channel_list:
+                _, found_vfo_scan_freq = find_vfo_scan(self.vfo_scan_freq, scan_channel)
+                if not found_vfo_scan_freq:
+                    id = vfo_scan_freq_ids.pop(0)
+                    self.vfo_scan_freq[id] = scan_channel
+
+            active_vfos = 0
+            for i, scan_channel in enumerate(self.vfo_scan_freq):
+                if scan_channel:
+                    self.vfo_freq[i] = scan_channel.center_freq
+                    self.vfo_bw[i] = scan_channel.band_width
+                    self.vfo_squelch[i] = scan_channel.squelch
+                    self.vfo_demod[i] = self.vfo_default_demod
+                    self.vfo_iq[i] = self.vfo_default_iq
+                    active_vfos = i + 1
+        except Exception:
+            print(traceback.format_exc())
+
+        return active_vfos
 
     def save_processing_status(self) -> None:
         """This method serializes system status to file."""
@@ -418,12 +607,19 @@ class SignalProcessor(threading.Thread):
 
                     self.data_ready = True
 
+                    if self.vfo_mode == "Standard":
+                        active_vfos = self.active_vfos
+                    elif self.vfo_mode == "VFO-0 Auto Max":
+                        active_vfos = 1
+                    else:
+                        active_vfos = self.max_vfos
+
                     if self.spectrum_fig_type == "Single":
                         m = 0
                         N = self.spectrum_window_size
                         self.spectrum = (
                             np.ones(
-                                (self.channel_number + (self.active_vfos * 2 + 1), N),
+                                (self.channel_number + (active_vfos * 2 + 1), N),
                                 dtype=np.float32,
                             )
                             * -200
@@ -458,7 +654,7 @@ class SignalProcessor(threading.Thread):
                     else:
                         N = 32768
                         self.spectrum = np.ones(
-                            (self.channel_number + (self.active_vfos * 2 + 1), N),
+                            (self.channel_number + (active_vfos * 2 + 1), N),
                             dtype=np.float32,
                         )
                         for m in range(self.channel_number):  # range(1): #range(self.channel_number):
@@ -481,7 +677,6 @@ class SignalProcessor(threading.Thread):
                     try:
                         if self.data_ready:
                             spectrum_window_size = len(self.spectrum[0, :])
-                            active_vfos = self.active_vfos if self.vfo_mode == "Standard" else 1
                             write_freq = 0
                             update_list = [False] * self.max_vfos
                             conf_val = 0
@@ -504,7 +699,11 @@ class SignalProcessor(threading.Thread):
                             real_freqs = self.module_receiver.daq_center_freq - relative_freqs
                             measured_spec = self.spectrum[1, :]
 
-                            self.calculate_squelch(sampling_freq, N, measured_spec, real_freqs)
+                            if self.vfo_mode == "Scan":
+                                active_vfos = self.scan_channels(sampling_freq, N, measured_spec, real_freqs)
+                                print(f"Number of scanned active_vfos {active_vfos}")
+                            else:
+                                self.calculate_squelch(sampling_freq, N, measured_spec, real_freqs)
 
                             for i in range(active_vfos):
                                 # If chanenl freq is out of bounds for the current tuned bandwidth, reset to the middle freq
@@ -649,16 +848,16 @@ class SignalProcessor(threading.Thread):
                                     elif self.vfo_iq_enabled[i]:
                                         self.vfo_iq_channel[i] = np.concatenate((self.vfo_iq_channel[i], iq_channel))
                                 else:
-                                    self.vfo_time[i] = 0
-                                    self.vfo_blocked[i] = False
                                     fm_demod_channel = self.vfo_demod_channel[i]
                                     iq_channel = self.vfo_iq_channel[i]
                                     thetas = self.vfo_theta_channel[i]
                                     vfo_freq = int(self.vfo_freq[i])
                                     self.fm_demod_channel_list.append(
-                                        (now_dt_str, vfo_freq, fm_demod_channel, iq_channel, thetas)
+                                        (now_dt_str, vfo_freq, fm_demod_channel, iq_channel, thetas, self.vfo_time[i])
                                     )
                                     self.vfo_demod_channel[i] = np.array([])
+                                    self.vfo_time[i] = 0
+                                    self.vfo_blocked[i] = False
                                     self.vfo_theta_channel[i] = []
                                     self.vfo_iq_channel[i] = np.array([])
 
@@ -691,6 +890,7 @@ class SignalProcessor(threading.Thread):
                                 fm_demod_channel,
                                 iq_channel,
                                 thetas,
+                                vfo_time,
                             ) in self.fm_demod_channel_list:
                                 store_demod_channel = fm_demod_channel.size > 0
                                 store_iq_channel = iq_channel.size > 0
@@ -721,7 +921,7 @@ class SignalProcessor(threading.Thread):
                                         )
                                         self.vfo_demod[:] = ["None"] * len(self.vfo_demod)
                                 if store_iq_channel:
-                                    record_file_name = f"{now_dt_str},IQ_{vfo_freq / 1e6:.3f}MHz"
+                                    record_file_name = f"{now_dt_str},{vfo_time:3f}s,{vfo_freq / 1e6:.3f}MHz"
                                     filename = f"{self.iq_record_path}/{record_file_name},DOA_{doa_max_str}.iq"
                                     if can_store_file(self.iq_record_path):
                                         iq_channel.tofile(filename)

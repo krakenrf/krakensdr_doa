@@ -16,6 +16,20 @@ def get_vfo_config_card_layout():
 
     en_optimize_short_bursts = [1] if web_interface.module_signal_processor.optimize_short_bursts else []
 
+    if web_interface.module_signal_processor.vfo_mode == "Scan":
+        default_squelch_modes = [
+            {"label": "Auto", "value": "Auto"},
+            {"label": "Auto Channel", "value": "Auto Channel"},
+        ]
+        if web_interface.module_signal_processor.vfo_default_squelch_mode == "None":
+            web_interface.module_signal_processor.vfo_default_squelch_mode = "Auto"
+    else:
+        default_squelch_modes = [
+            {"label": "Manual", "value": "Manual"},
+            {"label": "Auto", "value": "Auto"},
+            {"label": "Auto Channel", "value": "Auto Channel"},
+        ]
+
     return html.Div(
         [
             html.H2("VFO Configuration", id="init_title_sq"),
@@ -43,6 +57,7 @@ def get_vfo_config_card_layout():
                         options=[
                             {"label": "Standard", "value": "Standard"},
                             {"label": "VFO-0 Auto Max", "value": "Auto"},
+                            {"label": "VFOs Scan", "value": "Scan"},
                         ],
                         value=web_interface.module_signal_processor.vfo_mode,
                         style={"display": "inline-block"},
@@ -56,17 +71,52 @@ def get_vfo_config_card_layout():
                     html.Div("VFO Default Squelch Mode:", id="label_vfo_default_squelch_mode", className="field-label"),
                     dcc.Dropdown(
                         id="vfo_default_squelch_mode",
-                        options=[
-                            {"label": "Manual", "value": "Manual"},
-                            {"label": "Auto", "value": "Auto"},
-                            {"label": "Auto Channel", "value": "Auto Channel"},
-                        ],
+                        options=default_squelch_modes,
                         value=web_interface.module_signal_processor.vfo_default_squelch_mode,
                         style={"display": "inline-block"},
                         className="field-body",
                     ),
                 ],
                 className="field",
+            ),
+            html.Div(
+                [
+                    html.Div("VFO Scan Period Time:", id="label_vfo_scan_period_time", className="field-label"),
+                    dcc.Input(
+                        id="vfo_scan_period_time",
+                        value=web_interface.module_signal_processor.vfo_scan_period_time,
+                        type="number",
+                        max=web_interface.module_signal_processor.scan_blocked_time,
+                        debounce=True,
+                        style={"display": "inline-block"},
+                        className="field-body-textbox",
+                    ),
+                ],
+                className="field",
+                style=(
+                    {"display": "block"}
+                    if web_interface.module_signal_processor.vfo_mode == "Scan"
+                    else {"display": "none"}
+                ),
+            ),
+            html.Div(
+                [
+                    html.Div("Scan Channel Block Time:", id="label_scan_blocked_time", className="field-label"),
+                    dcc.Input(
+                        id="scan_blocked_time",
+                        value=web_interface.module_signal_processor.scan_blocked_time,
+                        type="number",
+                        debounce=True,
+                        style={"display": "inline-block"},
+                        className="field-body-textbox",
+                    ),
+                ],
+                className="field",
+                style=(
+                    {"display": "block"}
+                    if web_interface.module_signal_processor.vfo_mode == "Scan"
+                    else {"display": "none"}
+                ),
             ),
             html.Div(
                 [
@@ -148,6 +198,12 @@ def get_vfo_config_card_layout():
                         className="field-body",
                     ),
                 ],
+                id="menu_active_vfos",
+                style=(
+                    {"display": "inline-block"}
+                    if web_interface.module_signal_processor.vfo_mode == "Standard"
+                    else {"display": "none"}
+                ),
                 className="field",
             ),
             html.Div(
