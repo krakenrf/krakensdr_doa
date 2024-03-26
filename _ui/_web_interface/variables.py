@@ -37,6 +37,7 @@ SOFTWARE_VERSION = "1.8.0"
 SYSTEM_UNAME = platform.uname()
 
 status_file_path = os.path.join(shared_path, "status.json")
+position_file_path = os.path.join(shared_path, "position.json")
 
 daq_subsystem_path = os.path.join(os.path.join(os.path.dirname(root_path), "heimdall_daq_fw"), "Firmware")
 
