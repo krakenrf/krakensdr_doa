@@ -13,6 +13,8 @@ const doaInterval = 250    // Interval the clients should get new doa data in ms
 //const remoteServerDefault = 'wss://testmap.krakenrf.com:2096'
 const remoteServerDefault = 'wss://map.krakenrf.com:2096'
 const settingsJsonPath = '_share/settings.json'
+const statusJsonPath = '_share/status.json'
+const positionJsonPath = '_share/position.json'
 
 let remoteServer = ''
 let lastDoaUpdate = Date.now()
@@ -212,3 +214,225 @@ app.post('/prpost', (req, res) => {
 app.listen(port, () => {
     console.log(`Middleware HTTP Server is listening at http://localhost:${port}, Websocket on ${wsport}`)
 })
+
+app.get('/getSettings', (req, res) => {
+    let rawdata = fs.readFileSync(settingsJsonPath, "utf8");
+    let settingsJson = JSON.parse(rawdata);
+    res.setHeader('content-type', 'application/json');
+    res.send(settingsJson);
+})
+
+app.post('/updateSettings', (req, res) => {
+    const freq = Number(req.query.freq);
+    const gain = Number(req.query.gain);
+    const array = req.query.array;
+    const spacing = Number(req.query.spacing);
+
+    let rawdata = fs.readFileSync(settingsJsonPath, "utf8");
+    let settingsObj = JSON.parse(rawdata);
+    settingsObj.center_freq = freq;
+    settingsObj.uniform_gain = gain;
+    settingsObj.ant_arrangement = array;
+    settingsObj.ant_spacing_meters = spacing;
+
+    let settingsString = JSON.stringify(settingsObj);
+    fs.writeFileSync(
+        settingsJsonPath,
+        settingsString,
+        {encoding: "utf8", flag: "w"}
+    );
+
+    let editedSettings = fs.readFileSync(settingsJsonPath, "utf8");
+    let editedJson = JSON.parse(editedSettings);
+    let success = (editedJson.center_freq===freq
+        && editedJson.uniform_gain===gain
+        && editedJson.ant_arrangement===array
+        && editedJson.ant_spacing_meters===spacing
+    );
+
+    res.setHeader('content-type', 'application/json');
+    res.send({"success": success});
+})
+
+function staticGPSCase(requestQuery){
+
+    const latitude = requestQuery.latitude;
+    const longitude = requestQuery.longitude;
+    const heading = requestQuery.heading;
+
+    let rawdata = fs.readFileSync(settingsJsonPath, "utf8");
+    let settingsObj = JSON.parse(rawdata);
+    settingsObj.location_source = "Static";
+    settingsObj.latitude = latitude;
+    settingsObj.longitude = longitude;
+    settingsObj.heading = heading;
+
+    let settingsString = JSON.stringify(settingsObj);
+    fs.writeFileSync(
+        settingsJsonPath,
+        settingsString,
+        {encoding: "utf8", flag: "w"}
+    );
+
+    let editedSettings = fs.readFileSync(settingsJsonPath, "utf8");
+    let editedJson = JSON.parse(editedSettings);
+    let success = (editedJson.location_source==="Static"
+        && editedJson.latitude===latitude
+        && editedJson.longitude===longitude
+        && editedJson.heading===heading
+    );
+
+    return success;
+}
+
+function setGPSCase(locationSource){
+
+    let rawdata = fs.readFileSync(settingsJsonPath, "utf8");
+    let settingsObj = JSON.parse(rawdata);
+    settingsObj.location_source = locationSource;
+    let settingsString = JSON.stringify(settingsObj);
+    fs.writeFileSync(
+        settingsJsonPath,
+        settingsString,
+        {encoding: "utf8", flag: "w"}
+    );
+
+    let editedSettings = fs.readFileSync(settingsJsonPath, "utf8");
+    let editedJson = JSON.parse(editedSettings);
+    let success = (editedJson.location_source===locationSource);
+
+    return success;
+}
+
+function setGPSFixedHeading(heading){
+
+    let rawdata = fs.readFileSync(settingsJsonPath, "utf8");
+    let settingsObj = JSON.parse(rawdata);
+
+    settingsObj.location_source = "gpsd";
+    settingsObj.gps_fixed_heading = true;
+    settingsObj.heading = heading;
+
+    let settingsString = JSON.stringify(settingsObj);
+    fs.writeFileSync(
+        settingsJsonPath,
+        settingsString,
+        {encoding: "utf8", flag: "w"}
+    );
+
+    let editedSettings = fs.readFileSync(settingsJsonPath, "utf8");
+    let editedJson = JSON.parse(editedSettings);
+    let success = (editedJson.location_source==="gpsd"
+        && editedJson.gps_fixed_heading === true
+        && editedJson.heading === heading);
+
+    return success;
+}
+
+app.get("/getStatus", (req, res) => {
+    let rawdata = fs.readFileSync(statusJsonPath, "utf8");
+    let statusJson = JSON.parse(rawdata);
+    res.setHeader('content-type', 'application/json');
+    res.send(statusJson);
+})
+
+app.get("/getPosition", (req, res) => {
+    let rawdata = fs.readFileSync(positionJsonPath, "utf8");
+    let positionJson = JSON.parse(rawdata);
+    res.setHeader('content-type', 'application/json');
+    res.send(positionJson);
+})
+
+
+app.post("/enableGPS", (req, res) => {
+    let locationSource = req.query.locationSource;
+    let success = false;
+    if (locationSource === "Static"){
+        success = staticGPSCase(req.query);
+    } else if (locationSource === "USB"){
+        if (req.query.fixedHeading){
+            success = setGPSFixedHeading(req.query.heading);
+        }else{
+            success = setGPSCase("gpsd")
+        }
+    } else if (locationSource === "None"){
+        success = setGPSCase("None")
+    } else {
+        setGPSCase("None")
+        success = false;
+    }
+
+    res.setHeader('content-type', 'application/json');
+    res.send({"success": success});
+})
+
+/*
+const gpsd = require('node-gpsd')
+let gpsdDaemon = new gpsd.Daemon();
+let listener = new gpsd.Listener();
+let lastDataPacket = {};
+const dataAgeThreshold = 2; // seconds
+
+function convertCoordinatesMinutesToDegrees(longitude, latitude){
+    let latDeg = Number(longitude.slice(0, 2));
+    const latMins = Number(longitude.slice(2));
+    latDeg += (latMins/60);
+
+    let lonDeg = Number(latitude.slice(0, 3));
+    const lonMins = Number(latitude.slice(3));
+    latDeg += (lonMins/60);
+
+    return {latitude: latDeg, longitude: lonDeg};
+}
+
+app.get("/enableGPSD", (req, res) => {
+    gpsdDaemon.start(function() {
+        console.log('GPSD started');
+    });
+    listener.connect(function() {
+        console.log('GPSD listener connected');
+    });
+    listener.on("TPV", function(data){
+        let unixSecs = Date.parse(data.time)/1000;
+        let latDeg, lonDeg;
+        ({latitude: latDeg, longitude: lonDeg} = convertCoordinatesMinutesToDegrees(Number(data.lon), Number(data.lat)));
+        lastDataPacket = {
+            timestamp: unixSecs,
+            latitude: latDeg,
+            longitude: lonDeg,
+            latitudeError: Number(data.epy),
+            longitudeError: Number(data.epx),
+            heading: Number(data.track),
+            headingError: Number(data.epd)};
+    });
+    listener.watch();
+    res.setHeader('content-type', 'application/json');
+    res.send({listenerConnected: listener.isConnected()});
+})
+
+app.get("/disableGPSD", (req, res) => {
+    listener.unwatch();
+    listener.disconnect(function() {
+        console.log('GPSD listener disconnected');
+    });
+    gpsdDaemon.stop(function() {
+        console.log('GPSD stopped');
+    });
+    res.setHeader('content-type', 'application/json');
+    res.send({listenerConnected: listener.isConnected()});
+})
+
+app.get("/getGPSDPosition", (req, res) => {
+    const listenerConnected = listener.isConnected();
+    const ageOfData = Math.abs(Date.now()/1000 - lastDataPacket.timestamp);
+    if (listenerConnected && ageOfData<dataAgeThreshold){
+        res.setHeader('content-type', 'application/json');
+        res.send({
+            listenerConnected: listenerConnected,
+            ageOfData: ageOfData,
+            dataAgeThreshold: dataAgeThreshold,
+            TPV: lastDataPacket});
+    }
+})
+*/
+

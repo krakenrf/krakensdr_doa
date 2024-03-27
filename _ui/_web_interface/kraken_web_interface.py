@@ -47,7 +47,7 @@ class WebInterface:
         self._avg_win_size = 10
         self._update_rate_arr = None
 
-        self._doa_fig_type = dsp_settings.get("doa_fig_type", "Linear")
+        self._doa_fig_type = "Polar"
 
         # Que to communicate with the signal processing module
         self.sp_data_que = queue.Queue(1)
@@ -212,7 +212,7 @@ class WebInterface:
         self.doas = []  # Final measured DoAs [deg]
         self.max_doas_list = []
         self.doa_confidences = []
-        self.compass_offset = dsp_settings.get("compass_offset", 0)
+        self.compass_offset = 0##dsp_settings.get("compass_offset", 0)
         self.module_signal_processor.compass_offset = self.compass_offset
         self.daq_dsp_latency = 0  # [ms]
         self.max_amplitude = 0  # Used to help setting the threshold level of the squelch

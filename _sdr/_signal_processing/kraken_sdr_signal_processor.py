@@ -58,6 +58,7 @@ from variables import (
     root_path,
     shared_path,
     status_file_path,
+    position_file_path
 )
 
 # os.environ['OPENBLAS_NUM_THREADS'] = '4'
@@ -73,7 +74,7 @@ except ModuleNotFoundError:
     hasgps = False
     print("Can't find gpsd - ok if no external gps used")
 
-MIN_SPEED_FOR_VALID_HEADING = 2.0  # m / s
+MIN_SPEED_FOR_VALID_HEADING = 0.5  # m / s
 MIN_DURATION_FOR_VALID_HEADING = 3.0  # s
 DEFAULT_VFO_FIR_ORDER_FACTOR = int(2)
 DEFAULT_ROOT_MUSIC_STD_DEGREES = 1
@@ -1071,6 +1072,7 @@ class SignalProcessor(threading.Thread):
                     self.time_of_last_invalid_heading = time.time()
                 self.gps_status = "Connected"
                 self.gps_timestamp = int(round(1000.0 * packet.get_time().timestamp()))
+                output_current_position(self.gps_timestamp, self.latitude, self.longitude, self.heading)
             except (gpsd.NoFixError, UserWarning, ValueError, BrokenPipeError):
                 self.latitude = self.longitude = 0.0
                 self.gps_timestamp = 0
@@ -1764,3 +1766,8 @@ def calculate_doa_papr(DOA_data):
        self.squelch_mask = np.ones(len(self.filtered_signal))*self.squelch_threshold
        self.processed_signal = np.zeros([self.channel_number, len(self.filtered_signal)])
 """
+
+def output_current_position(timestamp, latitude, longitude, heading):
+    position_json = {"timestamp": timestamp, "latitude": latitude, "longitude": longitude, "heading": heading}
+    with open(position_file_path, 'w') as f:
+        f.write(json.dumps(position_json))

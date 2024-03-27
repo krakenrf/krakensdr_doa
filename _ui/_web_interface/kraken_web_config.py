@@ -68,22 +68,23 @@ def write_config_file_dict(web_interface, param_dict, dsp_settings):
         return 0, []
 
 
+# noinspection PyListCreation
 def generate_config_page_layout(web_interface):
-    vfo_card = get_vfo_card_layout()
+    #vfo_card = get_vfo_card_layout()
     config_page_component_list = [
-        start_stop_card.layout,
+        #start_stop_card.layout,
         daq_status_card.layout,
         get_daq_config_card_layout(),
-        get_vfo_config_card_layout(),
+        #get_vfo_config_card_layout(),
         get_dsp_config_card_layout(),
-        get_display_options_card_layout(),
+        #get_display_options_card_layout(),
         get_station_config_card_layout(),
-        get_recording_config_card_layout(),
+        #get_recording_config_card_layout(),
         get_system_control_card_layout(),
     ]
 
-    for i in range(web_interface.module_signal_processor.max_vfos):
-        config_page_component_list.append(vfo_card[i])
+    #for i in range(web_interface.module_signal_processor.max_vfos):
+    #    config_page_component_list.append(vfo_card[i])
 
     if not web_interface.disable_tooltips:
         config_page_component_list.append(tooltips.dsp_config_tooltips)
