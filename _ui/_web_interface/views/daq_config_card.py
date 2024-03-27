@@ -82,44 +82,12 @@ def get_daq_config_card_layout():
         html.Div(
             [
                 html.Div("Receiver Gain:", className="field-label"),
-                dcc.Dropdown(
+                dcc.Input(
                     id="daq_rx_gain",
-                    options=[
-                        {"label": "Auto", "value": AUTO_GAIN_VALUE},
-                        {"label": "0 dB", "value": 0},
-                        {"label": "0.9 dB", "value": 0.9},
-                        {"label": "1.4 dB", "value": 1.4},
-                        {"label": "2.7 dB", "value": 2.7},
-                        {"label": "3.7 dB", "value": 3.7},
-                        {"label": "7.7 dB", "value": 7.7},
-                        {"label": "8.7 dB", "value": 8.7},
-                        {"label": "12.5 dB", "value": 12.5},
-                        {"label": "14.4 dB", "value": 14.4},
-                        {"label": "15.7 dB", "value": 15.7},
-                        {"label": "16.6 dB", "value": 16.6},
-                        {"label": "19.7 dB", "value": 19.7},
-                        {"label": "20.7 dB", "value": 20.7},
-                        {"label": "22.9 dB", "value": 22.9},
-                        {"label": "25.4 dB", "value": 25.4},
-                        {"label": "28.0 dB", "value": 28.0},
-                        {"label": "29.7 dB", "value": 29.7},
-                        {"label": "32.8 dB", "value": 32.8},
-                        {"label": "33.8 dB", "value": 33.8},
-                        {"label": "36.4 dB", "value": 36.4},
-                        {"label": "37.2 dB", "value": 37.2},
-                        {"label": "38.6 dB", "value": 38.6},
-                        {"label": "40.2 dB", "value": 40.2},
-                        {"label": "42.1 dB", "value": 42.1},
-                        {"label": "43.4 dB", "value": 43.4},
-                        {"label": "43.9 dB", "value": 43.9},
-                        {"label": "44.5 dB", "value": 44.5},
-                        {"label": "48.0 dB", "value": 48.0},
-                        {"label": "49.6 dB", "value": 49.6},
-                    ],
                     value=web_interface.module_receiver.daq_rx_gain,
-                    clearable=False,
-                    style={"display": "inline-block"},
-                    className="field-body",
+                    type="number",
+                    className="field-body-textbox",
+                    disabled=True,
                 ),
             ],
             className="field",
@@ -129,6 +97,7 @@ def get_daq_config_card_layout():
                 html.Button("Update Receiver Parameters", id="btn-update_rx_param", className="btn"),
             ],
             className="field",
+            display="none"
         ),
         html.Div(
             [
@@ -146,6 +115,7 @@ def get_daq_config_card_layout():
                 dcc.Checklist(options=option, id="en_basic_daq_cfg", className="field-body", value=en_basic_daq_cfg),
             ],
             className="field",
+            display="none"
         ),
         html.Div(
             [
@@ -630,7 +600,7 @@ def get_daq_config_card_layout():
                     className="field",
                 ),
             ],
-            id="basic-cfg-container",
+            id="basic-cfg-container", display="none"
         ),
     ]
 

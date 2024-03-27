@@ -29,6 +29,7 @@ def get_station_config_card_layout():
                     ),
                 ],
                 className="field",
+                display="none",
             ),
             html.Div(
                 [
@@ -50,6 +51,7 @@ def get_station_config_card_layout():
                     ),
                 ],
                 className="field",
+                display="none",
             ),
             html.Div(
                 [
@@ -64,6 +66,7 @@ def get_station_config_card_layout():
                 ],
                 id="rdf_mapper_server_address_field",
                 className="field",
+                display="none",
             ),
             html.Div(
                 [
@@ -78,6 +81,7 @@ def get_station_config_card_layout():
                 ],
                 id="krakenpro_field",
                 className="field",
+                display="none",
             ),
             html.Div(
                 [
@@ -96,6 +100,7 @@ def get_station_config_card_layout():
                         value=web_interface.location_source,
                         style={"display": "inline-block"},
                         className="field-body",
+                        disabled=True,
                     ),
                 ],
                 className="field",
@@ -114,6 +119,7 @@ def get_station_config_card_layout():
                 ],
                 className="field",
                 id="fixed_heading_div",
+                disabled=True,
             ),
             html.Div(
                 [
@@ -130,6 +136,7 @@ def get_station_config_card_layout():
                         ],
                         id="latitude_field",
                         className="field",
+                        disabled=True,
                     ),
                     html.Div(
                         [
@@ -144,6 +151,7 @@ def get_station_config_card_layout():
                         ],
                         id="logitude_field",
                         className="field",
+                        disabled=True,
                     ),
                 ],
                 id="location_fields",
@@ -161,6 +169,7 @@ def get_station_config_card_layout():
                 ],
                 id="heading_field",
                 className="field",
+                disabled=True,
             ),
             html.Div(
                 [
@@ -212,6 +221,7 @@ def get_station_config_card_layout():
                         ],
                         id="min_speed_field",
                         className="field",
+                        disabled=True,
                     ),
                     html.Div(
                         [
@@ -227,6 +237,7 @@ def get_station_config_card_layout():
                         ],
                         id="min_speed_duration_field",
                         className="field",
+                        disabled=True,
                     ),
                 ],
                 id="min_speed_heading_fields",
