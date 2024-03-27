@@ -8,7 +8,7 @@ from waterfall import init_waterfall
 # compress=True, update_title="") # cannot use update_title with
 # dash_devices
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
-app.title = "KrakenSDR DoA"
+app.title = "Locate"
 app.config.suppress_callback_exceptions = True
 
 # app_log = logger.getLogger('werkzeug')

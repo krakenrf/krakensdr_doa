@@ -7,7 +7,7 @@ layout = html.Div(
         html.Div(
             [
                 html.Img(
-                    src="../assets/kraken_interface_bw.png",
+                    src="../assets/tagline-logo.png",
                     style={"display": "block", "marginLeft": "auto", "marginRight": "auto", "height": "60px"},
                 )
             ]
