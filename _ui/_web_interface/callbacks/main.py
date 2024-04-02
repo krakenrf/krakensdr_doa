@@ -15,7 +15,14 @@ from kraken_sdr_receiver import ReceiverRTLSDR
 from kraken_sdr_signal_processor import SignalProcessor, xi
 from kraken_web_config import write_config_file_dict
 from kraken_web_spectrum import init_spectrum_fig
-from utils import fetch_dsp_data, fetch_gps_data, set_clicked, settings_change_watcher
+from utils import (
+    fetch_dsp_data,
+    fetch_gps_data,
+    is_float,
+    is_int,
+    set_clicked,
+    settings_change_watcher,
+)
 from variables import (
     DECORRELATION_OPTIONS,
     DOA_METHODS,
@@ -63,7 +70,8 @@ def update_data_recording_params(filename, en_data_record, write_interval):
     else:
         web_interface.module_signal_processor.en_data_record = False
 
-    web_interface.module_signal_processor.write_interval = float(write_interval)
+    if is_float(write_interval):
+        web_interface.module_signal_processor.write_interval = float(write_interval)
 
 
 @app.callback_shared(Output("download_recorded_file", "data"), [Input("btn_download_file", "n_clicks")])
@@ -266,7 +274,8 @@ def update_vfo_params(*args):
     web_interface.module_signal_processor.vfo_default_squelch_mode = kwargs_dict["vfo_default_squelch_mode"]
     web_interface.module_signal_processor.vfo_default_demod = kwargs_dict["vfo_default_demod"]
     web_interface.module_signal_processor.vfo_default_iq = kwargs_dict["vfo_default_iq"]
-    web_interface.module_signal_processor.max_demod_timeout = int(kwargs_dict["max_demod_timeout"])
+    if is_int(kwargs_dict["max_demod_timeout"]):
+        web_interface.module_signal_processor.max_demod_timeout = int(kwargs_dict["max_demod_timeout"])
 
     active_vfos = kwargs_dict["active_vfos"]
     # If VFO mode is in the VFO-0 Auto Max mode, we active VFOs to 1 only
@@ -274,7 +283,8 @@ def update_vfo_params(*args):
         active_vfos = 1
         app_updates["active_vfos"] = {"value": 1}
 
-    web_interface.module_signal_processor.dsp_decimation = max(int(kwargs_dict["dsp_decimation"]), 1)
+    if is_int(kwargs_dict["dsp_decimation"]):
+        web_interface.module_signal_processor.dsp_decimation = max(int(kwargs_dict["dsp_decimation"]), 1)
     web_interface.module_signal_processor.active_vfos = active_vfos
     web_interface.module_signal_processor.output_vfo = kwargs_dict["output_vfo"]
 
@@ -290,15 +300,20 @@ def update_vfo_params(*args):
         vfo_max = web_interface.daq_center_freq + bw / 2
 
         for i in range(web_interface.module_signal_processor.max_vfos):
-            web_interface.module_signal_processor.vfo_bw[i] = int(min(kwargs_dict["vfo_" + str(i) + "_bw"], bw * 10**6))
+            if is_int(kwargs_dict["vfo_" + str(i) + "_bw"]):
+                web_interface.module_signal_processor.vfo_bw[i] = int(
+                    min(kwargs_dict["vfo_" + str(i) + "_bw"], bw * 10**6)
+                )
             web_interface.module_signal_processor.vfo_fir_order_factor[i] = int(
                 kwargs_dict["vfo_" + str(i) + "_fir_order_factor"]
             )
-            web_interface.module_signal_processor.vfo_freq[i] = int(
-                max(min(kwargs_dict["vfo_" + str(i) + "_freq"], vfo_max), vfo_min) * 10**6
-            )
+            if is_float(kwargs_dict["vfo_" + str(i) + "_freq"]):
+                web_interface.module_signal_processor.vfo_freq[i] = int(
+                    max(min(kwargs_dict["vfo_" + str(i) + "_freq"], vfo_max), vfo_min) * 10**6
+                )
             web_interface.module_signal_processor.vfo_squelch_mode[i] = kwargs_dict[f"vfo_squelch_mode_{i}"]
-            web_interface.module_signal_processor.vfo_squelch[i] = int(kwargs_dict["vfo_" + str(i) + "_squelch"])
+            if is_int(kwargs_dict["vfo_" + str(i) + "_squelch"]):
+                web_interface.module_signal_processor.vfo_squelch[i] = int(kwargs_dict["vfo_" + str(i) + "_squelch"])
             web_interface.module_signal_processor.vfo_demod[i] = kwargs_dict[f"vfo_{i}_demod"]
             web_interface.module_signal_processor.vfo_iq[i] = kwargs_dict[f"vfo_{i}_iq"]
 
@@ -501,7 +516,8 @@ def update_dsp_params(
     custom_array_y_meters,
     en_peak_hold,
 ):  # , input_value):
-    web_interface.ant_spacing_meters = spacing_meter
+    if is_float(spacing_meter, minimum=0.0):
+        web_interface.ant_spacing_meters = spacing_meter
     wavelength = 300 / web_interface.daq_center_freq
 
     # web_interface.module_signal_processor.DOA_inter_elem_space = web_interface.ant_spacing_meters / wavelength
@@ -604,10 +620,12 @@ def update_dsp_params(
     web_interface.module_signal_processor.DOA_ant_alignment = ant_arrangement
     web_interface._doa_fig_type = doa_fig_type
     web_interface.module_signal_processor.doa_measure = doa_fig_type
-    web_interface.compass_offset = compass_offset
+    if is_int(compass_offset):
+        web_interface.compass_offset = compass_offset
     web_interface.module_signal_processor.compass_offset = compass_offset
     web_interface.module_signal_processor.ula_direction = ula_direction
-    web_interface.module_signal_processor.array_offset = array_offset
+    if is_int(compass_offset):
+        web_interface.module_signal_processor.array_offset = array_offset
 
     if en_peak_hold is not None and len(en_peak_hold):
         web_interface.module_signal_processor.en_peak_hold = True

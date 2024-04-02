@@ -3,6 +3,7 @@ import json
 import os
 import queue
 from configparser import ConfigParser
+from math import inf
 from threading import Timer
 
 import numpy as np
@@ -246,6 +247,8 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
             try:
                 with open(settings_file_path, "r", encoding="utf-8") as file:
                     dsp_settings = json.load(file)
+                    if dsp_settings is None:
+                        raise RuntimeError("%s appears empty" % file)
             except Exception as ex:
                 if not last_attempt_failed:
                     web_interface.logger.error("Problem loading settings file: %s", ex)
@@ -261,8 +264,6 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
                     if dsp_settings.get("uniform_gain", 1.4) != "Auto"
                     else AUTO_GAIN_VALUE
                 )
-
-                web_interface.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
                 web_interface.en_system_control = [1] if dsp_settings.get("en_system_control", False) else []
                 web_interface.en_beta_features = [1] if dsp_settings.get("en_beta_features", False) else []
@@ -590,3 +591,24 @@ def get_agc_warning_style_from_gain(gain):
         if gain == AUTO_GAIN_VALUE
         else copy.deepcopy(AGC_WARNING_DISABLED_STYLE)
     )
+
+
+"""
+Input validation utilities
+"""
+
+
+def is_float(string, minimum=-inf, maximum=inf):
+    try:
+        f = float(string)
+        return f >= minimum and f <= maximum
+    except (ValueError, TypeError):
+        return False
+
+
+def is_int(string, minimum=-inf, maximum=inf):
+    try:
+        i = int(string)
+        return i >= minimum and i <= maximum
+    except (ValueError, TypeError):
+        return False
