@@ -15,8 +15,14 @@ from kraken_sdr_receiver import ReceiverRTLSDR
 from kraken_sdr_signal_processor import SignalProcessor, xi
 from kraken_web_config import write_config_file_dict
 from kraken_web_spectrum import init_spectrum_fig
-from utils import fetch_dsp_data, fetch_gps_data, set_clicked, settings_change_watcher
-from utils import is_int, is_float
+from utils import (
+    fetch_dsp_data,
+    fetch_gps_data,
+    is_float,
+    is_int,
+    set_clicked,
+    settings_change_watcher,
+)
 from variables import (
     DECORRELATION_OPTIONS,
     DOA_METHODS,
@@ -295,7 +301,9 @@ def update_vfo_params(*args):
 
         for i in range(web_interface.module_signal_processor.max_vfos):
             if is_int(kwargs_dict["vfo_" + str(i) + "_bw"]):
-                web_interface.module_signal_processor.vfo_bw[i] = int(min(kwargs_dict["vfo_" + str(i) + "_bw"], bw * 10**6))
+                web_interface.module_signal_processor.vfo_bw[i] = int(
+                    min(kwargs_dict["vfo_" + str(i) + "_bw"], bw * 10**6)
+                )
             web_interface.module_signal_processor.vfo_fir_order_factor[i] = int(
                 kwargs_dict["vfo_" + str(i) + "_fir_order_factor"]
             )

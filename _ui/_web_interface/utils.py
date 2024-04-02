@@ -1,9 +1,9 @@
 import copy
 import json
-from math import inf
 import os
 import queue
 from configparser import ConfigParser
+from math import inf
 from threading import Timer
 
 import numpy as np
@@ -248,7 +248,7 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
                 with open(settings_file_path, "r", encoding="utf-8") as file:
                     dsp_settings = json.load(file)
                     if dsp_settings == None:
-                        raise RuntimeError('%s appears empty' % file)
+                        raise RuntimeError("%s appears empty" % file)
             except Exception as ex:
                 if not last_attempt_failed:
                     web_interface.logger.error("Problem loading settings file: %s", ex)
@@ -593,9 +593,10 @@ def get_agc_warning_style_from_gain(gain):
     )
 
 
-'''
+"""
 Input validation utilities
-'''
+"""
+
 
 def is_float(string, minimum=-inf, maximum=inf):
     try:
@@ -604,10 +605,10 @@ def is_float(string, minimum=-inf, maximum=inf):
     except (ValueError, TypeError):
         return False
 
+
 def is_int(string, minimum=-inf, maximum=inf):
     try:
         i = int(string)
         return i >= minimum and i <= maximum
     except (ValueError, TypeError):
         return False
-
