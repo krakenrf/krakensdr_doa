@@ -247,7 +247,7 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
             try:
                 with open(settings_file_path, "r", encoding="utf-8") as file:
                     dsp_settings = json.load(file)
-                    if dsp_settings == None:
+                    if dsp_settings is None:
                         raise RuntimeError("%s appears empty" % file)
             except Exception as ex:
                 if not last_attempt_failed:
