@@ -862,9 +862,6 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
         {
             "cfg_data_block_len": {"value": cfg_data_block_len},
             "cfg_recal_interval": {"value": cfg_recal_interval},
-            "active_daq_ini_cfg": {
-                "children": "Active Configuration: " + web_interface.daq_ini_cfg_dict["config_name"]
-            },
             "cfg_rx_channels": {"value": web_interface.daq_ini_cfg_dict["num_ch"]},
             "cfg_en_bias_tee": {"value": web_interface.daq_ini_cfg_dict["en_bias_tee"]},
             "cfg_daq_buffer_size": {"value": web_interface.daq_ini_cfg_dict["daq_buffer_size"]},
