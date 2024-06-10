@@ -18,6 +18,7 @@ from kraken_web_spectrum import init_spectrum_fig
 from utils import (
     fetch_dsp_data,
     fetch_gps_data,
+    read_config_file_dict,
     is_float,
     is_int,
     set_clicked,
@@ -835,6 +836,61 @@ def toggle_basic_daq(toggle_value):
     else:
         return {"display": "none"}
 
+@app.callback(
+    #[Output("url", "pathname")],
+    None,
+    [
+        Input("daq_cfg_files", "value"),
+        Input("placeholder_recofnig_daq", "children"),
+        Input("placeholder_update_rx", "children"),
+    ],
+)
+def reload_cfg_page(config_fname, dummy_0, dummy_1):
+    web_interface.daq_ini_cfg_dict = read_config_file_dict(config_fname)
+    web_interface.tmp_daq_ini_cfg = web_interface.daq_ini_cfg_dict["config_name"]
+
+    cfg_sample_rate = web_interface.daq_ini_cfg_dict["sample_rate"] / 10**6
+    cfg_decimation_ratio = web_interface.daq_ini_cfg_dict["decimation_ratio"]
+    decimated_bw = ((cfg_sample_rate * 10**6) / cfg_decimation_ratio) / 10**3
+    cfg_cpi_size = web_interface.daq_ini_cfg_dict["cpi_size"]
+    cfg_data_block_len = cfg_cpi_size / (decimated_bw)
+    cfg_cal_frame_interval = web_interface.daq_ini_cfg_dict["cal_frame_interval"]
+    cfg_recal_interval = (cfg_cal_frame_interval * (cfg_data_block_len / 10**3)) / 60
+
+    app.push_mods(
+        {
+            "cfg_data_block_len": {"value": cfg_data_block_len},
+            "cfg_recal_interval": {"value": cfg_recal_interval},
+            "active_daq_ini_cfg": {"children": "Active Configuration: " + web_interface.daq_ini_cfg_dict["config_name"]}, 
+            "cfg_rx_channels": {"value": web_interface.daq_ini_cfg_dict["num_ch"]},
+            "cfg_en_bias_tee": {"value": web_interface.daq_ini_cfg_dict["en_bias_tee"]},
+            "cfg_daq_buffer_size": {"value": web_interface.daq_ini_cfg_dict["daq_buffer_size"]},
+            "cfg_sample_rate": {"value": web_interface.daq_ini_cfg_dict["sample_rate"] / 10**6},
+            "en_noise_source_ctr": {"value": [1] if web_interface.daq_ini_cfg_dict["en_noise_source_ctr"] else []},
+            "cfg_cpi_size": {"value": web_interface.daq_ini_cfg_dict["cpi_size"]},
+            "cfg_decimation_ratio": {"value": web_interface.daq_ini_cfg_dict["decimation_ratio"]},
+            "cfg_fir_bw": {"value": web_interface.daq_ini_cfg_dict["fir_relative_bandwidth"]},
+            "cfg_fir_tap_size": {"value": web_interface.daq_ini_cfg_dict["fir_tap_size"]},
+            "cfg_fir_window": {"value": web_interface.daq_ini_cfg_dict["fir_window"]},
+            "en_filter_reset": {"value": [1] if web_interface.daq_ini_cfg_dict["en_filter_reset"] else []},
+            "cfg_corr_size": {"value": web_interface.daq_ini_cfg_dict["corr_size"]},
+            "cfg_std_ch_ind": {"value": web_interface.daq_ini_cfg_dict["std_ch_ind"]},
+            "en_iq_cal": {"value": [1] if web_interface.daq_ini_cfg_dict["en_iq_cal"] else []},
+            "cfg_gain_lock": {"value": web_interface.daq_ini_cfg_dict["gain_lock_interval"]},
+            "en_req_track_lock_intervention": {"value": [1] if web_interface.daq_ini_cfg_dict["require_track_lock_intervention"] else []},
+            "cfg_cal_track_mode": {"value": web_interface.daq_ini_cfg_dict["cal_track_mode"]},
+            "label_amplitude_calibration_mode": {"value": web_interface.daq_ini_cfg_dict["amplitude_cal_mode"]},
+            "label_calibration_frame_interval": {"value": web_interface.daq_ini_cfg_dict["cal_frame_interval"]},
+            "cfg_cal_frame_burst_size": {"value": web_interface.daq_ini_cfg_dict["cal_frame_burst_size"]},
+            "cfg_amplitude_tolerance": {"value": web_interface.daq_ini_cfg_dict["amplitude_tolerance"]},
+            "cfg_phase_tolerance": {"value": web_interface.daq_ini_cfg_dict["phase_tolerance"]},
+            "cfg_max_sync_fails": {"value": web_interface.daq_ini_cfg_dict["maximum_sync_fails"]},
+            "cfg_iq_adjust_source": {"value": web_interface.daq_ini_cfg_dict["iq_adjust_source"]},
+            "cfg_iq_adjust_amplitude": {"value": web_interface.daq_ini_cfg_dict["iq_adjust_amplitude"]},
+            "cfg_iq_adjust_time_delay_ns": {"value": web_interface.daq_ini_cfg_dict["iq_adjust_time_delay_ns"]},
+
+        }
+    )
 
 @app.callback(Output("system_control_container", "style"), [Input("en_system_control", "value")])
 def toggle_system_control(toggle_value):
