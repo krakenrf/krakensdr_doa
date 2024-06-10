@@ -18,9 +18,9 @@ from kraken_web_spectrum import init_spectrum_fig
 from utils import (
     fetch_dsp_data,
     fetch_gps_data,
-    read_config_file_dict,
     is_float,
     is_int,
+    read_config_file_dict,
     set_clicked,
     settings_change_watcher,
 )
@@ -836,8 +836,9 @@ def toggle_basic_daq(toggle_value):
     else:
         return {"display": "none"}
 
+
 @app.callback(
-    #[Output("url", "pathname")],
+    # [Output("url", "pathname")],
     None,
     [
         Input("daq_cfg_files", "value"),
@@ -861,7 +862,9 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
         {
             "cfg_data_block_len": {"value": cfg_data_block_len},
             "cfg_recal_interval": {"value": cfg_recal_interval},
-            "active_daq_ini_cfg": {"children": "Active Configuration: " + web_interface.daq_ini_cfg_dict["config_name"]}, 
+            "active_daq_ini_cfg": {
+                "children": "Active Configuration: " + web_interface.daq_ini_cfg_dict["config_name"]
+            },
             "cfg_rx_channels": {"value": web_interface.daq_ini_cfg_dict["num_ch"]},
             "cfg_en_bias_tee": {"value": web_interface.daq_ini_cfg_dict["en_bias_tee"]},
             "cfg_daq_buffer_size": {"value": web_interface.daq_ini_cfg_dict["daq_buffer_size"]},
@@ -877,7 +880,9 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
             "cfg_std_ch_ind": {"value": web_interface.daq_ini_cfg_dict["std_ch_ind"]},
             "en_iq_cal": {"value": [1] if web_interface.daq_ini_cfg_dict["en_iq_cal"] else []},
             "cfg_gain_lock": {"value": web_interface.daq_ini_cfg_dict["gain_lock_interval"]},
-            "en_req_track_lock_intervention": {"value": [1] if web_interface.daq_ini_cfg_dict["require_track_lock_intervention"] else []},
+            "en_req_track_lock_intervention": {
+                "value": [1] if web_interface.daq_ini_cfg_dict["require_track_lock_intervention"] else []
+            },
             "cfg_cal_track_mode": {"value": web_interface.daq_ini_cfg_dict["cal_track_mode"]},
             "label_amplitude_calibration_mode": {"value": web_interface.daq_ini_cfg_dict["amplitude_cal_mode"]},
             "label_calibration_frame_interval": {"value": web_interface.daq_ini_cfg_dict["cal_frame_interval"]},
@@ -888,9 +893,9 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
             "cfg_iq_adjust_source": {"value": web_interface.daq_ini_cfg_dict["iq_adjust_source"]},
             "cfg_iq_adjust_amplitude": {"value": web_interface.daq_ini_cfg_dict["iq_adjust_amplitude"]},
             "cfg_iq_adjust_time_delay_ns": {"value": web_interface.daq_ini_cfg_dict["iq_adjust_time_delay_ns"]},
-
         }
     )
+
 
 @app.callback(Output("system_control_container", "style"), [Input("en_system_control", "value")])
 def toggle_system_control(toggle_value):
