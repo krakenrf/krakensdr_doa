@@ -4,6 +4,7 @@ import subprocess
 import dash_core_components as dcc
 import dash_devices as dash
 import numpy as np
+import time
 
 # isort: off
 from maindash import app, spectrum_fig, waterfall_fig, web_interface
@@ -788,7 +789,7 @@ def update_daq_ini_params(
 
     # Write calculated daq params to the ini param_dict
     param_dict = web_interface.daq_ini_cfg_dict
-    param_dict["config_name"] = "Custom"
+    param_dict["config_name"] = web_interface.tmp_daq_ini_cfg  # "Custom"
     param_dict["num_ch"] = cfg_rx_channels
     param_dict["en_bias_tee"] = cfg_en_bias_tee
     param_dict["daq_buffer_size"] = cfg_daq_buffer_size
@@ -842,13 +843,13 @@ def toggle_basic_daq(toggle_value):
     None,
     [
         Input("daq_cfg_files", "value"),
-        Input("placeholder_recofnig_daq", "children"),
-        Input("placeholder_update_rx", "children"),
+        # Input("placeholder_recofnig_daq", "children"),
+        # Input("placeholder_update_rx", "children"),
     ],
 )
-def reload_cfg_page(config_fname, dummy_0, dummy_1):
+def reload_cfg_page(config_fname):  # , dummy_0, dummy_1):
     web_interface.daq_ini_cfg_dict = read_config_file_dict(config_fname)
-    web_interface.tmp_daq_ini_cfg = web_interface.daq_ini_cfg_dict["config_name"]
+    tmp_daq_ini_cfg = web_interface.daq_ini_cfg_dict["config_name"]
 
     cfg_sample_rate = web_interface.daq_ini_cfg_dict["sample_rate"] / 10**6
     cfg_decimation_ratio = web_interface.daq_ini_cfg_dict["decimation_ratio"]
@@ -892,6 +893,14 @@ def reload_cfg_page(config_fname, dummy_0, dummy_1):
             "cfg_iq_adjust_time_delay_ns": {"value": web_interface.daq_ini_cfg_dict["iq_adjust_time_delay_ns"]},
         }
     )
+
+    time.sleep(
+        1
+    )  # Make sure all callbacks complete before writing the active config name, otherwise update_daq_ini_params will overwrite it
+
+    param_dict = web_interface.daq_ini_cfg_dict
+    param_dict["config_name"] = tmp_daq_ini_cfg
+    web_interface.daq_ini_cfg_dict = param_dict
 
 
 @app.callback(Output("system_control_container", "style"), [Input("en_system_control", "value")])
