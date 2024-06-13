@@ -21,3 +21,11 @@ sudo env "PATH=$PATH" ./daq_start_sm.sh
 sleep 1
 cd ../../krakensdr_doa
 sudo env "PATH=$PATH" ./gui_run.sh
+
+if [ -d "../Kraken-to-TAK-Python" ]; then
+    echo "TAK Server Installed"
+    cd ../Kraken-to-TAK-Python
+    python KrakenToTAK.py >/dev/null 2>/dev/null
+else
+    echo "TAK Server NOT Installed"
+fi
