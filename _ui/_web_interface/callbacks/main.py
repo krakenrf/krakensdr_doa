@@ -1,10 +1,10 @@
 import os
 import subprocess
+import time
 
 import dash_core_components as dcc
 import dash_devices as dash
 import numpy as np
-import time
 
 # isort: off
 from maindash import app, spectrum_fig, waterfall_fig, web_interface
