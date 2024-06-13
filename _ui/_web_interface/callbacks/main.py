@@ -1014,6 +1014,24 @@ def settings_change_refresh(toggle_value, pathname):
     return Output("dummy_output", "children", "")
 
 
+app.clientside_callback(
+    """
+    function(n_clicks) {
+        if (n_clicks > 0) {
+            var currentURL = window.location.href;
+            var newURL = new URL(currentURL);
+            newURL.port = '8000';  // Set the new port
+            newURL.pathname = '/';  // Set the path to root
+            window.open(newURL.toString(), '_blank');  // Open the new URL in a new tab/window
+        }
+        return "";
+    }
+    """,
+    Output("header_tak_dummy", "children"),
+    [Input("header_tak", "n_clicks")],
+)
+
+
 @app.callback(
     None,
     [Input(component_id="btn_reconfig_daq_chain", component_property="n_clicks")],
