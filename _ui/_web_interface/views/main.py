@@ -2,9 +2,7 @@ import os
 
 import dash_core_components as dcc
 import dash_html_components as html
-from variables import root_path
-
-tak_folder_exists = os.path.exists(os.path.dirname(root_path) + "/Kraken-to-TAK-Python")
+from variables import tak_folder_exists
 
 layout = html.Div(
     [
