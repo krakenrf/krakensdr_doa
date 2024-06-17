@@ -228,7 +228,6 @@ def get_daq_config_card_layout():
                     className="field",
                 ),
                 # --> Optional DAQ Subsystem reconfiguration fields <--
-                # daq_subsystem_reconfiguration_options = [ \
                 html.Div(
                     [
                         html.H2("DAQ Subsystem Reconfiguration", id="init_title_reconfig"),
