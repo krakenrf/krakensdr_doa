@@ -850,7 +850,7 @@ class SignalProcessor(threading.Thread):
                             ):  # Upload to RDF Mapper server only every 1s to ensure we dont overload his server
                                 self.rdf_mapper_last_write_time = time.time()
                                 elat, elng = calculate_end_lat_lng(
-                                    self.latitude, self.longitude, int(DOA_str), self.heading
+                                    self.latitude, self.longitude, int(float(DOA_str)), self.heading # DOA_str needs to be converted to stop crashing here
                                 )
                                 rdf_post = {
                                     "id": self.station_id,
