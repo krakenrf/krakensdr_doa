@@ -828,21 +828,26 @@ class SignalProcessor(threading.Thread):
                                 self.snrs[0],
                             )
                         elif self.DOA_data_format == "Kraken Pro Remote":
-                            self.wr_json(
-                                self.station_id,
-                                DOA_str,
-                                confidence_str,
-                                max_power_level_str,
-                                write_freq,
-                                doa_result_log,
-                                self.latitude,
-                                self.longitude,
-                                self.heading,
-                                self.speed,
-                                self.adc_overdrive,
-                                self.number_of_correlated_sources[0],
-                                self.snrs[0],
-                            )
+                            # for multi VFOs: send each VFO as a single Message
+
+                            for j, freq in enumerate(self.freq_list):
+                                # Output one VFO Dataset to the remote Server
+                                self.wr_json(
+                                    self.station_id,
+                                    f"{self.theta_0_list[j]}",
+                                    f"{np.max(self.confidence_list[j]):.2f}",
+                                    f"{np.maximum(-100, self.max_power_level_list[j]):.1f}",
+                                    freq,
+                                    self.doa_result_log_list[j],
+                                    self.latitude,
+                                    self.longitude,
+                                    self.heading,
+                                    self.speed,
+                                    self.adc_overdrive,
+                                    self.number_of_correlated_sources[0], # maybe needs j as well
+                                    self.snrs[0], # maybe needs j as well
+                                )
+                        
                         elif self.DOA_data_format == "RDF Mapper":
                             time_elapsed = time.time() - self.rdf_mapper_last_write_time
                             if (
