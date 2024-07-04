@@ -756,7 +756,7 @@ class SignalProcessor(threading.Thread):
                             for j, freq in enumerate(self.freq_list):
                                 # KrakenSDR Android App Output
                                 sub_message = ""
-                                sub_message += f"{self.timestamp}, {self.theta_0_list[j]}, {self.confidence_list[j]}, {self.max_power_level_list[j]}, "
+                                sub_message += f"{self.timestamp}, {360 - self.theta_0_list[j]}, {self.confidence_list[j]}, {self.max_power_level_list[j]}, "
                                 sub_message += f"{freq}, {self.DOA_ant_alignment}, {self.latency}, {self.station_id}, "
                                 sub_message += f"{self.latitude}, {self.longitude}, {self.heading}, {self.heading}, "
                                 sub_message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation
