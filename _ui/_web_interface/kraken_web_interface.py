@@ -472,3 +472,8 @@ class WebInterface:
         self.logger.info("Updating receiver parameters")
         self.logger.info("Center frequency: {:f} MHz".format(f0))
         self.logger.info("Gain: {:f} dB".format(gain))
+        
+        
+    def update_mrflo(self, input_freq):
+        print("Update mrflo")
+        self.module_receiver.set_mrflo_freq(input_freq)

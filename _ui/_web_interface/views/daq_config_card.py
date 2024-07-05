@@ -130,6 +130,29 @@ def get_daq_config_card_layout():
             ],
             className="field",
         ),
+        
+        html.Div(
+            [
+                html.Div("Morfeus LO Frequency [MHz]:", className="field-label"),
+                dcc.Input(
+                    id="daq_mrflo_freq",
+                    value=web_interface.module_receiver.daq_mrflo_freq,
+                    type="number",
+                    min=24,
+                    debounce=True,
+                    className="field-body-textbox",
+                ),
+            ],
+            className="field",
+        ),        
+        
+        html.Div(
+            [
+                html.Button("Update Morfus LO", id="btn-update_mrflo", className="btn"),
+            ],
+            className="field",
+        ),        
+        
         html.Div(
             [
                 html.Div(

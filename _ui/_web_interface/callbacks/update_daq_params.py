@@ -57,3 +57,18 @@ def update_daq_params(input_value, f0, gain):
         output.append(Output(f"vfo_{i}_freq", "value", web_interface.module_signal_processor.vfo_freq[i] / 10**6))
 
     return output
+
+
+@app.callback_shared(
+    None,
+    [Input(component_id="btn-update_mrflo", component_property="n_clicks")],
+    [
+        State(component_id="daq_mrflo_freq", component_property="value"),
+    ],
+)
+def update_mrflo(input_value, input_freq):
+    print("In update mrflo")
+    if web_interface.module_signal_processor.run_processing:
+        web_interface.update_mrflo(input_freq)
+        
+    

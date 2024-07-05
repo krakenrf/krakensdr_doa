@@ -59,6 +59,7 @@ class ReceiverRTLSDR:
         self.daq_center_freq = 100  # MHz
         self.daq_rx_gain = 0  # [dB]
         self.daq_agc = False
+        self.daq_mrflo_freq = 1000 # MHz
 
         # UI interface
         self.data_que = data_que
@@ -331,6 +332,30 @@ class ReceiverRTLSDR:
 
         else:
             self.logger.error("Failed to set the requested parameter, reply: {0}".format(status))
+            
+            
+    def set_mrflo_freq(self, lo_freq):
+        """
+        Configures the morefeus LO frequency of the receiver through the control interface
+
+        Paramters:
+        ----------
+            :param: center_freq: Required morfeus LO frequency to set [Hz]
+            :type:  center_freq: float
+        """
+        print("Sending mrflo")
+        if self.receiver_connection_status:  # Check connection
+            self.daq_mrflo_freq = int(lo_freq)
+            # Set center frequency
+            cmd = "MRFF"
+            freq_bytes = pack("Q", int(lo_freq))
+            msg_bytes = cmd.encode() + freq_bytes + bytearray(116)
+            try:
+                _thread.start_new_thread(self.ctr_iface_communication, (msg_bytes,))
+            except Exception as error:
+                self.logger.error("Unable to start communication thread")
+                self.logger.error(f"Error message: {error}")
+    
 
     def set_center_freq(self, center_freq):
         """
