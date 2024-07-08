@@ -153,6 +153,27 @@ def get_daq_config_card_layout():
             className="field",
         ),        
         
+        
+        html.Div(
+            [
+                html.Div("Antenna Array Selector:", className="field-label"),
+                dcc.Dropdown(
+                    id="daq_array_sel",
+                    options=[
+                        {"label": "Outer", "value": 0 },
+                        {"label": "Center", "value": 1},
+                        {"label": "Inner", "value": 2},
+                    ],
+                    value=web_interface.module_receiver.daq_array_sel,
+                    clearable=False,
+                    style={"display": "inline-block"},
+                    className="field-body",
+                ),
+            ],
+            className="field",
+        ),
+
+        
         html.Div(
             [
                 html.Div(

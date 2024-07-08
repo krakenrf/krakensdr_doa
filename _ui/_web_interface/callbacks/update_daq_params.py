@@ -67,8 +67,16 @@ def update_daq_params(input_value, f0, gain):
     ],
 )
 def update_mrflo(input_value, input_freq):
-    print("In update mrflo")
     if web_interface.module_signal_processor.run_processing:
         web_interface.update_mrflo(input_freq)
+        
+        
+@app.callback_shared(
+    None,
+    [Input(component_id="daq_array_sel", component_property="value")],
+)
+def update_array_sel(array_sel):
+    if web_interface.module_signal_processor.run_processing:
+        web_interface.update_array_sel(array_sel)
         
     

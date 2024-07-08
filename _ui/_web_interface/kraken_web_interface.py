@@ -475,5 +475,7 @@ class WebInterface:
         
         
     def update_mrflo(self, input_freq):
-        print("Update mrflo")
         self.module_receiver.set_mrflo_freq(input_freq)
+        
+    def update_array_sel(self, array_sel):
+        self.module_receiver.set_array_sel(array_sel)
