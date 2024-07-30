@@ -8,6 +8,7 @@ from threading import Timer
 
 import numpy as np
 import variables
+from dash_devices.dependencies import Output
 from kraken_sdr_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR
 from kraken_web_doa import plot_doa
 from kraken_web_spectrum import plot_spectrum
@@ -75,6 +76,7 @@ def set_clicked(web_interface, clickData):
         web_interface.selected_vfo = vfo_idx
         if web_interface.module_signal_processor.output_vfo >= 0:
             web_interface.module_signal_processor.output_vfo = vfo_idx
+            return Output("output_vfo", "value", vfo_idx)
     else:
         idx = 0
         if web_interface.module_signal_processor.output_vfo >= 0:
@@ -82,6 +84,8 @@ def set_clicked(web_interface, clickData):
         else:
             idx = web_interface.selected_vfo
         web_interface.module_signal_processor.vfo_freq[idx] = int(clickData["points"][0]["x"])
+        return Output(f"vfo_{idx}_freq", "value", web_interface.module_signal_processor.vfo_freq[idx] * HZ_TO_MHZ)
+    return None
 
 
 def fetch_dsp_data(app, web_interface, spectrum_fig, waterfall_fig):
