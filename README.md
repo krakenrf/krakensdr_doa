@@ -68,6 +68,14 @@ sudo apt -y install nodejs jq rustc cargo
 cargo install miniserve
 ```
 
+(**OPTIONAL** - rustc, cargo and miniserver are not needed for 99% of users, and we don't recommend installing unless you know what you're doing)
+
+(NOTE: If installing miniserve you might need to get the latest rustc directly from Rust depending on your OS - see Issue https://github.com/krakenrf/krakensdr_doa/issues/131)
+```bash
+sudo apt -y install rustc cargo
+cargo install miniserve
+```
+
 2. Install Heimdall DAQ
 
 If not done already, first, follow the instructions at https://github.com/krakenrf/heimdall_daq_fw/tree/main to install the Heimdall DAQ Firmware.
@@ -96,7 +104,7 @@ conda install dash==1.20.0
 conda install werkzeug==2.0.2
 ```
 
-4. (OPTIONAL) Install GPSD if you want to run a USB GPS on the Pi 4. 
+4. (**OPTIONAL**) Install GPSD if you want to run a USB GPS on the Pi 4. 
 
 ```
 sudo apt install gpsd
