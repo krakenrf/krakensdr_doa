@@ -64,7 +64,7 @@ Manual install is only required if you are not using the premade images, and are
 
 ``` bash
 sudo apt -y update
-sudo apt -y install nodejs jq rustc cargo
+sudo apt -y install nodejs jq rustc cargo php-cli
 cargo install miniserve
 ```
 
