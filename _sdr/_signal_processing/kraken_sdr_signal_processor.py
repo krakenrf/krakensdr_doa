@@ -45,6 +45,7 @@ import requests
 
 # Signal processing support
 import scipy
+from iq_header import IQHeader
 from kraken_sdr_receiver import ReceiverRTLSDR
 from numba import float32, njit, vectorize
 from pyargus import directionEstimation as de
@@ -309,8 +310,9 @@ class SignalProcessor(threading.Thread):
         status["uptime_ms"] = int(time.monotonic() * 1e3)
         status["gps_status"] = self.gps_status
 
-        daq_status["daq_connected"] = self.module_receiver.receiver_connection_status
-        if self.module_receiver.receiver_connection_status:
+        iq_header_emtpy = self.module_receiver.iq_header.frame_type == IQHeader.FRAME_TYPE_EMPTY
+
+        if not iq_header_emtpy:
             status["timestamp_ms"] = self.module_receiver.iq_header.time_stamp
             daq_status["data_frame_index"] = self.module_receiver.iq_header.cpi_index
             daq_status["frame_sync"] = not bool(self.module_receiver.iq_header.check_sync_word())
@@ -322,17 +324,19 @@ class SignalProcessor(threading.Thread):
             daq_status["bandwidth_hz"] = self.module_receiver.iq_header.sampling_freq
             daq_status["decimated_bandwidth_hz"] = self.module_receiver.iq_header.sampling_freq // self.dsp_decimation
             daq_status["buffer_size_ms"] = (
-                self.module_receiver.iq_header.cpi_length / self.module_receiver.iq_header.sampling_freq
-            ) * 1e3
-            daq_status["num_dropped_frames"] = self.dropped_frames
+                (self.module_receiver.iq_header.cpi_length / self.module_receiver.iq_header.sampling_freq) * 1e3
+                if self.module_receiver.iq_header.sampling_freq > 0.0
+                else 0.0
+            )
 
         status["daq_status"] = daq_status
         status["daq_ok"] = (
-            self.module_receiver.receiver_connection_status
+            not iq_header_emtpy
             and daq_status.get("frame_sync", False)
             and daq_status.get("sample_delay_sync", False)
             and daq_status.get("iq_sync", False)
         )
+        status["daq_num_dropped_frames"] = self.dropped_frames
 
         try:
             with open(status_file_path, "w", encoding="utf-8") as file:
@@ -361,50 +365,41 @@ class SignalProcessor(threading.Thread):
                 start_time = time.time()
                 self.save_processing_status()
 
-                if get_iq_failed:
-                    logging.error(
-                        """The data frame was lost while processing was active!\n
-                        This might indicate issues with USB data cable or USB host,\n
-                        inadequate power supply, overloaded CPU, wrong host OS settings, etc."""
-                    )
-                    self.dropped_frames += 1
-                    continue
-
-                self.timestamp = self.module_receiver.iq_header.time_stamp
-                self.adc_overdrive = self.module_receiver.iq_header.adc_overdrive_flags
+                que_data_packet.append(["iq_header", self.module_receiver.iq_header])
+                self.logger.debug("IQ header has been put into the data que entity")
 
                 # Check frame type for processing
+                """
+                    You can enable here to process other frame types (such as call type frames)
+                """
                 en_proc = (
                     self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_DATA
                 )  # or \
                 # (self.module_receiver.iq_header.frame_type == self.module_receiver.iq_header.FRAME_TYPE_CAL)# For debug purposes
-                """
-                    You can enable here to process other frame types (such as call type frames)
-                """
-
-                que_data_packet.append(["iq_header", self.module_receiver.iq_header])
-                self.logger.debug("IQ header has been put into the data que entity")
-
-                # Configure processing parameteres based on the settings of the DAQ chain
-                if self.first_frame:
-                    self.channel_number = self.module_receiver.iq_header.active_ant_chs
-                    self.spectrum = np.ones(
-                        (self.channel_number + 4, self.spectrum_window_size),
-                        dtype=np.float32,
-                    )
-                    self.first_frame = 0
 
                 self.data_ready = False
 
-                if en_proc and not self.module_receiver.iq_samples.size:
-                    if self.dropped_frames:
+                if not self.module_receiver.iq_samples.size and get_iq_failed:
+                    if not self.dropped_frames:
                         logging.error(
-                            """The data frame was lost while processing was active!\n
-                            This might indicate issues with USB data cable or USB host,\n
+                            """The data frame was lost while processing was active!
+                            This might indicate issues with USB data cable or USB host,
                             inadequate power supply, overloaded CPU, wrong host OS settings, etc."""
                         )
                     self.dropped_frames += 1
                 elif en_proc:
+                    self.timestamp = self.module_receiver.iq_header.time_stamp
+                    self.adc_overdrive = self.module_receiver.iq_header.adc_overdrive_flags
+
+                    # Configure processing parameteres based on the settings of the DAQ chain
+                    if self.first_frame:
+                        self.channel_number = self.module_receiver.iq_header.active_ant_chs
+                        self.spectrum = np.ones(
+                            (self.channel_number + 4, self.spectrum_window_size),
+                            dtype=np.float32,
+                        )
+                        self.first_frame = 0
+
                     self.processed_signal = np.ascontiguousarray(self.module_receiver.iq_samples)
                     sampling_freq = self.module_receiver.iq_header.sampling_freq
 
@@ -756,20 +751,12 @@ class SignalProcessor(threading.Thread):
 
                     if self.data_ready and self.theta_0_list:
                         # Do Kraken App first as currently its the only one supporting multi-vfo out
-                        if (
-                            self.DOA_data_format == "Kraken App"
-                            or self.en_data_record
-                            or self.DOA_data_format == "Kraken Pro Local"
-                            or self.DOA_data_format == "Kraken Pro Remote"
-                            or self.DOA_data_format == "RDF Mapper"
-                            or self.DOA_data_format == "DF Aggregator"
-                            or self.DOA_data_format == "Full POST"
-                        ):  # and len(freq_list) > 0:
+                        if self.DOA_data_format != "Kerberos App":
                             message = ""
                             for j, freq in enumerate(self.freq_list):
                                 # KrakenSDR Android App Output
                                 sub_message = ""
-                                sub_message += f"{self.timestamp}, {self.theta_0_list[j]}, {self.confidence_list[j]}, {self.max_power_level_list[j]}, "
+                                sub_message += f"{self.timestamp}, {360 - self.theta_0_list[j]}, {self.confidence_list[j]}, {self.max_power_level_list[j]}, "
                                 sub_message += f"{freq}, {self.DOA_ant_alignment}, {self.latency}, {self.station_id}, "
                                 sub_message += f"{self.latitude}, {self.longitude}, {self.heading}, {self.heading}, "
                                 sub_message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation
@@ -792,54 +779,39 @@ class SignalProcessor(threading.Thread):
 
                                 message += sub_message
 
-                            if (
-                                self.DOA_data_format == "Kraken App"
-                                or self.DOA_data_format == "Kraken Pro Local"
-                                or self.DOA_data_format == "Kraken Pro Remote"
-                                or self.DOA_data_format == "RDF Mapper"
-                                or self.DOA_data_format == "DF Aggregator"
-                                or self.DOA_data_format == "Full POST"
-                            ):
-                                self.DOA_res_fd.seek(0)
-                                self.DOA_res_fd.write(message)
-                                self.DOA_res_fd.truncate()
+                            self.DOA_res_fd.seek(0)
+                            self.DOA_res_fd.write(message)
+                            self.DOA_res_fd.truncate()
+                        elif self.DOA_data_format == "Kerberos App":
+                            self.wr_kerberos(
+                                DOA_str,
+                                confidence_str,
+                                max_power_level_str,
+                            )
 
-                        # Now create output for apps that only take one VFO
                         DOA_str = f"{self.theta_0_list[0]}"
                         confidence_str = f"{np.max(self.confidence_list[0]):.2f}"
                         max_power_level_str = f"{np.maximum(-100, self.max_power_level_list[0]):.1f}"
                         doa_result_log = self.doa_result_log_list[0]
                         write_freq = self.freq_list[0]
 
-                        if self.DOA_data_format == "DF Aggregator":
-                            self.wr_xml(
-                                self.station_id,
-                                DOA_str,
-                                confidence_str,
-                                max_power_level_str,
-                                write_freq,
-                                self.latitude,
-                                self.longitude,
-                                self.heading,
-                                self.speed,
-                                self.adc_overdrive,
-                                self.number_of_correlated_sources[0],
-                                self.snrs[0],
-                            )
-                        elif self.DOA_data_format == "Kerberos App":
-                            self.wr_csv(
-                                self.station_id,
-                                DOA_str,
-                                confidence_str,
-                                max_power_level_str,
-                                write_freq,
-                                doa_result_log,
-                                self.latitude,
-                                self.longitude,
-                                self.heading,
-                                "Kerberos",
-                            )
-                        elif self.DOA_data_format == "Kraken Pro Local":
+                        # Save XML unconditionally, e.g., used by DF-Aggregator
+                        self.wr_xml(
+                            self.station_id,
+                            DOA_str,
+                            confidence_str,
+                            max_power_level_str,
+                            write_freq,
+                            self.latitude,
+                            self.longitude,
+                            self.heading,
+                            self.speed,
+                            self.adc_overdrive,
+                            self.number_of_correlated_sources[0],
+                            self.snrs[0],
+                        )
+
+                        if self.DOA_data_format == "Kraken Pro Local":
                             self.wr_json(
                                 self.station_id,
                                 DOA_str,
@@ -872,10 +844,10 @@ class SignalProcessor(threading.Thread):
                                     self.heading,
                                     self.speed,
                                     self.adc_overdrive,
-                                    self.number_of_correlated_sources[0], # maybe needs j as well
-                                    self.snrs[0], # maybe needs j as well
+                                    self.number_of_correlated_sources[0],  # maybe needs j as well
+                                    self.snrs[0],  # maybe needs j as well
                                 )
-                        
+
                         elif self.DOA_data_format == "RDF Mapper":
                             time_elapsed = time.time() - self.rdf_mapper_last_write_time
                             if (
@@ -883,7 +855,10 @@ class SignalProcessor(threading.Thread):
                             ):  # Upload to RDF Mapper server only every 1s to ensure we dont overload his server
                                 self.rdf_mapper_last_write_time = time.time()
                                 elat, elng = calculate_end_lat_lng(
-                                    self.latitude, self.longitude, int(DOA_str), self.heading
+                                    self.latitude,
+                                    self.longitude,
+                                    int(float(DOA_str)),
+                                    self.heading,  # DOA_str needs to be converted to stop crashing here
                                 )
                                 rdf_post = {
                                     "id": self.station_id,
@@ -939,8 +914,8 @@ class SignalProcessor(threading.Thread):
                                     self.pool.apply_async(requests.post, args=[self.RDF_mapper_server, post])
                                 except Exception as e:
                                     print(f"NO CONNECTION: Invalid Server: {e}")
-                        elif self.DOA_data_format == "Kraken App":
-                            pass  # Just do nothing, stop the invalid doa result error from showing
+                        elif self.DOA_data_format in ("Kraken App", "DF Aggregator", "Kerberos App"):
+                            pass
                         else:
                             self.logger.error(f"Invalid DOA Result data format: {self.DOA_data_format}")
 
@@ -950,7 +925,11 @@ class SignalProcessor(threading.Thread):
                 que_data_packet.append(
                     [
                         "latency",
-                        int(stop_time * 10**3) - self.module_receiver.iq_header.time_stamp,
+                        (
+                            (int(stop_time * 10**3) - self.module_receiver.iq_header.time_stamp)
+                            if not get_iq_failed
+                            else 0
+                        ),
                     ]
                 )
 
@@ -1168,57 +1147,32 @@ class SignalProcessor(threading.Thread):
 
         # create a new XML file with the results
         html_str = ET.tostring(data, encoding="unicode")
-        self.DOA_res_fd.seek(0)
-        self.DOA_res_fd.write(html_str)
-        self.DOA_res_fd.truncate()
-        # print("Wrote XML")
 
-    def wr_csv(
+        with open(os.path.join(shared_path, "doa.xml"), "w+", encoding="utf-8") as file:
+            file.write(html_str)
+
+    def wr_kerberos(
         self,
-        station_id,
         DOA_str,
         confidence_str,
         max_power_level_str,
-        freq,
-        doa_result_log,
-        latitude,
-        longitude,
-        heading,
-        app_type,
     ):
-        if app_type == "Kraken":
-            # KrakenSDR Android App Output
-            message = f"{self.timestamp}, {DOA_str}, {confidence_str}, {max_power_level_str}, "
-            message += f"{freq}, {self.DOA_ant_alignment}, {self.latency}, {station_id}, "
-            message += f"{latitude}, {longitude}, {heading}, {heading}, "
-            message += "GPS, R, R, R, R"  # Reserve 6 entries for other things # NOTE: Second heading is reserved for GPS heading / compass heading differentiation
+        confidence_str = "{}".format(np.max(int(float(confidence_str) * 100)))
+        max_power_level_str = "{:.1f}".format((np.maximum(-100, float(max_power_level_str) + 100)))
 
-            doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
-            for i in range(len(doa_result_log)):
-                message += ", " + "{:.2f}".format(doa_result_log[i])
-
-            self.DOA_res_fd.seek(0)
-            self.DOA_res_fd.write(message)
-            self.DOA_res_fd.truncate()
-            self.logger.debug("DoA results writen: {:s}".format(message))
-        else:  # Legacy Kerberos app support
-            confidence_str = "{}".format(np.max(int(float(confidence_str) * 100)))
-            max_power_level_str = "{:.1f}".format((np.maximum(-100, float(max_power_level_str) + 100)))
-
-            message = str(self.timestamp) + ", " + DOA_str + ", " + confidence_str + ", " + max_power_level_str
-            html_str = (
-                "<DATA>\n<DOA>"
-                + DOA_str
-                + "</DOA>\n<CONF>"
-                + confidence_str
-                + "</CONF>\n<PWR>"
-                + max_power_level_str
-                + "</PWR>\n</DATA>"
-            )
-            self.DOA_res_fd.seek(0)
-            self.DOA_res_fd.write(html_str)
-            self.DOA_res_fd.truncate()
-            self.logger.debug("DoA results writen: {:s}".format(html_str))
+        html_str = (
+            "<DATA>\n<DOA>"
+            + DOA_str
+            + "</DOA>\n<CONF>"
+            + confidence_str
+            + "</CONF>\n<PWR>"
+            + max_power_level_str
+            + "</PWR>\n</DATA>"
+        )
+        self.DOA_res_fd.seek(0)
+        self.DOA_res_fd.write(html_str)
+        self.DOA_res_fd.truncate()
+        self.logger.debug("DoA results writen: {:s}".format(html_str))
 
     def wr_json(
         self,

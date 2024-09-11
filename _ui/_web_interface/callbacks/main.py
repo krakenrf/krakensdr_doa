@@ -1,5 +1,6 @@
 import os
 import subprocess
+import time
 
 import dash_core_components as dcc
 import dash_devices as dash
@@ -18,6 +19,8 @@ from kraken_web_spectrum import init_spectrum_fig
 from utils import (
     fetch_dsp_data,
     fetch_gps_data,
+    is_float,
+    is_int,
     read_config_file_dict,
     set_clicked,
     settings_change_watcher,
@@ -69,7 +72,8 @@ def update_data_recording_params(filename, en_data_record, write_interval):
     else:
         web_interface.module_signal_processor.en_data_record = False
 
-    web_interface.module_signal_processor.write_interval = float(write_interval)
+    if is_float(write_interval):
+        web_interface.module_signal_processor.write_interval = float(write_interval)
 
 
 @app.callback_shared(Output("download_recorded_file", "data"), [Input("btn_download_file", "n_clicks")])
@@ -272,7 +276,8 @@ def update_vfo_params(*args):
     web_interface.module_signal_processor.vfo_default_squelch_mode = kwargs_dict["vfo_default_squelch_mode"]
     web_interface.module_signal_processor.vfo_default_demod = kwargs_dict["vfo_default_demod"]
     web_interface.module_signal_processor.vfo_default_iq = kwargs_dict["vfo_default_iq"]
-    web_interface.module_signal_processor.max_demod_timeout = int(kwargs_dict["max_demod_timeout"])
+    if is_int(kwargs_dict["max_demod_timeout"]):
+        web_interface.module_signal_processor.max_demod_timeout = int(kwargs_dict["max_demod_timeout"])
 
     active_vfos = kwargs_dict["active_vfos"]
     # If VFO mode is in the VFO-0 Auto Max mode, we active VFOs to 1 only
@@ -280,7 +285,8 @@ def update_vfo_params(*args):
         active_vfos = 1
         app_updates["active_vfos"] = {"value": 1}
 
-    web_interface.module_signal_processor.dsp_decimation = max(int(kwargs_dict["dsp_decimation"]), 1)
+    if is_int(kwargs_dict["dsp_decimation"]):
+        web_interface.module_signal_processor.dsp_decimation = max(int(kwargs_dict["dsp_decimation"]), 1)
     web_interface.module_signal_processor.active_vfos = active_vfos
     web_interface.module_signal_processor.output_vfo = kwargs_dict["output_vfo"]
 
@@ -296,15 +302,20 @@ def update_vfo_params(*args):
         vfo_max = web_interface.daq_center_freq + bw / 2
 
         for i in range(web_interface.module_signal_processor.max_vfos):
-            web_interface.module_signal_processor.vfo_bw[i] = int(min(kwargs_dict["vfo_" + str(i) + "_bw"], bw * 10**6))
+            if is_int(kwargs_dict["vfo_" + str(i) + "_bw"]):
+                web_interface.module_signal_processor.vfo_bw[i] = int(
+                    min(kwargs_dict["vfo_" + str(i) + "_bw"], bw * 10**6)
+                )
             web_interface.module_signal_processor.vfo_fir_order_factor[i] = int(
                 kwargs_dict["vfo_" + str(i) + "_fir_order_factor"]
             )
-            web_interface.module_signal_processor.vfo_freq[i] = int(
-                max(min(kwargs_dict["vfo_" + str(i) + "_freq"], vfo_max), vfo_min) * 10**6
-            )
+            if is_float(kwargs_dict["vfo_" + str(i) + "_freq"]):
+                web_interface.module_signal_processor.vfo_freq[i] = int(
+                    max(min(kwargs_dict["vfo_" + str(i) + "_freq"], vfo_max), vfo_min) * 10**6
+                )
             web_interface.module_signal_processor.vfo_squelch_mode[i] = kwargs_dict[f"vfo_squelch_mode_{i}"]
-            web_interface.module_signal_processor.vfo_squelch[i] = int(kwargs_dict["vfo_" + str(i) + "_squelch"])
+            if is_int(kwargs_dict["vfo_" + str(i) + "_squelch"]):
+                web_interface.module_signal_processor.vfo_squelch[i] = int(kwargs_dict["vfo_" + str(i) + "_squelch"])
             web_interface.module_signal_processor.vfo_demod[i] = kwargs_dict[f"vfo_{i}_demod"]
             web_interface.module_signal_processor.vfo_iq[i] = kwargs_dict[f"vfo_{i}_iq"]
 
@@ -408,13 +419,17 @@ def clear_cache_btn(input_value):
 
 
 @app.callback_shared(None, [Input("spectrum-graph", "clickData")])
-def click_to_set_freq_spectrum(clickData):
-    set_clicked(web_interface, clickData)
+def click_to_set_freq_spectrum(click_data):
+    output = set_clicked(web_interface, click_data)
+    web_interface.save_configuration()
+    return output
 
 
 @app.callback_shared(None, [Input("waterfall-graph", "clickData")])
-def click_to_set_waterfall_spectrum(clickData):
-    set_clicked(web_interface, clickData)
+def click_to_set_waterfall_spectrum(click_data):
+    output = set_clicked(web_interface, click_data)
+    web_interface.save_configuration()
+    return output
 
 
 # Enable custom input fields
@@ -507,7 +522,8 @@ def update_dsp_params(
     custom_array_y_meters,
     en_peak_hold,
 ):  # , input_value):
-    web_interface.ant_spacing_meters = spacing_meter
+    if is_float(spacing_meter, minimum=0.0):
+        web_interface.ant_spacing_meters = spacing_meter
     wavelength = 300 / web_interface.daq_center_freq
 
     # web_interface.module_signal_processor.DOA_inter_elem_space = web_interface.ant_spacing_meters / wavelength
@@ -610,10 +626,12 @@ def update_dsp_params(
     web_interface.module_signal_processor.DOA_ant_alignment = ant_arrangement
     web_interface._doa_fig_type = doa_fig_type
     web_interface.module_signal_processor.doa_measure = doa_fig_type
-    web_interface.compass_offset = compass_offset
+    if is_int(compass_offset):
+        web_interface.compass_offset = compass_offset
     web_interface.module_signal_processor.compass_offset = compass_offset
     web_interface.module_signal_processor.ula_direction = ula_direction
-    web_interface.module_signal_processor.array_offset = array_offset
+    if is_int(compass_offset):
+        web_interface.module_signal_processor.array_offset = array_offset
 
     if en_peak_hold is not None and len(en_peak_hold):
         web_interface.module_signal_processor.en_peak_hold = True
@@ -775,7 +793,7 @@ def update_daq_ini_params(
 
     # Write calculated daq params to the ini param_dict
     param_dict = web_interface.daq_ini_cfg_dict
-    param_dict["config_name"] = "Custom"
+    param_dict["config_name"] = web_interface.tmp_daq_ini_cfg  # "Custom"
     param_dict["num_ch"] = cfg_rx_channels
     param_dict["en_bias_tee"] = cfg_en_bias_tee
     param_dict["daq_buffer_size"] = cfg_daq_buffer_size
@@ -825,19 +843,68 @@ def toggle_basic_daq(toggle_value):
 
 
 @app.callback(
-    [Output("url", "pathname")],
+    # [Output("url", "pathname")],
+    None,
     [
         Input("daq_cfg_files", "value"),
-        Input("placeholder_recofnig_daq", "children"),
-        Input("placeholder_update_rx", "children"),
+        # Input("placeholder_recofnig_daq", "children"),
+        # Input("placeholder_update_rx", "children"),
     ],
 )
-def reload_cfg_page(config_fname, dummy_0, dummy_1):
+def reload_cfg_page(config_fname):  # , dummy_0, dummy_1):
     web_interface.daq_ini_cfg_dict = read_config_file_dict(config_fname)
-    web_interface.tmp_daq_ini_cfg = web_interface.daq_ini_cfg_dict["config_name"]
-    web_interface.needs_refresh = False
+    tmp_daq_ini_cfg = web_interface.daq_ini_cfg_dict["config_name"]
 
-    return ["/config"]
+    cfg_sample_rate = web_interface.daq_ini_cfg_dict["sample_rate"] / 10**6
+    cfg_decimation_ratio = web_interface.daq_ini_cfg_dict["decimation_ratio"]
+    decimated_bw = ((cfg_sample_rate * 10**6) / cfg_decimation_ratio) / 10**3
+    cfg_cpi_size = web_interface.daq_ini_cfg_dict["cpi_size"]
+    cfg_data_block_len = cfg_cpi_size / (decimated_bw)
+    cfg_cal_frame_interval = web_interface.daq_ini_cfg_dict["cal_frame_interval"]
+    cfg_recal_interval = (cfg_cal_frame_interval * (cfg_data_block_len / 10**3)) / 60
+
+    app.push_mods(
+        {
+            "cfg_data_block_len": {"value": cfg_data_block_len},
+            "cfg_recal_interval": {"value": cfg_recal_interval},
+            "cfg_rx_channels": {"value": web_interface.daq_ini_cfg_dict["num_ch"]},
+            "cfg_en_bias_tee": {"value": web_interface.daq_ini_cfg_dict["en_bias_tee"]},
+            "cfg_daq_buffer_size": {"value": web_interface.daq_ini_cfg_dict["daq_buffer_size"]},
+            "cfg_sample_rate": {"value": web_interface.daq_ini_cfg_dict["sample_rate"] / 10**6},
+            "en_noise_source_ctr": {"value": [1] if web_interface.daq_ini_cfg_dict["en_noise_source_ctr"] else []},
+            "cfg_cpi_size": {"value": web_interface.daq_ini_cfg_dict["cpi_size"]},
+            "cfg_decimation_ratio": {"value": web_interface.daq_ini_cfg_dict["decimation_ratio"]},
+            "cfg_fir_bw": {"value": web_interface.daq_ini_cfg_dict["fir_relative_bandwidth"]},
+            "cfg_fir_tap_size": {"value": web_interface.daq_ini_cfg_dict["fir_tap_size"]},
+            "cfg_fir_window": {"value": web_interface.daq_ini_cfg_dict["fir_window"]},
+            "en_filter_reset": {"value": [1] if web_interface.daq_ini_cfg_dict["en_filter_reset"] else []},
+            "cfg_corr_size": {"value": web_interface.daq_ini_cfg_dict["corr_size"]},
+            "cfg_std_ch_ind": {"value": web_interface.daq_ini_cfg_dict["std_ch_ind"]},
+            "en_iq_cal": {"value": [1] if web_interface.daq_ini_cfg_dict["en_iq_cal"] else []},
+            "cfg_gain_lock": {"value": web_interface.daq_ini_cfg_dict["gain_lock_interval"]},
+            "en_req_track_lock_intervention": {
+                "value": [1] if web_interface.daq_ini_cfg_dict["require_track_lock_intervention"] else []
+            },
+            "cfg_cal_track_mode": {"value": web_interface.daq_ini_cfg_dict["cal_track_mode"]},
+            "label_amplitude_calibration_mode": {"value": web_interface.daq_ini_cfg_dict["amplitude_cal_mode"]},
+            "label_calibration_frame_interval": {"value": web_interface.daq_ini_cfg_dict["cal_frame_interval"]},
+            "cfg_cal_frame_burst_size": {"value": web_interface.daq_ini_cfg_dict["cal_frame_burst_size"]},
+            "cfg_amplitude_tolerance": {"value": web_interface.daq_ini_cfg_dict["amplitude_tolerance"]},
+            "cfg_phase_tolerance": {"value": web_interface.daq_ini_cfg_dict["phase_tolerance"]},
+            "cfg_max_sync_fails": {"value": web_interface.daq_ini_cfg_dict["maximum_sync_fails"]},
+            "cfg_iq_adjust_source": {"value": web_interface.daq_ini_cfg_dict["iq_adjust_source"]},
+            "cfg_iq_adjust_amplitude": {"value": web_interface.daq_ini_cfg_dict["iq_adjust_amplitude"]},
+            "cfg_iq_adjust_time_delay_ns": {"value": web_interface.daq_ini_cfg_dict["iq_adjust_time_delay_ns"]},
+        }
+    )
+
+    time.sleep(
+        1
+    )  # Make sure all callbacks complete before writing the active config name, otherwise update_daq_ini_params will overwrite it
+
+    param_dict = web_interface.daq_ini_cfg_dict
+    param_dict["config_name"] = tmp_daq_ini_cfg
+    web_interface.daq_ini_cfg_dict = param_dict
 
 
 @app.callback(Output("system_control_container", "style"), [Input("en_system_control", "value")])
@@ -949,6 +1016,24 @@ def settings_change_refresh(toggle_value, pathname):
         web_interface.needs_refresh = False
 
     return Output("dummy_output", "children", "")
+
+
+app.clientside_callback(
+    """
+    function(n_clicks) {
+        if (n_clicks > 0) {
+            var currentURL = window.location.href;
+            var newURL = new URL(currentURL);
+            newURL.port = '8000';  // Set the new port
+            newURL.pathname = '/';  // Set the path to root
+            window.open(newURL.toString(), '_blank');  // Open the new URL in a new tab/window
+        }
+        return "";
+    }
+    """,
+    Output("header_tak_dummy", "children"),
+    [Input("header_tak", "n_clicks")],
+)
 
 
 @app.callback(

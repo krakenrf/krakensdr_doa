@@ -35,6 +35,8 @@ from iq_header import IQHeader
 from shmemIface import inShmemIface
 from variables import AUTO_GAIN_VALUE
 
+IN_SHMEM_IFACE_READ_TIMEOUT = 5.0  # sec
+
 
 class ReceiverRTLSDR:
     def __init__(self, data_que, data_interface="eth", logging_level=10):
@@ -92,7 +94,9 @@ class ReceiverRTLSDR:
     def init_data_iface(self):
         if self.data_interface == "shmem":
             # Open shared memory interface to capture the DAQ firmware output
-            self.in_shmem_iface = inShmemIface("delay_sync_iq", self.daq_shmem_control_path)
+            self.in_shmem_iface = inShmemIface(
+                "delay_sync_iq", self.daq_shmem_control_path, read_timeout=IN_SHMEM_IFACE_READ_TIMEOUT
+            )
             if not self.in_shmem_iface.init_ok:
                 self.logger.critical("Shared memory initialization failed")
                 self.in_shmem_iface.destory_sm_buffer()
@@ -182,6 +186,9 @@ class ReceiverRTLSDR:
         if not self.receiver_connection_status:
             fail = self.eth_connect()
             if fail:
+                # If we cannot get the new IQ frame then we zero the stored IQ header
+                self.iq_header = IQHeader()
+                self.iq_samples = np.empty(0)
                 return -1
 
         if self.data_interface == "eth":
@@ -192,6 +199,9 @@ class ReceiverRTLSDR:
             active_buff_index = self.in_shmem_iface.wait_buff_free()
             if active_buff_index < 0 or active_buff_index > 1:
                 self.logger.info("Terminating.., signal: {:d}".format(active_buff_index))
+                # If we cannot get the new IQ frame then we zero the stored IQ header
+                self.iq_header = IQHeader()
+                self.iq_samples = np.empty(0)
                 return -1
 
             buffer = self.in_shmem_iface.buffers[active_buff_index]

@@ -12,6 +12,8 @@ Please [consult the Wiki on the kraken_docs repo](https://github.com/krakenrf/kr
 
 **Download Latest Images From :** https://mega.nz/folder/8T1jiIzR#_1Ujs4Eoy0wdRib9eHCVSg
 
+**Alternative Download:** https://drive.google.com/drive/folders/14NuCOGM1Fh1QypDNMngXEepKYRBsG--B?usp=sharing
+
 In these image the code will automatically run on boot. Note that it may take 2-3 minutes for the boot process to complete. 
 
 To run this code flash the image file to an SD Card using Etcher. The SD Card needs to be at least 8GB and we recommend using a class 10 card or faster. For advanced users the login/password details for SSH and terminal are "krakenrf"/"krakensdr"
@@ -62,7 +64,15 @@ Manual install is only required if you are not using the premade images, and are
 
 ``` bash
 sudo apt -y update
-sudo apt -y install nodejs jq rustc cargo
+sudo apt -y install nodejs jq rustc cargo php-cli
+cargo install miniserve
+```
+
+(**OPTIONAL** - rustc, cargo and miniserver are not needed for 99% of users, and we don't recommend installing unless you know what you're doing)
+
+(NOTE: If installing miniserve you might need to get the latest rustc directly from Rust depending on your OS - see Issue https://github.com/krakenrf/krakensdr_doa/issues/131)
+```bash
+sudo apt -y install rustc cargo
 cargo install miniserve
 ```
 
@@ -94,7 +104,7 @@ conda install dash==1.20.0
 conda install werkzeug==2.0.2
 ```
 
-4. (OPTIONAL) Install GPSD if you want to run a USB GPS on the Pi 4. 
+4. (**OPTIONAL**) Install GPSD if you want to run a USB GPS on the Pi 4. 
 
 ```
 sudo apt install gpsd

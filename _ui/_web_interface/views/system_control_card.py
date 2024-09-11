@@ -26,6 +26,10 @@ def get_system_control_card_layout():
             html.Div(
                 [
                     html.Div(
+                        [html.Button("Reset Configuration", id="btn-save_cfg", className="btn_save_cfg", n_clicks=0)],
+                        className="ctr_toolbar_item",
+                    ),
+                    html.Div(
                         [html.Button("Restart Software", id="btn-restart_sw", className="btn-restart_sw", n_clicks=0)],
                         className="field",
                     ),

@@ -1,5 +1,6 @@
 import dash_core_components as dcc
 import dash_html_components as html
+from variables import tak_folder_exists
 
 layout = html.Div(
     [
@@ -17,6 +18,14 @@ layout = html.Div(
                 html.A("Configuration", className="header_active", id="header_config", href="/config"),
                 html.A("Spectrum", className="header_inactive", id="header_spectrum", href="/spectrum"),
                 html.A("DoA Estimation", className="header_inactive", id="header_doa", href="/doa"),
+                html.Div(
+                    [
+                        html.A("TAK", className="header_inactive", id="header_tak", href="#", n_clicks=0),
+                    ],
+                    id="tak_container",
+                    style={"display": "inline-block"} if tak_folder_exists else {"display": "none"},
+                ),
+                html.Div(id="header_tak_dummy", style={"display": "none"}),  # Hidden div for callback output
             ],
             className="header",
         ),

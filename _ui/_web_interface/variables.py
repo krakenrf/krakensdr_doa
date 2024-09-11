@@ -33,7 +33,7 @@ try:
 except Exception:
     SOFTWARE_GIT_SHORT_HASH = "e5df8c9"
 
-SOFTWARE_VERSION = "1.7.0"
+SOFTWARE_VERSION = "1.8.1"
 SYSTEM_UNAME = platform.uname()
 
 status_file_path = os.path.join(shared_path, "status.json")
@@ -46,7 +46,7 @@ daq_config_filename = os.path.join(daq_subsystem_path, "daq_chain_config.ini")
 receiver_path = os.path.join(root_path, "_sdr/_receiver")
 signal_processor_path = os.path.join(root_path, "_sdr/_signal_processing")
 ui_path = os.path.join(root_path, "_ui")
-
+tak_folder_exists = os.path.exists(os.path.join(os.path.dirname(root_path), "Kraken-to-TAK-Python"))
 
 sys.path.insert(0, receiver_path)
 sys.path.insert(0, signal_processor_path)

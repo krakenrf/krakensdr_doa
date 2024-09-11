@@ -3,10 +3,12 @@ import json
 import os
 import queue
 from configparser import ConfigParser
+from math import inf
 from threading import Timer
 
 import numpy as np
 import variables
+from dash_devices.dependencies import Output
 from kraken_sdr_signal_processor import DEFAULT_VFO_FIR_ORDER_FACTOR
 from kraken_web_doa import plot_doa
 from kraken_web_spectrum import plot_spectrum
@@ -19,6 +21,8 @@ from variables import (
     daq_config_filename,
     doa_fig,
 )
+
+RED_COLOR = {"color": "#e74c3c"}
 
 
 def read_config_file_dict(config_fname=daq_config_filename):
@@ -72,6 +76,7 @@ def set_clicked(web_interface, clickData):
         web_interface.selected_vfo = vfo_idx
         if web_interface.module_signal_processor.output_vfo >= 0:
             web_interface.module_signal_processor.output_vfo = vfo_idx
+            return Output("output_vfo", "value", vfo_idx)
     else:
         idx = 0
         if web_interface.module_signal_processor.output_vfo >= 0:
@@ -79,6 +84,8 @@ def set_clicked(web_interface, clickData):
         else:
             idx = web_interface.selected_vfo
         web_interface.module_signal_processor.vfo_freq[idx] = int(clickData["points"][0]["x"])
+        return Output(f"vfo_{idx}_freq", "value", web_interface.module_signal_processor.vfo_freq[idx] * HZ_TO_MHZ)
+    return None
 
 
 def fetch_dsp_data(app, web_interface, spectrum_fig, waterfall_fig):
@@ -115,6 +122,7 @@ def fetch_dsp_data(app, web_interface, spectrum_fig, waterfall_fig):
         que_data_packet = web_interface.sp_data_que.get(False)
         for data_entry in que_data_packet:
             if data_entry[0] == "iq_header":
+                daq_status_update_flag = 1
                 web_interface.logger.debug("Iq header data fetched from signal processing que")
                 iq_header = data_entry[1]
                 # Unpack header
@@ -127,6 +135,9 @@ def fetch_dsp_data(app, web_interface, spectrum_fig, waterfall_fig):
                     web_interface.daq_frame_type = "Calibration"
                 elif iq_header.frame_type == iq_header.FRAME_TYPE_TRIGW:
                     web_interface.daq_frame_type = "Trigger wait"
+                elif iq_header.frame_type == iq_header.FRAME_TYPE_EMPTY:
+                    web_interface.daq_frame_type = "Empty"
+                    continue
                 else:
                     web_interface.daq_frame_type = "Unknown"
 
@@ -142,7 +153,9 @@ def fetch_dsp_data(app, web_interface, spectrum_fig, waterfall_fig):
                 web_interface.daq_center_freq = iq_header.rf_center_freq / 10**6
                 web_interface.daq_adc_fs = iq_header.adc_sampling_freq / 10**6
                 web_interface.daq_fs = iq_header.sampling_freq / 10**6
-                web_interface.daq_cpi = int(iq_header.cpi_length * 10**3 / iq_header.sampling_freq)
+                web_interface.daq_cpi = (
+                    int(iq_header.cpi_length * 10**3 / iq_header.sampling_freq) if iq_header.sampling_freq else 0
+                )
                 gain_list_str = ""
 
                 for m in range(iq_header.active_ant_chs):
@@ -150,7 +163,6 @@ def fetch_dsp_data(app, web_interface, spectrum_fig, waterfall_fig):
                     gain_list_str += ", "
 
                 web_interface.daq_if_gains = gain_list_str[:-2]
-                daq_status_update_flag = 1
             elif data_entry[0] == "update_rate":
                 web_interface.daq_update_rate = data_entry[1]
             elif data_entry[0] == "latency":
@@ -239,6 +251,8 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
             try:
                 with open(settings_file_path, "r", encoding="utf-8") as file:
                     dsp_settings = json.load(file)
+                    if dsp_settings is None:
+                        raise RuntimeError("%s appears empty" % file)
             except Exception as ex:
                 if not last_attempt_failed:
                     web_interface.logger.error("Problem loading settings file: %s", ex)
@@ -254,8 +268,6 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
                     if dsp_settings.get("uniform_gain", 1.4) != "Auto"
                     else AUTO_GAIN_VALUE
                 )
-
-                web_interface.ant_spacing_meters = float(dsp_settings.get("ant_spacing_meters", 0.5))
 
                 web_interface.en_system_control = [1] if dsp_settings.get("en_system_control", False) else []
                 web_interface.en_beta_features = [1] if dsp_settings.get("en_beta_features", False) else []
@@ -410,95 +422,130 @@ def update_daq_status(app, web_interface):
     #      Prepare UI component properties      #
     #############################################
 
-    if web_interface.daq_conn_status == 1:
-        if not web_interface.daq_cfg_iface_status:
-            daq_conn_status_str = "Connected"
-            conn_status_style = {"color": "#7ccc63"}
-        else:  # Config interface is busy
-            daq_conn_status_str = "Reconfiguration.."
+    if web_interface.daq_frame_type == "Empty":
+
+        daq_frame_type_str = "Empty (likely failure)"
+        frame_type_style = RED_COLOR
+
+        daq_conn_status_str = "Unknown (likely failure)"
+        conn_status_style = RED_COLOR
+
+        daq_frame_sync_str = "-"
+        frame_sync_style = RED_COLOR
+
+        daq_delay_sync_str = "-"
+        delay_sync_style = RED_COLOR
+
+        daq_iq_sync_str = "-"
+        iq_sync_style = RED_COLOR
+
+        daq_power_level_str = "-"
+        daq_power_level_style = RED_COLOR
+
+        daq_noise_source_str = "-"
+        noise_source_style = RED_COLOR
+
+        daq_frame_index_str = "-"
+        daq_dsp_latency = "-"
+        daq_update_rate_str = "-"
+
+        daq_rf_center_freq_str = "-"
+        daq_sampling_freq_str = "-"
+        dsp_decimated_bw_str = "-"
+        vfo_range_str = "-"
+
+        daq_cpi_str = "-"
+        daq_max_amp_str = "-"
+        daq_avg_powers_str = "-"
+    else:
+        if web_interface.daq_conn_status == 1:
+            if not web_interface.daq_cfg_iface_status:
+                daq_conn_status_str = "Connected"
+                conn_status_style = {"color": "#7ccc63"}
+            else:  # Config interface is busy
+                daq_conn_status_str = "Reconfiguration.."
+                conn_status_style = {"color": "#f39c12"}
+        else:
+            daq_conn_status_str = "Disconnected"
+            conn_status_style = {"color": "#e74c3c"}
+
+        if web_interface.daq_restart:
+            daq_conn_status_str = "Restarting.."
             conn_status_style = {"color": "#f39c12"}
-    else:
-        daq_conn_status_str = "Disconnected"
-        conn_status_style = {"color": "#e74c3c"}
 
-    if web_interface.daq_restart:
-        daq_conn_status_str = "Restarting.."
-        conn_status_style = {"color": "#f39c12"}
+        if web_interface.daq_update_rate < 1:
+            daq_update_rate_str = "{:d} ms".format(round(web_interface.daq_update_rate * 1000))
+        else:
+            daq_update_rate_str = "{:.2f} s".format(web_interface.daq_update_rate)
 
-    if web_interface.daq_update_rate < 1:
-        daq_update_rate_str = "{:d} ms".format(round(web_interface.daq_update_rate * 1000))
-    else:
-        daq_update_rate_str = "{:.2f} s".format(web_interface.daq_update_rate)
+        daq_dsp_latency = "{:d} ms".format(web_interface.daq_dsp_latency)
+        daq_frame_index_str = str(web_interface.daq_frame_index)
 
-    daq_dsp_latency = "{:d} ms".format(web_interface.daq_dsp_latency)
-    daq_frame_index_str = str(web_interface.daq_frame_index)
+        daq_frame_type_str = web_interface.daq_frame_type
+        if web_interface.daq_frame_type == "Data":
+            frame_type_style = frame_type_style = {"color": "#7ccc63"}
+        elif web_interface.daq_frame_type == "Dummy":
+            frame_type_style = frame_type_style = {"color": "white"}
+        elif web_interface.daq_frame_type == "Calibration":
+            frame_type_style = frame_type_style = {"color": "#f39c12"}
+        elif web_interface.daq_frame_type == "Trigger wait":
+            frame_type_style = frame_type_style = {"color": "#f39c12"}
+        else:
+            frame_type_style = frame_type_style = {"color": "#e74c3c"}
 
-    daq_frame_type_str = web_interface.daq_frame_type
-    if web_interface.daq_frame_type == "Data":
-        frame_type_style = frame_type_style = {"color": "#7ccc63"}
-    elif web_interface.daq_frame_type == "Dummy":
-        frame_type_style = frame_type_style = {"color": "white"}
-    elif web_interface.daq_frame_type == "Calibration":
-        frame_type_style = frame_type_style = {"color": "#f39c12"}
-    elif web_interface.daq_frame_type == "Trigger wait":
-        frame_type_style = frame_type_style = {"color": "#f39c12"}
-    else:
-        frame_type_style = frame_type_style = {"color": "#e74c3c"}
+        if web_interface.daq_frame_sync:
+            daq_frame_sync_str = "LOSS"
+            frame_sync_style = {"color": "#e74c3c"}
+        else:
+            daq_frame_sync_str = "Ok"
+            frame_sync_style = {"color": "#7ccc63"}
+        if web_interface.daq_sample_delay_sync:
+            daq_delay_sync_str = "Ok"
+            delay_sync_style = {"color": "#7ccc63"}
+        else:
+            daq_delay_sync_str = "LOSS"
+            delay_sync_style = {"color": "#e74c3c"}
 
-    if web_interface.daq_frame_sync:
-        daq_frame_sync_str = "LOSS"
-        frame_sync_style = {"color": "#e74c3c"}
-    else:
-        daq_frame_sync_str = "Ok"
-        frame_sync_style = {"color": "#7ccc63"}
-    if web_interface.daq_sample_delay_sync:
-        daq_delay_sync_str = "Ok"
-        delay_sync_style = {"color": "#7ccc63"}
-    else:
-        daq_delay_sync_str = "LOSS"
-        delay_sync_style = {"color": "#e74c3c"}
+        if web_interface.daq_iq_sync:
+            daq_iq_sync_str = "Ok"
+            iq_sync_style = {"color": "#7ccc63"}
+        else:
+            daq_iq_sync_str = "LOSS"
+            iq_sync_style = {"color": "#e74c3c"}
 
-    if web_interface.daq_iq_sync:
-        daq_iq_sync_str = "Ok"
-        iq_sync_style = {"color": "#7ccc63"}
-    else:
-        daq_iq_sync_str = "LOSS"
-        iq_sync_style = {"color": "#e74c3c"}
+        if web_interface.daq_noise_source_state:
+            daq_noise_source_str = "Enabled"
+            noise_source_style = {"color": "#e74c3c"}
+        else:
+            daq_noise_source_str = "Disabled"
+            noise_source_style = {"color": "#7ccc63"}
 
-    if web_interface.daq_noise_source_state:
-        daq_noise_source_str = "Enabled"
-        noise_source_style = {"color": "#e74c3c"}
-    else:
-        daq_noise_source_str = "Disabled"
-        noise_source_style = {"color": "#7ccc63"}
+        if web_interface.daq_power_level:
+            daq_power_level_str = "Overdrive"
+            daq_power_level_style = {"color": "#e74c3c"}
+        else:
+            daq_power_level_str = "OK"
+            daq_power_level_style = {"color": "#7ccc63"}
 
-    if web_interface.daq_power_level:
-        daq_power_level_str = "Overdrive"
-        daq_power_level_style = {"color": "#e74c3c"}
-    else:
-        daq_power_level_str = "OK"
-        daq_power_level_style = {"color": "#7ccc63"}
+        daq_rf_center_freq_str = str(web_interface.daq_center_freq)
+        daq_sampling_freq_str = str(web_interface.daq_fs)
+        bw = web_interface.daq_fs / web_interface.module_signal_processor.dsp_decimation
+        dsp_decimated_bw_str = "{0:.3f}".format(bw)
+        vfo_range_str = (
+            "{0:.3f}".format(web_interface.daq_center_freq - bw / 2)
+            + " - "
+            + "{0:.3f}".format(web_interface.daq_center_freq + bw / 2)
+        )
+        daq_cpi_str = str(web_interface.daq_cpi)
+        daq_max_amp_str = "{:.1f}".format(web_interface.max_amplitude)
+        daq_avg_powers_str = web_interface.avg_powers
 
-    # web_interface.module_signal_processor.usegps:
     if web_interface.module_signal_processor.gps_status == "Connected":
         gps_en_str = "Connected"
         gps_en_str_style = {"color": "#7ccc63"}
     else:
         gps_en_str = web_interface.module_signal_processor.gps_status
         gps_en_str_style = {"color": "#e74c3c"}
-
-    daq_rf_center_freq_str = str(web_interface.daq_center_freq)
-    daq_sampling_freq_str = str(web_interface.daq_fs)
-    bw = web_interface.daq_fs / web_interface.module_signal_processor.dsp_decimation
-    dsp_decimated_bw_str = "{0:.3f}".format(bw)
-    vfo_range_str = (
-        "{0:.3f}".format(web_interface.daq_center_freq - bw / 2)
-        + " - "
-        + "{0:.3f}".format(web_interface.daq_center_freq + bw / 2)
-    )
-    daq_cpi_str = str(web_interface.daq_cpi)
-    daq_max_amp_str = "{:.1f}".format(web_interface.max_amplitude)
-    daq_avg_powers_str = web_interface.avg_powers
 
     app.push_mods(
         {
@@ -548,3 +595,24 @@ def get_agc_warning_style_from_gain(gain):
         if gain == AUTO_GAIN_VALUE
         else copy.deepcopy(AGC_WARNING_DISABLED_STYLE)
     )
+
+
+"""
+Input validation utilities
+"""
+
+
+def is_float(string, minimum=-inf, maximum=inf):
+    try:
+        f = float(string)
+        return f >= minimum and f <= maximum
+    except (ValueError, TypeError):
+        return False
+
+
+def is_int(string, minimum=-inf, maximum=inf):
+    try:
+        i = int(string)
+        return i >= minimum and i <= maximum
+    except (ValueError, TypeError):
+        return False

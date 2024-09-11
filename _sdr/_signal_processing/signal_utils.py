@@ -82,7 +82,7 @@ def write_wav(f, sample_freq, x):
     """
     from scipy.io.wavfile import write
 
-    write(f, sample_freq, x)
+    write(f, sample_freq, x.astype(np.int16))
 
 
 def can_store_file(path: str) -> bool:

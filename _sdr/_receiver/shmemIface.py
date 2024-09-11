@@ -21,6 +21,7 @@
 
 import logging
 import os
+import time
 from multiprocessing import shared_memory
 from struct import pack, unpack
 
@@ -30,6 +31,7 @@ A_BUFF_READY = 1
 B_BUFF_READY = 2
 INIT_READY = 10
 TERMINATE = 255
+SLEEP_TIME_BETWEEN_READ_ATTEMPTS = 0.01  # seconds
 
 
 class outShmemIface:
@@ -136,18 +138,19 @@ class outShmemIface:
 
 
 class inShmemIface:
-    def __init__(self, shmem_name, ctr_fifo_path="_data_control/"):
+    def __init__(self, shmem_name, ctr_fifo_path="_data_control/", read_timeout=None):
         self.init_ok = True
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
-        self.drop_mode = False
-
+        self.num_read_attempts = int(read_timeout / SLEEP_TIME_BETWEEN_READ_ATTEMPTS) if read_timeout else 1
         self.shmem_name = shmem_name
 
         self.memories = []
         self.buffers = []
+        fw_fifo_flags = os.O_RDONLY | os.O_NONBLOCK if read_timeout else os.O_RDONLY
+
         try:
-            self.fw_ctr_fifo = os.open(ctr_fifo_path + "fw_" + shmem_name, os.O_RDONLY)
+            self.fw_ctr_fifo = os.open(ctr_fifo_path + "fw_" + shmem_name, fw_fifo_flags)
             self.bw_ctr_fifo = os.open(ctr_fifo_path + "bw_" + shmem_name, os.O_WRONLY)
         except OSError as err:
             self.logger.critical("OS error: {0}".format(err))
@@ -157,7 +160,8 @@ class inShmemIface:
             self.init_ok = False
 
         if self.fw_ctr_fifo is not None:
-            if unpack("B", os.read(self.fw_ctr_fifo, 1))[0] == INIT_READY:
+            signal = self.read_fw_ctr_fifo()
+            if signal and signal == INIT_READY:
                 self.memories.append(shared_memory.SharedMemory(name=shmem_name + "_A"))
                 self.memories.append(shared_memory.SharedMemory(name=shmem_name + "_B"))
                 self.buffers.append(
@@ -194,11 +198,24 @@ class inShmemIface:
             os.close(self.bw_ctr_fifo)
 
     def wait_buff_free(self):
-        signal = unpack("B", os.read(self.fw_ctr_fifo, 1))[0]
-        if signal == A_BUFF_READY:
+        signal = self.read_fw_ctr_fifo()
+        if not signal:
+            return -1
+        elif signal == A_BUFF_READY:
             return 0
         elif signal == B_BUFF_READY:
             return 1
         elif signal == TERMINATE:
             return TERMINATE
-        return -1
+        else:
+            return -1
+
+    def read_fw_ctr_fifo(self):
+        for _ in range(self.num_read_attempts):
+            try:
+                signal = unpack("B", os.read(self.fw_ctr_fifo, 1))[0]
+            except BlockingIOError:
+                time.sleep(SLEEP_TIME_BETWEEN_READ_ATTEMPTS)
+            else:
+                return signal
+        return None
