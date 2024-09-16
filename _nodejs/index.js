@@ -8,7 +8,6 @@ const crypto = require('crypto');
 const app = express()
 const port = 8042
 const wsport = 8021
-const doaInterval = 250    // Interval the clients should get new doa data in ms
 
 //const remoteServerDefault = 'wss://testmap.krakenrf.com:2096'
 const remoteServerDefault = 'wss://map.krakenrf.com:2096'
@@ -23,6 +22,8 @@ let wsClient;
 let wsServer;
 let wsPingInterval;
 
+let dataCounts = {}
+
 let debugMode = false;
 
 // Check for cmd Parameters, -d = DEBUG mode
@@ -30,6 +31,12 @@ if (process.argv[2] && process.argv[2] === '-d') {
   console.log('Debug mode enabled');
   debugMode = true;
 }
+
+setInterval(async () => {
+	console.log("Data Stats: -------------------------------- ")
+  console.log(dataCounts)
+  dataCounts = {}
+}, 5000);
 
 //load doa settings file
 function loadSettingsJson (){
@@ -160,17 +167,12 @@ app.get('/', (req, res) => {
 })
 
 app.post('/doapost', (req, res) => {
-  if(Date.now() - lastDoaUpdate > doaInterval){
-    //console.log(req.body);
     lastDoaUpdate = Date.now()
+    let vfo = req.body.freq.toString()
+    let oldCnt = dataCounts[vfo] || 0
+    dataCounts[vfo] = oldCnt + 1
     // in remote mode, send data to sdr server backend like the App does
     if (inRemoteMode) {
-      // In remote mode set lat/lon
-      //req.body.latitude = settingsJson.latitude; 
-      //req.body.longitude = settingsJson.longitude;
-      //req.body.gpsBearing = settingsJson.heading;
-      //console.log(req.body.latitude);
-      //console.log(req.body.longitude);
       wsTrySend(`{"apikey": "${settingsJson.krakenpro_key}", "data": ${JSON.stringify(req.body)}}`) 
     } else {
       // sends data to all websocket clients
@@ -181,20 +183,12 @@ app.post('/doapost', (req, res) => {
         }
       })*/
     } 
-
-  } else {
-    if(debugMode) console.log("...");
-  }
   res.sendStatus(200)
 });
 
 app.post('/prpost', (req, res) => {
     // in remote mode, send data to sdr server backend like the App does
     if (inRemoteMode) {
-      // In remote mode set lat/lon
-      //req.body.latitude = settingsJson.latitude; 
-      //req.body.longitude = settingsJson.longitude;
-      //req.body.gpsBearing = settingsJson.heading;
       if(debugMode) console.log(req.body);
       wsTrySend(`{"apikey": "${settingsJson.krakenpro_key}", "type": "pr", "data": ${JSON.stringify(req.body)}}`) 
     } else {
