@@ -22,10 +22,18 @@ sleep 1
 cd ../../krakensdr_doa
 sudo env "PATH=$PATH" ./gui_run.sh
 
+# Start the  KrakenToTAK python service if it is installed, and not already running.
 if [ -d "../Kraken-to-TAK-Python" ]; then
     echo "TAK Server Installed"
     cd ../Kraken-to-TAK-Python
-    python KrakenToTAK.py >/dev/null 2>/dev/null &
+
+    # Check if the process is already running
+    if pgrep -f "python KrakenToTAK.py" > /dev/null; then
+        echo "KrakenToTAK.py is already running."
+    else
+        echo "Starting KrakenToTAK.py"
+        python KrakenToTAK.py >/dev/null 2>/dev/null &
+    fi
 else
     echo "TAK Server NOT Installed"
 fi
