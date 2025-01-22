@@ -884,7 +884,7 @@ class SignalProcessor(threading.Thread):
                                     pass
 
                                 message = ""
-                                if doa_result_log:
+                                if doa_result_log.size > 0:
                                     doa_result_log = doa_result_log + np.abs(np.min(doa_result_log))
                                     for i in range(len(doa_result_log)):
                                         message += ", " + "{:.2f}".format(doa_result_log[i])
