@@ -102,6 +102,7 @@ pip3 install pyargus
 
 conda install dash==1.20.0
 conda install werkzeug==2.0.2
+conda install -y plotly==5.23.0
 ```
 
 4. (**OPTIONAL**) Install GPSD if you want to run a USB GPS on the Pi 4. 
