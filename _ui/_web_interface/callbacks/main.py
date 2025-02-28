@@ -538,7 +538,7 @@ def update_dsp_params(
         )
         web_interface.module_signal_processor.DOA_inter_elem_space = inter_elem_spacing / wavelength
     else:
-        web_interface.module_signal_processor.DOA_UCA_radius_m = np.Infinity
+        web_interface.module_signal_processor.DOA_UCA_radius_m = np.inf
         web_interface.module_signal_processor.DOA_inter_elem_space = web_interface.ant_spacing_meters / wavelength
 
     ant_spacing_wavelength = round(web_interface.module_signal_processor.DOA_inter_elem_space, 3)
@@ -547,8 +547,8 @@ def update_dsp_params(
 
     # Split CSV input in custom array
 
-    web_interface.custom_array_x_meters = np.float_(custom_array_x_meters.split(","))
-    web_interface.custom_array_y_meters = np.float_(custom_array_y_meters.split(","))
+    web_interface.custom_array_x_meters = np.float64(custom_array_x_meters.split(","))
+    web_interface.custom_array_y_meters = np.float64(custom_array_y_meters.split(","))
 
     web_interface.module_signal_processor.custom_array_x = web_interface.custom_array_x_meters / wavelength
     web_interface.module_signal_processor.custom_array_y = web_interface.custom_array_y_meters / wavelength
