@@ -1,8 +1,14 @@
 import math
+import operator
 import shutil
 
 import numpy as np
-from scipy.signal import butter, firwin, lfilter
+from scipy.signal import (
+    butter,
+    firwin,
+    lfilter,
+    resample_poly,
+)
 
 DEFAULT_NUM_OF_FREQ = 1024
 DEFAULT_FILTER_ORDER = 5
@@ -10,6 +16,33 @@ DEFAULT_FILTER_WINDOW = "hamming"
 DEFAULT_NUM_TAPS = 256
 
 DISK_SPACE_HEADROOM = 0.1
+
+
+def decimate_custom_fir(x, q, b, a):
+    """
+    Downsample the signal after applying given FIR filter.
+
+    Parameters
+    ----------
+    x : array_like
+        The signal to be downsampled, as an N-dimensional array.
+    q : int
+        The downsampling factor.
+    b: array_like
+        Numerator of the transfer function.
+    a: array_like
+        Denominator of the transfer function.
+    """
+
+    x = np.asarray(x)
+    q = operator.index(q)
+
+    sl = [slice(None)] * x.ndim
+
+    b = b / a
+    y = resample_poly(x, 1, q, axis=-1, window=b)
+
+    return y[tuple(sl)]
 
 
 def audible(signal):
