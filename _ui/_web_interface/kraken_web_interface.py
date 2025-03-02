@@ -344,7 +344,7 @@ class WebInterface:
             data["vfo_fir_order_factor_" + str(i)] = self.module_signal_processor.vfo_fir_order_factor[i]
             data["vfo_freq_" + str(i)] = self.module_signal_processor.vfo_freq[i]
             data["vfo_squelch_mode_" + str(i)] = self.module_signal_processor.vfo_squelch_mode[i]
-            data["vfo_squelch_" + str(i)] = self.module_signal_processor.vfo_squelch[i]
+            data["vfo_squelch_" + str(i)] = round(float(self.module_signal_processor.vfo_squelch[i]), 3)
             data["vfo_demod_" + str(i)] = self.module_signal_processor.vfo_demod[i]
             data["vfo_iq_" + str(i)] = self.module_signal_processor.vfo_iq[i]
 
