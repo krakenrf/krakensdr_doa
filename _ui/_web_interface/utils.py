@@ -291,15 +291,15 @@ def settings_change_watcher(web_interface, settings_file_path, last_attempt_fail
                     )
                     web_interface.module_signal_processor.DOA_inter_elem_space = inter_elem_spacing / wavelength
                 else:
-                    web_interface.module_signal_processor.DOA_UCA_radius_m = np.Infinity
+                    web_interface.module_signal_processor.DOA_UCA_radius_m = np.inf
                     web_interface.module_signal_processor.DOA_inter_elem_space = (
                         web_interface.ant_spacing_meters / wavelength
                     )
 
-                web_interface.custom_array_x_meters = np.float_(
+                web_interface.custom_array_x_meters = np.float64(
                     dsp_settings.get("custom_array_x_meters", "0.1,0.2,0.3,0.4,0.5").split(",")
                 )
-                web_interface.custom_array_y_meters = np.float_(
+                web_interface.custom_array_y_meters = np.float64(
                     dsp_settings.get("custom_array_y_meters", "0.1,0.2,0.3,0.4,0.5").split(",")
                 )
                 web_interface.module_signal_processor.custom_array_x = web_interface.custom_array_x_meters / (

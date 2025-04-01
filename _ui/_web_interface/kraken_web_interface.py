@@ -93,7 +93,7 @@ class WebInterface:
                 300 / float(dsp_settings.get("center_freq", 100.0))
             )
         else:
-            self.module_signal_processor.DOA_UCA_radius_m = np.Infinity
+            self.module_signal_processor.DOA_UCA_radius_m = np.inf
             self.module_signal_processor.DOA_inter_elem_space = self.ant_spacing_meters / (
                 300 / float(dsp_settings.get("center_freq", 100.0))
             )
@@ -102,10 +102,10 @@ class WebInterface:
         self.module_signal_processor.DOA_algorithm = dsp_settings.get("doa_method", "MUSIC")
         self.module_signal_processor.DOA_expected_num_of_sources = dsp_settings.get("expected_num_of_sources", 1)
 
-        self.custom_array_x_meters = np.float_(
+        self.custom_array_x_meters = np.float64(
             dsp_settings.get("custom_array_x_meters", "0.21,0.06,-0.17,-0.17,0.07").split(",")
         )
-        self.custom_array_y_meters = np.float_(
+        self.custom_array_y_meters = np.float64(
             dsp_settings.get("custom_array_y_meters", "0.00,-0.20,-0.12,0.12,0.20").split(",")
         )
         self.module_signal_processor.custom_array_x = self.custom_array_x_meters / (
@@ -344,7 +344,7 @@ class WebInterface:
             data["vfo_fir_order_factor_" + str(i)] = self.module_signal_processor.vfo_fir_order_factor[i]
             data["vfo_freq_" + str(i)] = self.module_signal_processor.vfo_freq[i]
             data["vfo_squelch_mode_" + str(i)] = self.module_signal_processor.vfo_squelch_mode[i]
-            data["vfo_squelch_" + str(i)] = self.module_signal_processor.vfo_squelch[i]
+            data["vfo_squelch_" + str(i)] = round(float(self.module_signal_processor.vfo_squelch[i]), 3)
             data["vfo_demod_" + str(i)] = self.module_signal_processor.vfo_demod[i]
             data["vfo_iq_" + str(i)] = self.module_signal_processor.vfo_iq[i]
 

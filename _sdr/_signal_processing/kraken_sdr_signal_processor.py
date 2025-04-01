@@ -50,7 +50,7 @@ from kraken_sdr_receiver import ReceiverRTLSDR
 from numba import float32, njit, vectorize
 from pyargus import directionEstimation as de
 from scipy import fft, signal
-from signal_utils import can_store_file, fm_demod, write_wav
+from signal_utils import can_store_file, decimate_custom_fir, fm_demod, write_wav
 from variables import (
     SOFTWARE_GIT_SHORT_HASH,
     SOFTWARE_VERSION,
@@ -124,7 +124,7 @@ class SignalProcessor(threading.Thread):
         # self.en_DOA_MUSIC    = False
         self.DOA_algorithm = "MUSIC"
         self.DOA_offset = 0
-        self.DOA_UCA_radius_m = np.Infinity
+        self.DOA_UCA_radius_m = np.inf
         self.DOA_inter_elem_space = 0.5
         self.DOA_ant_alignment = "ULA"
         self.ula_direction = "Both"
@@ -1331,7 +1331,8 @@ def shift_filter(decimation_factor, fir_order_factor, freq, sampling_freq, padd)
     a = system.den
     exponential = get_exponential(-freq, sampling_freq, len(b))
     b = numba_mult(b, exponential)
-    return signal.dlti(b, a)
+    bn, an = signal.normalize(b, a)
+    return signal.dlti(bn, an)
 
 
 # This function takes the full data, and efficiently returns only a filtered and decimated requested channel
@@ -1340,7 +1341,7 @@ def channelize(processed_signal, freq, decimation_factor, fir_order_factor, samp
     system = shift_filter(
         decimation_factor, fir_order_factor, freq, sampling_freq, 1.1
     )  # Decimate with a BANDPASS filter
-    decimated = signal.decimate(processed_signal, decimation_factor, ftype=system)
+    decimated = decimate_custom_fir(processed_signal, decimation_factor, system.num, system.den)
     exponential = get_exponential(
         freq, sampling_freq / decimation_factor, len(decimated[0, :])
     )  # Shift the signal AFTER to get back to normal decimate behaviour
