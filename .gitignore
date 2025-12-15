@@ -7,3 +7,4 @@ _share/
 settings.json*
 *.patch
 *.bak
+mydata.csv
